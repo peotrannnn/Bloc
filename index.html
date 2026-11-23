@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Bloc</title>
 <link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/online.css">
 </head>
 <body>
 <header><div id="status"></div><div id="info"></div></header>
@@ -32,7 +33,7 @@
 
   <!-- Màn hình chính: 3 chế độ -->
   <section class="scr" id="scHome">
-    <button class="big" id="mOnline" data-soon disabled>Đấu online <small>Sắp có</small></button>
+    <button class="big" id="mOnline">Đấu online</button>
     <button class="big p" id="mPve">Đấu với máy</button>
     <button class="big" id="mEve">Máy đấu máy</button>
   </section>
@@ -60,6 +61,32 @@
     <button class="back" id="eveBack">Quay lại</button>
   </section>
 
+  <!-- Đấu online: tạo phòng hoặc nhập mã -->
+  <section class="scr" id="scOnline" hidden>
+    <div class="sub">Đấu online · Classic</div>
+    <label class="row">Phòng
+      <select id="onVis">
+        <option value="private">Riêng tư (chia sẻ mã)</option>
+        <option value="public">Công khai</option>
+      </select>
+    </label>
+    <button class="big p" id="onCreate">Tạo phòng</button>
+    <div class="sub">hoặc vào phòng bằng mã</div>
+    <input id="onCode" maxlength="12" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Mã phòng" aria-label="Mã phòng">
+    <button class="big" id="onJoin">Vào phòng</button>
+    <div id="onErr" class="err" role="alert" hidden></div>
+    <button class="back" id="onBack">Quay lại</button>
+  </section>
+
+  <!-- Phòng chờ: hiện mã để gửi cho bạn bè -->
+  <section class="scr" id="scWait" hidden>
+    <div class="sub">Mã phòng</div>
+    <div id="waitCode" class="code"></div>
+    <button id="waitCopy">Sao chép mã</button>
+    <div id="waitMsg" class="sub"></div>
+    <button class="back" id="waitCancel">Hủy</button>
+  </section>
+
   <div id="ld" hidden><div id="bar"><b></b></div><div id="msg"></div></div>
 </div>
 
@@ -67,6 +94,7 @@
 <script src="js/config.js"></script>
 <script src="js/util.js"></script>
 <script src="js/loader.js"></script>
+<script src="js/online-client.js"></script>
 <script src="js/state.js"></script>
 <script src="js/core.js"></script>
 <script src="js/rules.js"></script>
@@ -100,3 +128,4 @@
 <script src="js/app.js"></script>
 </body>
 </html>
+

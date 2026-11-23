@@ -2,7 +2,7 @@
 /* [MENU] Menu chính: 3 màn hình (scHome / scPve / scEve). Danh sách AI lấy từ AIs (ai/registry.js),
    nên thêm AI mới là menu tự cập nhật. Menu chỉ thu thập lựa chọn rồi gọi App.start(cfg). */
 const Menu={
-  screens:['scHome','scPve','scEve'],
+  screens:['scHome','scPve','scEve','scOnline','scWait'],
   pveId:null,   /* AI đang chọn làm đối thủ ở chế độ đấu với máy */
 
   init(){
@@ -13,6 +13,16 @@ const Menu={
       for(const a of AIs.list)sel.add(new Option(a.name,a.id));
       sel.value=AIs.defaultId();
     }
+    $('mOnline').onclick=()=>{this.err('');this.show('scOnline');};
+    $('onBack').onclick=()=>this.show('scHome');
+    $('onCreate').onclick=()=>this.createRoom();
+    $('onJoin').onclick=()=>this.joinByCode();
+    $('onCode').onkeydown=e=>{if(e.key==='Enter')this.joinByCode();};
+    $('waitCancel').onclick=()=>this.cancelWait();
+    $('waitCopy').onclick=()=>{
+      const b=$('waitCopy'),code=$('waitCode').textContent;
+      try{navigator.clipboard.writeText(code).then(()=>{b.textContent='Đã chép';setTimeout(()=>{b.textContent='Sao chép mã';},1500);});}catch(e){}
+    };
     $('mPve').onclick=()=>this.show('scPve');
     $('mEve').onclick=()=>this.show('scEve');
     $('pveBack').onclick=$('eveBack').onclick=()=>this.show('scHome');
@@ -42,7 +52,60 @@ const Menu={
   },
 
   /* Phím Esc khi đang ở menu: từ màn hình con quay về màn hình chính */
-  back(){if($('scHome').hidden)this.show('scHome');},
+  back(){
+    if(!$('scWait').hidden){this.cancelWait();return;}
+    if($('scHome').hidden)this.show('scHome');
+  },
+
+  /* ----- Đấu online (Classic): tạo phòng hoặc vào bằng mã ----- */
+  conn:null,started:false,
+  err(t){const e=$('onErr');e.textContent=t||'';e.hidden=!t;},
+  async createRoom(){
+    this.err('');
+    const btn=$('onCreate');btn.disabled=true;
+    try{
+      const r=await Online.createRoom({mode:'classic',visibility:$('onVis').value});
+      this.joinRoom(r.code);
+    }catch(e){this.err('Không tạo được phòng. Kiểm tra mạng rồi thử lại.');}
+    finally{btn.disabled=false;}
+  },
+  joinByCode(){
+    this.err('');
+    const code=Online.normalizeCode($('onCode').value);
+    if(!code){this.err('Mã phòng gồm 6 ký tự (chữ và số, không có 0, O, 1, I).');return;}
+    this.joinRoom(code);
+  },
+  joinRoom(code){
+    this.leaveRoom();
+    const conn=Online.join(code);this.conn=conn;this.started=false;
+    for(const t of['welcome','started','applied','state','rejected','over','opponentStatus','full','replaced','error','close'])
+      conn.on(t,m=>{if(this.conn===conn)this.onNet(t,m);});   /* tin của kết nối cũ (đã rời) thì bỏ */
+    $('waitCode').textContent=code;$('waitMsg').textContent='Đang kết nối…';
+    this.show('scWait');
+  },
+  leaveRoom(){if(this.conn){const c=this.conn;this.conn=null;c.close();}},
+  cancelWait(){this.leaveRoom();this.show('scOnline');},
+  fail(msg){this.leaveRoom();this.show('scOnline');this.err(msg);},
+  /* Tin từ server: trước khi ván bắt đầu thì lo màn hình chờ, sau đó chuyển hết cho App */
+  onNet(t,m){
+    if(t==='welcome'&&!this.started){
+      $('waitMsg').textContent=m.started?'Đang vào ván…':m.players<2?'Đang chờ đối thủ. Gửi mã này cho bạn bè.':'Đã đủ người, đang chia phe…';
+      return;
+    }
+    if(t==='started'&&!this.started){
+      this.started=true;
+      App.start({net:{conn:this.conn,you:m.you,snap:m.snapshot},delay:0,analysis:{on:false,lock:true}});   /* online: tắt và khóa đánh giá */
+      return;
+    }
+    if(!this.started){
+      if(t==='full')this.fail('Phòng đã đủ người.');
+      else if(t==='error')this.fail(m.reason==='noroom'?'Mã phòng không tồn tại hoặc đã hết hạn.':'Lỗi kết nối. Thử lại nhé.');
+      else if(t==='replaced')this.fail('Phòng này vừa được mở ở tab khác.');
+      else if(t==='close')this.fail('Mất kết nối với server. Kiểm tra mạng rồi thử lại.');
+      return;
+    }
+    App.netIn(t,m);
+  },
 
   /* Hiện menu ở màn hình name */
   show(name){
@@ -50,3 +113,4 @@ const Menu={
     UI.el.ld.hidden=true;UI.el.menu.hidden=false;
   }
 };
+

@@ -8,25 +8,71 @@ const App={
   newGame(){
     clearTimeout(this.timer);
     /* Chọn phe: cfg.swap thì bốc thăm ngẫu nhiên, người chơi có thể cầm Đen (máy đi trước) */
-    const a=this.cfg.ai;
-    S.ai=this.cfg.swap&&Math.random()<.5?[a[1],a[0]]:a.slice();
-    S.me=S.ai.indexOf(null);
+    const net=this.cfg.net,a=net?[null,null]:this.cfg.ai;   /* online: cfg.net={conn,you,snap}; phe do server bốc thăm nên không swap */
+    S.ai=!net&&this.cfg.swap&&Math.random()<.5?[a[1],a[0]]:a.slice();
+    S.me=net?net.you:S.ai.indexOf(null);
     S.view=S.me>=0?S.me:(Math.random()<.5?0:1);   /* người chơi: nhìn từ phe mình; máy đấu máy: ngẫu nhiên */
     S.pl=[{r:N-1,c:HALF},{r:0,c:HALF}];
     S.ws={h:new Uint8Array(WN*WN),v:new Uint8Array(WN*WN)};
     S.left=[CFG.WALLS,CFG.WALLS];
     S.turn=0;S.mode='move';S.orient='h';S.over=false;S.draw=false;S.hov=null;S.ply=0;S.paused=false;
+    S.winner=-1;S.net=net?{conn:net.conn,wait:false,oppOnline:true,lost:null}:null;
+    if(net)this.loadSnap(net.snap);
     Walls.clear();Badges.clear();Review.reset();Fireworks.stop();Pawns.reset();Camera.snapHome();Stage.invalidate(true);
     this.refresh();this.schedule();
+    if(net){this.netReady=true;this.netFlush();}   /* xử lý các tin của server đến trong lúc đang tải three.js */
   },
 
   putWall(o,r,c){setW(o,r,c,1);S.left[S.turn]--;Walls.add(o,r,c,S.turn);},
+
+  /* Áp một nước đi vào bàn cờ rồi chuyển lượt. a = {move:[r,c]} hoặc {wall:{o,r,c}} */
+  play(a){
+    if(a.wall)this.putWall(a.wall.o,a.wall.r,a.wall.c);else S.pl[S.turn]={r:a.move[0],c:a.move[1]};
+    this.endTurn();
+  },
+  /* Người chơi vừa chọn một nước. Với máy: áp ngay. Online: chỉ GỬI lên server; bàn cờ chỉ đổi khi server phát lại 'applied' (server là trọng tài) */
+  commit(a){
+    if(S.net){S.net.wait=true;S.net.conn.action(S.ply,a);this.refresh();return;}
+    this.play(a);
+  },
+
+  /* ----- Đấu online: nhận tin từ server (Menu.onNet chuyển tới đây khi ván đã bắt đầu) ----- */
+  netReady:false,netQ:[],
+  loadSnap(snap){   /* chỉ lấy phần cần thiết; ván mới nên bàn cờ còn trống */
+    const st=R.fromSnapshot(snap);
+    S.pl=st.pl;S.left=st.left;S.turn=st.turn;S.ply=st.ply;
+  },
+  netFlush(){const q=this.netQ;this.netQ=[];for(const [t,m] of q)this.netIn(t,m);},
+  netLost(msg){if(!S.net||S.over)return;S.net.lost=msg;S.over=true;S.winner=-1;this.refresh();},
+  netIn(t,m){
+    if(!this.netReady){this.netQ.push([t,m]);return;}
+    if(!S.net)return;
+    switch(t){
+      case'applied':
+        if(S.over)return;
+        if(m.seq!==S.ply){this.netLost('Mất đồng bộ với server. Hãy thoát và vào lại phòng.');return;}
+        S.net.wait=false;this.play(m.action);return;
+      case'rejected':
+        S.net.wait=false;
+        if(m.reason==='seq'||m.reason==='turn')this.netLost('Mất đồng bộ với server. Hãy thoát và vào lại phòng.');
+        else this.refresh();
+        return;
+      case'over':   /* thắng bằng đích đã tự tính ở endTurn; đây là các trường hợp khác (đối thủ đầu hàng...) */
+        if(S.over)return;
+        S.over=true;S.winner=m.winner;
+        if(m.winner>=0){Fireworks.play(S.pl[m.winner]);Pawns.win(m.winner);Camera.follow(m.winner,true);}
+        this.refresh();return;
+      case'opponentStatus':S.net.oppOnline=m.online;UI.render();return;
+      case'replaced':this.netLost('Phòng này vừa được mở ở tab khác.');return;
+      case'close':if(!S.over)this.netLost('Mất kết nối với server.');return;
+    }
+  },
 
   endTurn(){
     /* chấm nhãn nước vừa đi (lúc này S là thế SAU nước đi, chưa đổi lượt); đang tắt đánh giá thì bỏ qua, đỡ tốn máy */
     if(S.analysis){const rv=Review.judge();if(rv)Badges.show(rv);}else Review.skip();
     S.ply++;
-    if(S.pl[S.turn].r===goalRow(S.turn)){S.over=true;Fireworks.play(S.pl[S.turn]);Pawns.win(S.turn);Camera.follow(S.turn,true);this.refresh();return;}   /* thắng: pháo bông + camera khóa theo quân thắng */
+    if(S.pl[S.turn].r===goalRow(S.turn)){S.over=true;S.winner=S.turn;Fireworks.play(S.pl[S.turn]);Pawns.win(S.turn);Camera.follow(S.turn,true);this.refresh();return;}   /* thắng: pháo bông + camera khóa theo quân thắng */
     if(allAI()&&S.ply>=CFG.MAX_PLY){S.over=S.draw=true;this.refresh();return;}
     S.turn=1-S.turn;S.mode='move';S.hov=null;Review.snap();this.refresh();this.schedule();
   },
@@ -87,6 +133,7 @@ const App={
 
   /* ----- Bắt đầu ván từ menu. cfg = {ai:[idTrắng|null, idĐen|null], delay:ms} (null = người chơi) ----- */
   async start(cfg){
+    if(cfg.net){this.netReady=false;this.netQ=[];}
     UI.el.ld.hidden=false;UI.lockMenu(true);
     try{
       if(!this.ready){
@@ -122,7 +169,14 @@ const App={
     this.refresh();
   },
   toggleAnalysis(){this.setAnalysis(!S.analysis);},
-  toMenu(){clearTimeout(this.timer);this.aiTok++;Menu.show('scHome');},
+  toMenu(){
+    if(S.net){   /* rời ván online: đang chơi thì tính là đầu hàng */
+      if(!S.over&&!confirm('Rời ván online sẽ bị xử thua. Thoát?'))return;
+      if(!S.over)S.net.conn.resign();
+      Menu.leaveRoom();S.net=null;
+    }
+    clearTimeout(this.timer);this.aiTok++;Menu.show('scHome');
+  },
 
   /* ----- Phím tắt (dùng ev.code nên đúng cả khi bật bộ gõ tiếng Việt) -----
      Q đi quân · W đặt tường · R xoay tường · E đổi góc nhìn · T bật/tắt đánh giá · P ván mới · Space tạm dừng (máy đấu máy) · Esc về menu */
@@ -135,7 +189,7 @@ const App={
     else if(k==='KeyR')this.rotateWall();
     else if(k==='KeyE')this.cycleView();
     else if(k==='KeyT')this.toggleAnalysis();
-    else if(k==='KeyP')this.newGame();
+    else if(k==='KeyP'){if(!S.net)this.newGame();}   /* online: đấu lại sẽ làm ở Giai đoạn 5 */
     else if(k==='Space'){if(!allAI()||S.over)return;S.paused=!S.paused;this.refresh();this.schedule();}   /* máy đấu máy: tạm dừng / tiếp tục */
     else if(k==='Escape')this.toMenu();
     else if(k.startsWith('Arrow')){if(!(S.mode==='wall'?this.arrowWall(k):this.arrowMove(k)))return;}
@@ -192,7 +246,7 @@ const App={
   /* Enter: đặt tường "ma" xuống nếu hợp lệ (khi tường đỏ thì không làm gì) */
   confirmWall(){
     if(!humanTurn()||S.mode!=='wall'||!S.hov)return false;
-    if(canWall(S.orient,S.hov.r,S.hov.c)){this.putWall(S.orient,S.hov.r,S.hov.c);S.hov=null;this.endTurn();}
+    if(canWall(S.orient,S.hov.r,S.hov.c)){const w={o:S.orient,r:S.hov.r,c:S.hov.c};S.hov=null;this.commit({wall:w});}
     return true;
   },
 
@@ -206,7 +260,7 @@ const App={
     if(!humanTurn()||S.mode!=='move')return false;
     const [dr,dc]=this.arrowDir(k);
     const a=S.pl[S.turn],o=S.pl[1-S.turn],legal=moves(S.turn),has=(r,c)=>legal.some(m=>m[0]===r&&m[1]===c);
-    const go=(r,c)=>{S.pl[S.turn]={r,c};this.endTurn();return true;};
+    const go=(r,c)=>{this.commit({move:[r,c]});return true;};
     /* Đang chờ phím chọn bên cho nước chéo (hết hạn sau 2,5 giây) */
     const pd=this.pend;this.pend=null;
     if(pd){Stage.setHints(legal,a);this.updateLabels();}   /* bỏ làm nổi ô chéo (nếu đi được thì ván đã chuyển lượt, refresh lo tiếp) */
@@ -239,7 +293,7 @@ const App={
     e.bWall.onclick=()=>this.setMode('wall');
     e.bRot.onclick=()=>this.rotateWall();
     e.bPause.onclick=()=>{S.paused=!S.paused;this.refresh();this.schedule();};
-    e.bReset.onclick=()=>this.ready&&this.newGame();
+    e.bReset.onclick=()=>this.ready&&!S.net&&this.newGame();
     e.bView.onclick=()=>this.cycleView();
     e.bEval.onclick=()=>this.toggleAnalysis();
     e.bMenu.onclick=()=>this.toMenu();
@@ -266,3 +320,4 @@ const App={
 };
 
 UI.init();Menu.init();App.bind();requestAnimationFrame(App.frame);
+

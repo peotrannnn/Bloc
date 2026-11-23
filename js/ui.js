@@ -28,6 +28,17 @@ const UI={
   /* Dòng trạng thái theo chế độ chơi */
   statusText(){
     const nm=this.label(S.turn);
+    if(S.net){   /* đấu online */
+      if(S.net.lost)return S.net.lost;
+      if(S.over){
+        if(S.draw)return 'Hòa sau '+S.ply+' nước';
+        return S.winner<0?'Ván kết thúc':S.winner===S.me?'Bạn thắng!':'Đối thủ thắng';
+      }
+      const off=S.net.oppOnline===false?' · đối thủ đang mất kết nối':'';
+      if(S.turn!==S.me)return 'Đến lượt đối thủ'+off;
+      if(S.net.wait)return 'Đang gửi nước đi…'+off;
+      return 'Lượt của bạn'+(S.mode==='wall'?' · đặt tường '+(S.orient==='h'?'ngang':'dọc'):' · chọn ô để đi')+off;
+    }
     if(S.over){
       if(S.draw)return 'Hòa sau '+S.ply+' nước';
       if(allAI())return 'Chúc mừng! '+nm+' thắng';
@@ -43,7 +54,7 @@ const UI={
     const e=this.el,P=CFG.PLAYERS,auto=allAI(),mine=humanTurn();
     e.status.textContent=this.statusText();
     e.info.innerHTML=P.map((p,i)=>'<b>'+this.label(i)+'</b>: '+
-      (isAI(i)?AIs.get(S.ai[i]).name:'Bạn')+' · '+S.left[i]+' tường').join('  |  ');
+      (S.net?(i===S.me?'Bạn':'Đối thủ'):isAI(i)?AIs.get(S.ai[i]).name:'Bạn')+' · '+S.left[i]+' tường').join('  |  ');
     e.bMove.hidden=e.bWall.hidden=e.bRot.hidden=auto;
     e.bPause.hidden=!auto;e.bPause.textContent=(S.paused?'Tiếp tục':'Tạm dừng')+' (Space)';e.bPause.disabled=S.over;
     e.bMove.setAttribute('aria-pressed',S.mode==='move');
@@ -53,6 +64,7 @@ const UI={
     e.bRot.disabled=!mine||S.mode!=='wall';
     e.bView.textContent=Camera.fol>=0?'Theo '+this.label(Camera.fol)+' (E)':'Góc nhìn (E)';
     e.evalbar.hidden=!S.analysis;                              /* thanh khả năng thắng chỉ hiện khi bật đánh giá */
-    e.bEval.hidden=S.analysisLock;e.bEval.setAttribute('aria-pressed',S.analysis);   /* chế độ khóa (online): ẩn luôn nút */
+    e.bReset.hidden=!!S.net;e.bEval.hidden=S.analysisLock;e.bEval.setAttribute('aria-pressed',S.analysis);   /* chế độ khóa (online): ẩn luôn nút */
   }
 };
+

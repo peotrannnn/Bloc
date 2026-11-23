@@ -77,11 +77,12 @@ const Input={
     const p=this.ground();if(!p)return;
     if(S.mode==='move'){
       const r=Math.round(p.w),c=Math.round(p.u);
-      if(moves(S.turn).some(m=>m[0]===r&&m[1]===c)){S.pl[S.turn]={r,c};App.endTurn();}
+      if(moves(S.turn).some(m=>m[0]===r&&m[1]===c))App.commit({move:[r,c]});
     }else{
       S.hov={r:wallIdx(Math.floor(p.w)),c:wallIdx(Math.floor(p.u))};
-      if(canWall(S.orient,S.hov.r,S.hov.c)){App.putWall(S.orient,S.hov.r,S.hov.c);S.hov=null;App.endTurn();}
+      if(canWall(S.orient,S.hov.r,S.hov.c)){const w={o:S.orient,r:S.hov.r,c:S.hov.c};S.hov=null;App.commit({wall:w});}
       else App.updateGhost();
     }
   }
 };
+
