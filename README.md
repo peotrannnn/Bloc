@@ -16,6 +16,7 @@ Game cờ 3D chạy trên trình duyệt (biến thể Quoridor), giao diện ti
 | `js/ai/` | Các AI (mỗi file một AI, đăng ký qua `registry.js`), worker chạy AI nặng |
 | `js/view/` | Phần 3D: bàn cờ, quân, tường, camera, pháo bông |
 | `js/app.js`, `ui.js`, `menu.js`, `input.js` | Điều phối ván, giao diện, menu, chuột/phím |
+| `server/` | Server online (Cloudflare Worker + Durable Object), xem `server/README.md` |
 | `tools/` | Công cụ chạy bằng Node (xem dưới) |
 
 ## Công cụ (Node, không cần cài gói)
@@ -23,6 +24,7 @@ Game cờ 3D chạy trên trình duyệt (biến thể Quoridor), giao diện ti
 ```
 node tools/core-test.js                       # kiểm thử lõi luật
 node tools/tournament.js attacker defender 200   # đấu thử hai AI;  --all để đấu vòng tròn
+node server/test/room-logic.test.mjs          # kiểm thử server (không cần Cloudflare)
 node tools/profile.js                         # đo "dấu vân tay" lối chơi của từng AI
 node tools/build-worker.js                    # PHẢI chạy lại sau khi sửa config/util/state/core/rules/ai/tools/biet
 ```
@@ -34,4 +36,4 @@ Repo phải công khai (gói Free). Settings → Pages → Build and deployment 
 
 ## Lộ trình online (tóm tắt)
 
-Server là trọng tài (Cloudflare Workers + Durable Objects, mỗi phòng một Durable Object), client chỉ gửi hành động; luật dùng chung `js/core.js`. Giai đoạn 1 (tách lõi game) đã xong.
+Server là trọng tài (Cloudflare Workers + Durable Objects, mỗi phòng một Durable Object), client chỉ gửi hành động; luật dùng chung `js/core.js`. Giai đoạn 1 (tách lõi game) và Giai đoạn 2 (server một phòng, trong `server/`) đã có code; Giai đoạn 2 còn chờ deploy và thử với server thật.

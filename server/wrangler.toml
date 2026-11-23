@@ -1,0 +1,23 @@
+# Cấu hình Cloudflare Worker cho Bloc online.
+# Chạy thử trên máy:   cd server && wrangler dev          (cổng 8787)
+# Triển khai:          cd server && wrangler login && wrangler deploy
+name = "bloc-online"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+
+workers_dev = true
+preview_urls = false
+
+# Mỗi phòng là một Durable Object, tên phòng = mã phòng. Gói Workers Free CHỈ hỗ trợ Durable Object dùng SQLite (new_sqlite_classes).
+[[durable_objects.bindings]]
+name = "ROOM"
+class_name = "Room"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Room"]
+
+[vars]
+# Trang web nào được mở WebSocket tới server (trình duyệt luôn gửi header Origin). Đổi tên tài khoản/repo nếu khác.
+# Chạy thử ở máy: http://localhost:8000 (python3 -m http.server 8000). Mở bằng file:// thì Origin là "null" nên sẽ bị chặn.
+ALLOWED_ORIGINS = "https://peotrannnn.github.io,http://localhost:8000,http://127.0.0.1:8000"
