@@ -13,9 +13,17 @@ preview_urls = false
 name = "ROOM"
 class_name = "Room"
 
+[[durable_objects.bindings]]
+name = "LOBBY"
+class_name = "Lobby"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["Room"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["Lobby"]
 
 [vars]
 # Trang web nào được mở WebSocket tới server (trình duyệt luôn gửi header Origin). Đổi tên tài khoản/repo nếu khác.

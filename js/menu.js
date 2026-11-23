@@ -17,6 +17,7 @@ const Menu={
     $('onBack').onclick=()=>this.show('scHome');
     $('onCreate').onclick=()=>this.createRoom();
     $('onJoin').onclick=()=>this.joinByCode();
+    $('onQuick').onclick=()=>this.quickJoin();
     $('onCode').onkeydown=e=>{if(e.key==='Enter')this.joinByCode();};
     $('waitCancel').onclick=()=>this.cancelWait();
     $('waitCopy').onclick=()=>{
@@ -58,7 +59,7 @@ const Menu={
   },
 
   /* ----- Đấu online (Classic): tạo phòng hoặc vào bằng mã ----- */
-  conn:null,started:false,
+  conn:null,started:false,quick:false,tries:0,
   err(t){const e=$('onErr');e.textContent=t||'';e.hidden=!t;},
   async createRoom(){
     this.err('');
@@ -75,8 +76,18 @@ const Menu={
     if(!code){this.err('Mã phòng gồm 6 ký tự (chữ và số, không có 0, O, 1, I).');return;}
     this.joinRoom(code);
   },
-  joinRoom(code){
-    this.leaveRoom();
+  /* Vào tự động: server chọn phòng công khai đang chờ lâu nhất (hoặc tạo phòng mới). Nếu phòng vừa hết hạn thì thử lại tối đa 2 lần. */
+  async quickJoin(retry){
+    if(!retry){this.err('');this.tries=0;}
+    const btn=$('onQuick');btn.disabled=true;
+    try{
+      const r=await Online.quick('classic');
+      this.joinRoom(r.code,true);
+    }catch(e){this.show('scOnline');this.err('Không tìm được phòng. Kiểm tra mạng rồi thử lại.');}
+    finally{btn.disabled=false;}
+  },
+  joinRoom(code,quick){
+    this.leaveRoom();this.quick=!!quick;
     const conn=Online.join(code);this.conn=conn;this.started=false;
     for(const t of['welcome','started','applied','state','rejected','over','opponentStatus','full','replaced','error','close'])
       conn.on(t,m=>{if(this.conn===conn)this.onNet(t,m);});   /* tin của kết nối cũ (đã rời) thì bỏ */
@@ -89,7 +100,7 @@ const Menu={
   /* Tin từ server: trước khi ván bắt đầu thì lo màn hình chờ, sau đó chuyển hết cho App */
   onNet(t,m){
     if(t==='welcome'&&!this.started){
-      $('waitMsg').textContent=m.started?'Đang vào ván…':m.players<2?'Đang chờ đối thủ. Gửi mã này cho bạn bè.':'Đã đủ người, đang chia phe…';
+      $('waitMsg').textContent=m.started?'Đang vào ván…':m.players<2?(this.quick?'Đang tìm đối thủ…':'Đang chờ đối thủ. Gửi mã này cho bạn bè.'):'Đã đủ người, đang chia phe…';
       return;
     }
     if(t==='started'&&!this.started){
@@ -99,6 +110,7 @@ const Menu={
     }
     if(!this.started){
       if(t==='full')this.fail('Phòng đã đủ người.');
+      else if(t==='error'&&m.reason==='noroom'&&this.quick&&this.tries<2){this.tries++;this.leaveRoom();this.quickJoin(true);}   /* phòng trong danh sách vừa hết hạn: xin phòng khác */
       else if(t==='error')this.fail(m.reason==='noroom'?'Mã phòng không tồn tại hoặc đã hết hạn.':'Lỗi kết nối. Thử lại nhé.');
       else if(t==='replaced')this.fail('Phòng này vừa được mở ở tab khác.');
       else if(t==='close')this.fail('Mất kết nối với server. Kiểm tra mạng rồi thử lại.');

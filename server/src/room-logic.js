@@ -22,7 +22,7 @@ const MAX_MSG=2048;
 const ALARM_WAITING=60*60e3,ALARM_PLAYING=6*60*60e3,ALARM_OVER=30*60e3;   /* dọn phòng bỏ trống / đang chơi quá lâu / đã xong */
 const TOKEN=/^[A-Za-z0-9_-]{16,64}$/;
 
-const fresh=()=>({created:false,mode:null,visibility:null,slots:[null,null],side:[null,null],started:false,over:false,reason:null,snap:null});
+const fresh=()=>({created:false,mode:null,visibility:null,code:null,slots:[null,null],side:[null,null],started:false,over:false,reason:null,snap:null});
 
 export class RoomLogic{
   constructor(io,opts){this.io=io;this.rand=(opts&&opts.rand)||Math.random;this.g=null;this.st=null;}
@@ -37,10 +37,12 @@ export class RoomLogic{
   async init(o){
     await this.ensure();
     if(this.g.created)return false;
-    this.g.created=true;this.g.mode=o.mode;this.g.visibility=o.visibility;
+    this.g.created=true;this.g.mode=o.mode;this.g.visibility=o.visibility;this.g.code=o.code||null;
     await this.persist();this.io.alarm(ALARM_WAITING);   /* phòng tạo ra mà không ai vào thì tự hết hạn */
     return true;
   }
+  /* Báo Lobby (chỉ phòng công khai): 'add' = đang chờ người, 'remove' = đã đủ người / chủ phòng rời / hết hạn. Lobby không phải nguồn sự thật: lỗi thì bỏ qua. */
+  async lobby(op){if(this.g.visibility==='public'&&this.g.code&&this.io.lobby)await this.io.lobby(op,this.g);}
   async persist(){if(this.st)this.g.snap=R.snapshot(this.st);await this.io.save(this.g);}
   send(c,m){this.io.send(c,m);}
   bySlot(slot,except){return this.io.conns().filter(c=>c!==except&&this.io.getSeat(c)===slot);}
@@ -78,6 +80,7 @@ export class RoomLogic{
     const players=g.slots.filter(Boolean).length;
     this.send(conn,{t:'welcome',slot,started:g.started,players,mode:g.mode,visibility:g.visibility});
     if(joined){await this.persist();if(players===1)this.io.alarm(ALARM_WAITING);}
+    if(!g.started&&players===1)await this.lobby('add');          /* chủ phòng vào/nối lại: phòng công khai hiện trong danh sách chờ */
 
     if(!g.started&&players===2)return this.start();
     if(g.started)this.sendState(conn,slot);
@@ -88,7 +91,7 @@ export class RoomLogic{
   async start(){
     const g=this.g,white=this.rand()<.5?0:1;
     g.side[white]=0;g.side[1-white]=1;g.started=true;this.st=R.newState();
-    await this.persist();this.io.alarm(ALARM_PLAYING);
+    await this.persist();this.io.alarm(ALARM_PLAYING);await this.lobby('remove');
     const snap=R.snapshot(this.st);
     for(const c of this.io.conns()){const s=this.io.getSeat(c);if(s>=0)this.send(c,{t:'started',ruleset:{id:RS.id,N:RS.N,walls:RS.walls},you:g.side[s],snapshot:snap});}
     for(const c of this.io.conns()){const s=this.io.getSeat(c);if(s>=0)this.send(c,{t:'opponentStatus',online:this.bySlot(1-s).length>0});}
@@ -130,10 +133,12 @@ export class RoomLogic{
     await this.ensure();
     const slot=this.io.getSeat(conn);
     if(slot<0||this.bySlot(slot,conn).length)return;           /* chưa có ghế, hoặc đã có kết nối khác thay chỗ: không phải rớt thật */
+    if(!this.g.started&&!this.io.conns().some(c=>c!==conn&&this.io.getSeat(c)>=0))await this.lobby('remove');   /* phòng đang chờ mà không còn ai: gỡ khỏi danh sách, khỏi ghép người vào phòng trống */
     for(const o of this.bySlot(1-slot,conn))this.send(o,{t:'opponentStatus',online:false});
   }
 
   async onAlarm(){
+    await this.ensure();await this.lobby('remove');
     for(const c of this.io.conns())this.io.close(c,4002,'expired');
     await this.io.wipe();this.g=null;this.st=null;
   }

@@ -51,6 +51,26 @@ try{
   const badfmt=conn('ab0');
   check(await badfmt.closed==='error','mã sai định dạng không mở được kết nối');
 
+  console.log('5. Vào tự động');
+  const quick=async()=>{
+    const r=await fetch(http+'/quick',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'classic'})}),t=await r.text();
+    try{return JSON.parse(t);}catch(e){throw new Error('/quick trả '+r.status+': '+t.slice(0,300));}
+  };
+  check((await fetch(http+'/quick',{method:'POST',body:JSON.stringify({mode:'zzz'})})).status===400,'mode lạ bị từ chối (400)');
+  const q1=await quick(),q2=await quick(),q3=await quick();
+  check(/^[A-HJ-NP-Z2-9]{6}$/.test(q1.code),'người 1 nhận mã phòng: '+q1.code+(q1.created?' (phòng mới)':' (phòng có sẵn)'));
+  if(q1.created)check(q2.code===q1.code&&q2.created===false,'người 2 được ghép vào đúng phòng của người 1');
+  check(q3.code!==q1.code&&q3.code!==q2.code||!q1.created,'người 3 không bị ghép vào phòng đang giữ chỗ');
+  if(q1.created){
+    const P=conn(q1.code),Q=conn(q1.code);
+    P.send({t:'hello',token:tok('P')});Q.send({t:'hello',token:tok('Q')});
+    const sp=await P.next('started'),sq=await Q.next('started');
+    check(sp.you!==sq.you,'hai người được ghép bắt đầu ván, hai phe khác nhau');
+    const after=await quick();
+    check(after.code!==q1.code,'phòng đã đủ người không còn trong danh sách chờ');
+    P.ws.close();Q.ws.close();
+  }
+
   A.ws.close();B.ws.close();
 }catch(e){problems++;console.log('  ✗ lỗi bất ngờ:',e.message);}
 console.log(problems?'THẤT BẠI':'ĐẠT');process.exit(problems?1:0);

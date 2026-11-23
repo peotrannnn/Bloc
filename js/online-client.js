@@ -1,7 +1,7 @@
 'use strict';
 /* [ONLINE] Kết nối chế độ online, không đụng tới giao diện: chỉ lo token, tạo phòng, vào phòng bằng mã và chuyển tin nhắn.
    Là script thường (như các file khác), tạo biến toàn cục Online. Menu (menu.js) và App (app.js) dùng nó.
-     const {code}=await Online.createRoom({mode:'classic',visibility:'private'});
+     const {code}=await Online.createRoom({mode:'classic',visibility:'private'});   // hoặc: await Online.quick('classic') → vào tự động
      const conn=Online.join(code);
      conn.on('welcome'|'started'|'applied'|'over'|'opponentStatus'|'full'|'error'|'close', m=>...);   // close: m.code 4004 = mã không tồn tại, 4001 = đầy
      conn.action(seq,{move:[r,c]}) · conn.action(seq,{wall:{o,r,c}}) · conn.resign() · conn.sync() · conn.close() */
@@ -32,6 +32,13 @@ const Online=(()=>{
     return r.json();                                            /* {code,mode,visibility} */
   }
 
+  /* Vào tự động: server ghép vào phòng công khai đang chờ lâu nhất, chưa có thì tạo phòng mới. Trả {code, created}. */
+  async function quick(mode){
+    const r=await fetch(SERVER+'/quick',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:mode||'classic'})});
+    if(!r.ok)throw new Error('quick_failed_'+r.status);
+    return r.json();
+  }
+
   function join(rawCode){
     const code=normalizeCode(rawCode);
     if(!code)throw new Error('bad_code');
@@ -58,5 +65,5 @@ const Online=(()=>{
     };
   }
 
-  return{createRoom,join,normalizeCode,getToken};
+  return{createRoom,quick,join,normalizeCode,getToken};
 })();
