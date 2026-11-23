@@ -1,0 +1,56 @@
+/* ===== Biến màu: --grass là màu nền cỏ ở khu vực chơi ===== */
+:root{--bg:#e9e6e1;--fg:#1c1b1f;--panel:#faf8f5;--line:#cfc9c0;--teal:#6b4a2b;--muted:#6f6a63;--grass:#15381c;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17161a;--fg:#f2efe9;--panel:#232227;--line:#3a3840;--teal:#c79a62;--muted:#a39d94}}
+:root[data-theme="dark"]{--bg:#17161a;--fg:#f2efe9;--panel:#232227;--line:#3a3840;--teal:#c79a62;--muted:#a39d94}
+[hidden]{display:none!important}
+
+/* ===== Khung trang ===== */
+html,body{height:100%;margin:0;overflow:hidden}   /* không bao giờ hiện thanh cuộn: bố cục luôn vừa khít cửa sổ */
+body{background:var(--grass);color:#f2efe9;font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif;display:flex;flex-direction:column}
+/* Chiều cao cố định (2 dòng, mỗi dòng không xuống hàng) để đổi chữ mỗi lượt không làm khung 3D co giãn */
+header{padding:10px 14px 6px;display:flex;flex-direction:column;gap:2px}
+#status,#info{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:1.4em}
+#status{font-size:1.15rem;font-weight:700}
+#info{font-size:.9rem;color:rgba(242,239,233,.8)}
+#info b{color:#fff}
+/* Sân cờ luôn chiếm trọn khung (nằm giữa), không bao giờ đổi kích thước khi bật/tắt thanh đánh giá */
+#board{flex:1;min-height:0;position:relative;overflow:hidden}
+#host{position:absolute;inset:0;overflow:hidden;touch-action:none}
+
+/* Thanh khả năng thắng: nền đen = phần của Đen, phần sáng mọc từ đáy lên = phần của Trắng */
+/* Nổi lên trên sân cờ, sát mép trái và giữa chiều cao: không chiếm chỗ trong bố cục, không chặn chuột */
+#evalbar{position:absolute;z-index:2;left:10px;top:50%;transform:translateY(-50%);width:26px;height:min(60%,360px);
+  border-radius:6px;overflow:hidden;background:#14141a;border:1px solid var(--line);pointer-events:none;box-sizing:border-box}
+#evW{position:absolute;left:0;right:0;bottom:0;height:50%;background:#f2efe9;transition:height .6s cubic-bezier(.2,.8,.2,1)}
+#evMid{position:absolute;left:0;right:0;top:50%;height:0;border-top:1px dashed rgba(128,128,128,.7);pointer-events:none}
+#evBt,#evWt{position:absolute;left:0;right:0;text-align:center;font-size:.7rem;font-weight:700;color:#fff;mix-blend-mode:difference}
+#evBt{top:4px}#evWt{bottom:4px}
+#host canvas{display:block;width:100%;height:100%}
+footer{display:flex;flex-wrap:wrap;gap:8px;padding:8px 14px 12px;justify-content:center}
+
+/* ===== Nút ===== */
+button,select{font:inherit;padding:9px 14px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--fg);cursor:pointer}
+button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+button:disabled{opacity:.45;cursor:default}
+:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
+
+/* ===== Menu ===== */
+#menu{position:fixed;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;box-sizing:border-box;text-align:center;color:var(--fg);
+background:conic-gradient(var(--line) 25%,transparent 0 50%,var(--line) 0 75%,transparent 0) 0 0/88px 88px,var(--bg)}
+#menu h1{font-size:clamp(2.6rem,10vw,4.5rem);margin:0;letter-spacing:.02em;padding:.1em .3em;background:var(--bg);border-radius:.2em}
+.scr{display:flex;flex-direction:column;align-items:center;gap:12px}
+#menu .big{width:min(320px,86vw);padding:14px;font-size:1.05rem;font-weight:700}
+#menu .big.p{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+#menu .big small{font-weight:400;font-size:.75rem;margin-left:6px;color:var(--muted)}
+#menu .back{background:var(--bg);color:var(--muted)}
+#menu .sub{color:var(--muted);font-size:.9rem;background:var(--bg);border-radius:8px;padding:2px 10px}
+#menu .opts{display:flex;flex-direction:column;gap:8px;width:min(320px,86vw)}
+#menu .opts button{width:100%;text-align:left}
+#menu .row{display:flex;align-items:center;justify-content:space-between;gap:12px;width:min(320px,86vw);box-sizing:border-box;
+  background:var(--bg);color:var(--fg);border-radius:8px;padding:6px 8px 6px 12px}
+#menu .row select{min-width:120px}
+#ld{width:min(320px,86vw);min-height:42px}
+#bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+#bar b{display:block;height:100%;width:0;background:var(--teal);transition:width .25s}
+#msg{font-size:.85rem;color:var(--muted);margin-top:6px}

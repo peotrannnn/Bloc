@@ -1,0 +1,15 @@
+# Hệ điều hành / trình soạn thảo
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
+
+# Node (công cụ trong tools/ không cần cài gói nào)
+node_modules/
+
+# Cloudflare sau này: không bao giờ commit bí mật vào repo công khai
+.dev.vars
+.env
+.env.*
+.wrangler/
