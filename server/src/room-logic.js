@@ -9,9 +9,10 @@
 
    Giao thức (JSON):
      client → server  hello{token} · action{seq, move:[r,c] | wall:{o,r,c}} · resign · sync · ping
-     server → client  welcome{slot,started,players} · started{ruleset,you,snapshot} · state{you,snapshot,over,winner} ·
+     server → client  welcome{slot,started,players,mode,visibility} · started{ruleset,you,snapshot} · state{you,snapshot,over,winner} ·
                       applied{seq,by,action,ply,turn,over,winner,draw} · rejected{seq,reason,ply} · over{winner,reason} ·
-                      opponentStatus{online} · full · replaced · error{reason} · pong
+                      opponentStatus{online} · full · replaced · error{reason: badtoken|noroom} · pong
+   Phòng chỉ tồn tại sau khi Worker gọi init() (POST /create). Vào mã chưa được tạo → error{noroom} rồi đóng (mã 4004).
    seq = số nước đã đi (st.ply) tại lúc gửi: server chỉ nhận đúng seq kế tiếp, nên không bao giờ áp dụng trùng hoặc lệch nước. */
 import Core from '../../js/core.js';
 
@@ -21,7 +22,7 @@ const MAX_MSG=2048;
 const ALARM_WAITING=60*60e3,ALARM_PLAYING=6*60*60e3,ALARM_OVER=30*60e3;   /* dọn phòng bỏ trống / đang chơi quá lâu / đã xong */
 const TOKEN=/^[A-Za-z0-9_-]{16,64}$/;
 
-const fresh=()=>({slots:[null,null],side:[null,null],started:false,over:false,reason:null,snap:null});
+const fresh=()=>({created:false,mode:null,visibility:null,slots:[null,null],side:[null,null],started:false,over:false,reason:null,snap:null});
 
 export class RoomLogic{
   constructor(io,opts){this.io=io;this.rand=(opts&&opts.rand)||Math.random;this.g=null;this.st=null;}
@@ -30,6 +31,15 @@ export class RoomLogic{
     if(this.g)return;
     this.g=(await this.io.load())||fresh();
     this.st=this.g.snap?R.fromSnapshot(this.g.snap):null;
+  }
+  async exists(){await this.ensure();return !!this.g.created;}
+  /* Tạo phòng (Worker gọi khi có POST /create). Trả false nếu mã này đã có người dùng → Worker thử mã khác. */
+  async init(o){
+    await this.ensure();
+    if(this.g.created)return false;
+    this.g.created=true;this.g.mode=o.mode;this.g.visibility=o.visibility;
+    await this.persist();this.io.alarm(ALARM_WAITING);   /* phòng tạo ra mà không ai vào thì tự hết hạn */
+    return true;
   }
   async persist(){if(this.st)this.g.snap=R.snapshot(this.st);await this.io.save(this.g);}
   send(c,m){this.io.send(c,m);}
@@ -52,6 +62,7 @@ export class RoomLogic{
 
   async hello(conn,m){
     if(typeof m.token!=='string'||!TOKEN.test(m.token))return this.send(conn,{t:'error',reason:'badtoken'});
+    if(!this.g.created){this.send(conn,{t:'error',reason:'noroom'});this.io.close(conn,4004,'noroom');return;}
     if(this.io.getSeat(conn)>=0)return;                        /* kết nối này đã có ghế */
     const g=this.g;
     let slot=g.slots.indexOf(m.token),joined=false;
@@ -65,7 +76,7 @@ export class RoomLogic{
       this.send(old,{t:'replaced'});this.io.close(old,4000,'replaced');
     }
     const players=g.slots.filter(Boolean).length;
-    this.send(conn,{t:'welcome',slot,started:g.started,players});
+    this.send(conn,{t:'welcome',slot,started:g.started,players,mode:g.mode,visibility:g.visibility});
     if(joined){await this.persist();if(players===1)this.io.alarm(ALARM_WAITING);}
 
     if(!g.started&&players===2)return this.start();
@@ -127,3 +138,4 @@ export class RoomLogic{
     await this.io.wipe();this.g=null;this.st=null;
   }
 }
+

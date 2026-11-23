@@ -8,7 +8,10 @@ import Core from '../../js/core.js';
 if(typeof WebSocket==='undefined'){console.error('Cần Node 22+ (có WebSocket sẵn). Kiểm tra: node --version');process.exit(2);}
 
 const base=(process.argv[2]||'ws://localhost:8787').replace(/\/$/,'');
-const room='T'+Math.random().toString(36).slice(2,7).toUpperCase();
+const http=base.replace(/^ws/,'http');
+const made=await fetch(http+'/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'classic',visibility:'private'})});
+if(!made.ok){console.error('Không tạo được phòng:',made.status);process.exit(1);}
+const room=(await made.json()).code;   /* mã do server cấp (Giai đoạn 3) */
 const R=Core.make(Core.ruleset('classic'));
 const rnd=Math.random,pick=a=>a[Math.floor(rnd()*a.length)];
 let problems=0;const bad=m=>{problems++;console.log('  ✗',m);};
@@ -53,3 +56,4 @@ else if(a.over.winner!==b.over.winner)bad('hai bên nhận kết quả khác nha
 if(a.rejected+b.rejected<1)bad('server không từ chối nước sai cố ý');
 if(a.st&&b.st&&JSON.stringify(R.snapshot(a.st))!==JSON.stringify(R.snapshot(b.st)))bad('hai bên không đồng bộ thế cờ');
 console.log(problems?'THẤT BẠI':'ĐẠT');process.exit(problems?1:0);
+
