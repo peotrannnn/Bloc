@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Bloc</title>
+<meta name="theme-color" content="#000000">
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/online.css">
 </head>
@@ -18,32 +19,33 @@
   <div id="host"></div>
 </main>
 <footer>
-<button id="bMove" aria-pressed="true">Đi quân (Q)</button>
-<button id="bWall" aria-pressed="false">Đặt tường (W)</button>
-<button id="bRot">Xoay tường (R)</button>
-<button id="bPause" hidden>Tạm dừng</button>
-<button id="bView">Góc nhìn (E)</button>
+<button id="bMove" aria-pressed="true">Đi (Q)</button>
+<button id="bWall" aria-pressed="false">Tường (W)</button>
+<button id="bRot">Xoay (R)</button>
+<button id="bPause" hidden>Dừng</button>
+<button id="bView">Góc (E)</button>
 <button id="bEval" aria-pressed="true">Đánh giá (T)</button>
-<button id="bReset">Ván mới (P)</button>
+<button id="bReset">Mới (P)</button>
 <button id="bMenu">Menu (Esc)</button>
 </footer>
 
 <div id="menu">
-  <h1>Bloc</h1>
+ <div class="win">
+  <div class="tb"><span id="winTitle">Bloc - menu</span><button id="winX" class="wx" aria-label="Đóng cửa sổ" title="Đóng (Esc)" hidden>X</button></div>
+  <div class="wb">
 
-  <!-- Màn hình chính: 3 chế độ -->
+  <!-- Màn hình chính: 3 chế độ. Các màn hình con không có nút "Về": đóng cửa sổ bằng nút X trên thanh tiêu đề (hoặc Esc) -->
   <section class="scr" id="scHome">
-    <button class="big" id="mOnline">Đấu online</button>
-    <button class="big p" id="mPve">Đấu với máy</button>
-    <button class="big" id="mEve">Máy đấu máy</button>
+    <button class="big" id="mOnline">Chơi online</button>
+    <button class="big p" id="mPve">Chơi với máy</button>
+    <button class="big" id="mEve">Cá cược</button>
   </section>
 
   <!-- Đấu với máy: chọn đối thủ -->
   <section class="scr" id="scPve" hidden>
     <div class="sub">Chọn đối thủ</div>
     <div class="opts" id="pveList" role="radiogroup"></div>
-    <button class="big p" id="pvePlay">Bắt đầu</button>
-    <button class="back" id="pveBack">Quay lại</button>
+    <button class="big p" id="pvePlay">Chơi</button>
   </section>
 
   <!-- Máy đấu máy: chọn mô hình cho từng bên -->
@@ -57,39 +59,38 @@
         <option value="400">Nhanh</option>
       </select>
     </label>
-    <button class="big p" id="evePlay">Bắt đầu</button>
-    <button class="back" id="eveBack">Quay lại</button>
+    <button class="big p" id="evePlay">Chơi</button>
   </section>
 
   <!-- Đấu online: tạo phòng hoặc nhập mã -->
   <section class="scr" id="scOnline" hidden>
-    <div class="sub">Đấu online · Classic</div>
+    <div class="sub">Online · Classic</div>
     <label class="row">Phòng
       <select id="onVis">
-        <option value="private">Riêng tư (chia sẻ mã)</option>
-        <option value="public">Công khai (ai bấm "Vào tự động" cũng có thể vào)</option>
+        <option value="private">Riêng tư</option>
+        <option value="public">Công khai</option>
       </select>
     </label>
-    <button class="big" id="onResume" hidden>Vào lại ván đang chơi</button>
+    <button class="big" id="onResume" hidden>Vào lại</button>
     <button class="big p" id="onCreate">Tạo phòng</button>
-    <button class="big" id="onQuick">Vào tự động</button>
-    <div class="sub">hoặc vào phòng bằng mã</div>
+    <button class="big" id="onQuick">Ghép nhanh</button>
+    <div class="sub">hoặc nhập mã</div>
     <input id="onCode" maxlength="12" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Mã phòng" aria-label="Mã phòng">
-    <button class="big" id="onJoin">Vào phòng</button>
+    <button class="big" id="onJoin">Vào</button>
     <div id="onErr" class="err" role="alert" hidden></div>
-    <button class="back" id="onBack">Quay lại</button>
   </section>
 
   <!-- Phòng chờ: hiện mã để gửi cho bạn bè -->
   <section class="scr" id="scWait" hidden>
     <div class="sub">Mã phòng</div>
     <div id="waitCode" class="code"></div>
-    <button id="waitCopy">Sao chép mã</button>
+    <button id="waitCopy">Chép mã</button>
     <div id="waitMsg" class="sub"></div>
-    <button class="back" id="waitCancel">Hủy</button>
   </section>
 
   <div id="ld" hidden><div id="bar"><b></b></div><div id="msg"></div></div>
+  </div>
+ </div>
 </div>
 
 <!-- Thứ tự nạp quan trọng: module sau dùng biến của module trước -->

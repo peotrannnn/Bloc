@@ -1,7 +1,10 @@
-/* Giao diện phần đấu online (màn hình tạo phòng / nhập mã / phòng chờ). Dùng màu kế thừa từ style.css; chỉnh lại cho hợp giao diện nếu cần. */
-#onCode{font:inherit;color:inherit;background:transparent;width:100%;box-sizing:border-box;padding:.6em .8em;text-align:center;
-  letter-spacing:.25em;text-transform:uppercase;border:1px solid currentColor;border-radius:10px}
-#onCode::placeholder{letter-spacing:normal;text-transform:none;opacity:.5}
-.err{color:#e5534b;text-align:center;font-size:.95em}
-.code{font-size:2.4rem;font-weight:700;letter-spacing:.3em;text-align:center;user-select:all;padding:.3em 0}
-#waitMsg{text-align:center;opacity:.8}
+/* Phần đấu online (màn hình tạo phòng / nhập mã / phòng chờ), cùng kiểu terminal với style.css (dùng chung biến màu). */
+#onCode{font:inherit;color:var(--g);background:#000;width:100%;box-sizing:border-box;padding:5px 8px;text-align:center;
+  letter-spacing:.25em;text-transform:uppercase;border:1px solid var(--gd);border-radius:0;caret-color:var(--g);text-shadow:var(--glow)}
+#onCode:focus{outline:none;border-color:var(--g);box-shadow:var(--halo)}
+#onCode::placeholder{letter-spacing:normal;text-transform:none;color:#2a7a48;text-shadow:none}
+.err{color:var(--red);text-align:center;font-size:12px;text-shadow:0 0 6px rgba(255,92,92,.4)}
+.err::before{content:"! "}
+.code{background:#000;border:1px dashed var(--g);padding:6px 14px;font:700 1.7rem/1.2 var(--font);letter-spacing:.25em;
+  text-align:center;user-select:all;color:var(--g);text-shadow:var(--glow);box-shadow:inset 0 0 14px rgba(44,255,107,.12)}
+#waitMsg{text-align:center}

@@ -32,19 +32,19 @@ const UI={
       if(S.net.lost)return S.net.lost;
       if(S.over){
         if(S.draw)return 'Hòa sau '+S.ply+' nước';
-        if(S.winner===S.me&&S.net.reason==='timeout')return 'Đối thủ mất kết nối quá lâu · bạn thắng!';
+        if(S.winner===S.me&&S.net.reason==='timeout')return 'Đối thủ rớt mạng · bạn thắng!';
         if(S.winner===S.me&&S.net.reason==='resign')return 'Đối thủ đầu hàng · bạn thắng!';
-        if(S.winner>=0&&S.winner!==S.me&&S.net.reason==='timeout')return 'Bạn mất kết nối quá lâu · bạn thua';
+        if(S.winner>=0&&S.winner!==S.me&&S.net.reason==='timeout')return 'Bạn rớt mạng · bạn thua';
         if(S.winner===S.me&&S.net.reason==='turn')return 'Đối thủ hết giờ · bạn thắng!';
-        if(S.winner>=0&&S.winner!==S.me&&S.net.reason==='turn')return 'Bạn hết giờ · bạn thua';
+        if(S.winner>=0&&S.winner!==S.me&&S.net.reason==='turn')return 'Hết giờ · bạn thua';
         return S.winner<0?'Ván kết thúc':S.winner===S.me?'Bạn thắng!':'Đối thủ thắng';
       }
-      if(S.net.offline)return 'Mất kết nối · đang nối lại…';
-      const off=S.net.oppOnline===false?' · đối thủ đang mất kết nối':'';
-      const tl=S.net.deadline?Math.max(0,Math.ceil((S.net.deadline-Date.now())/1000)):0,clk=tl?' · còn '+tl+'s':'';   /* đồng hồ lượt */
-      if(S.turn!==S.me)return 'Đến lượt đối thủ'+clk+off;
-      if(S.net.wait)return 'Đang gửi nước đi…'+off;
-      return 'Lượt của bạn'+clk+(S.mode==='wall'?' · đặt tường '+(S.orient==='h'?'ngang':'dọc'):' · chọn ô để đi')+off;
+      if(S.net.offline)return 'Mất kết nối · nối lại…';
+      const off=S.net.oppOnline===false?' · đối thủ rớt mạng':'';
+      const tl=S.net.deadline?Math.max(0,Math.ceil((S.net.deadline-Date.now())/1000)):0,clk=tl?' · '+tl+'s':'';   /* đồng hồ lượt */
+      if(S.turn!==S.me)return 'Lượt đối thủ'+clk+off;
+      if(S.net.wait)return 'Đang gửi…'+off;
+      return 'Lượt bạn'+clk+(S.mode==='wall'?' · tường '+(S.orient==='h'?'ngang':'dọc'):' · chọn ô')+off;
     }
     if(S.over){
       if(S.draw)return 'Hòa sau '+S.ply+' nước';
@@ -53,30 +53,30 @@ const UI={
     }
     if(allAI())return 'Nước '+(S.ply+1)+' · '+nm+' · '+AIs.get(S.ai[S.turn]).name+(S.paused?' · Tạm dừng':'');
     if(isAI(S.turn))return 'Máy đang nghĩ…';
-    return 'Lượt của bạn'+(S.mode==='wall'?' · đặt tường '+(S.orient==='h'?'ngang':'dọc'):' · chọn ô để đi');
+    return 'Lượt bạn'+(S.mode==='wall'?' · tường '+(S.orient==='h'?'ngang':'dọc'):' · chọn ô');
   },
 
   /* Vẽ lại chữ và nút theo trạng thái S */
   render(){
     const e=this.el,P=CFG.PLAYERS,auto=allAI(),mine=humanTurn();
     e.status.textContent=this.statusText();
-    e.info.innerHTML=P.map((p,i)=>'<b>'+this.label(i)+'</b>: '+
+    e.info.innerHTML=P.map((p,i)=>'<b>'+p.sym+' '+this.label(i)+'</b>: '+
       (S.net?(i===S.me?'Bạn':'Đối thủ'):isAI(i)?AIs.get(S.ai[i]).name:'Bạn')+' · '+S.left[i]+' tường').join('  |  ');
     e.bMove.hidden=e.bWall.hidden=e.bRot.hidden=auto;
-    e.bPause.hidden=!auto;e.bPause.textContent=(S.paused?'Tiếp tục':'Tạm dừng')+' (Space)';e.bPause.disabled=S.over;
+    e.bPause.hidden=!auto;e.bPause.textContent=(S.paused?'Tiếp':'Dừng')+' (Space)';e.bPause.disabled=S.over;
     e.bMove.setAttribute('aria-pressed',S.mode==='move');
     e.bWall.setAttribute('aria-pressed',S.mode==='wall');
     e.bMove.disabled=!mine;
     e.bWall.disabled=!mine||S.left[S.turn]===0;
     e.bRot.disabled=!mine||S.mode!=='wall';
-    e.bView.textContent=Camera.fol>=0?'Theo '+this.label(Camera.fol)+' (E)':'Góc nhìn (E)';
+    e.bView.textContent=Camera.fol>=0?'Theo '+this.label(Camera.fol)+' (E)':'Góc (E)';
     e.evalbar.hidden=!S.analysis;                              /* thanh khả năng thắng chỉ hiện khi bật đánh giá */
     if(S.net){   /* online: nút này là "Đấu lại", chỉ hiện khi ván đã xong */
       const rm=S.net.rematch;
       e.bReset.hidden=!S.over||!!S.net.lost;
       e.bReset.disabled=rm.me;
-      e.bReset.textContent=rm.me?'Đang chờ đối thủ…':rm.opp?'Đối thủ muốn đấu lại · bấm để đồng ý':'Đấu lại (P)';
-    }else{e.bReset.hidden=false;e.bReset.disabled=false;e.bReset.textContent='Ván mới (P)';}
+      e.bReset.textContent=rm.me?'Chờ đối thủ…':rm.opp?'Đồng ý đấu lại':'Đấu lại (P)';
+    }else{e.bReset.hidden=false;e.bReset.disabled=false;e.bReset.textContent='Mới (P)';}
     e.bEval.hidden=S.analysisLock;e.bEval.setAttribute('aria-pressed',S.analysis);   /* chế độ khóa (online): ẩn luôn nút */
   }
 };

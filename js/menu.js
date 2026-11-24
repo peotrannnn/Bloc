@@ -1,8 +1,9 @@
 'use strict';
-/* [MENU] Menu chính: 3 màn hình (scHome / scPve / scEve). Danh sách AI lấy từ AIs (ai/registry.js),
+/* [MENU] Menu chính: mỗi màn hình là một "cửa sổ" riêng (tên ở thanh tiêu đề, nút X để quay về menu chính). Danh sách AI lấy từ AIs (ai/registry.js),
    nên thêm AI mới là menu tự cập nhật. Menu chỉ thu thập lựa chọn rồi gọi App.start(cfg). */
 const Menu={
   screens:['scHome','scPve','scEve','scOnline','scWait'],
+  titles:{scHome:'Bloc - menu',scPve:'Bloc - Chơi với máy',scEve:'Bloc - Cá cược',scOnline:'Bloc - Chơi online',scWait:'Bloc - Phòng chờ'},   /* tên cửa sổ theo màn hình */
   pveId:null,   /* AI đang chọn làm đối thủ ở chế độ đấu với máy */
 
   init(){
@@ -15,19 +16,17 @@ const Menu={
     }
     $('mOnline').onclick=()=>{this.err('');this.showOnline();};
     $('onResume').onclick=()=>{const c=Online.lastRoom();if(c)this.joinRoom(c);};
-    $('onBack').onclick=()=>this.show('scHome');
+    $('winX').onclick=()=>this.back();   /* nút X: từ màn hình con về menu chính (đang ở phòng chờ thì rời phòng) */
     $('onCreate').onclick=()=>this.createRoom();
     $('onJoin').onclick=()=>this.joinByCode();
     $('onQuick').onclick=()=>this.quickJoin();
     $('onCode').onkeydown=e=>{if(e.key==='Enter')this.joinByCode();};
-    $('waitCancel').onclick=()=>this.cancelWait();
     $('waitCopy').onclick=()=>{
       const b=$('waitCopy'),code=$('waitCode').textContent;
-      try{navigator.clipboard.writeText(code).then(()=>{b.textContent='Đã chép';setTimeout(()=>{b.textContent='Sao chép mã';},1500);});}catch(e){}
+      try{navigator.clipboard.writeText(code).then(()=>{b.textContent='Đã chép';setTimeout(()=>{b.textContent='Chép mã';},1500);});}catch(e){}
     };
     $('mPve').onclick=()=>this.show('scPve');
     $('mEve').onclick=()=>this.show('scEve');
-    $('pveBack').onclick=$('eveBack').onclick=()=>this.show('scHome');
     /* swap:true = mỗi ván bốc thăm ngẫu nhiên người chơi cầm Trắng (đi trước) hay Đen.
        analysis = {on: mặc định có hiện thanh khả năng thắng + nhãn nước đi không, lock: true thì không cho bật/tắt bằng phím T}.
        Sau này: đấu online → analysis:{on:false,lock:true} (không ai được nhờ engine); xem lại ván (replay) → analysis:{on:true}. */
@@ -53,7 +52,7 @@ const Menu={
     }
   },
 
-  /* Phím Esc khi đang ở menu: từ màn hình con quay về màn hình chính */
+  /* Nút X hoặc phím Esc: từ màn hình con quay về màn hình chính */
   back(){
     if(!$('scWait').hidden){this.cancelWait();return;}
     if($('scHome').hidden)this.show('scHome');
@@ -61,7 +60,7 @@ const Menu={
 
   /* ----- Đấu online (Classic): tạo phòng hoặc vào bằng mã ----- */
   conn:null,started:false,quick:false,tries:0,
-  showOnline(){const c=Online.lastRoom(),b=$('onResume');b.hidden=!c;if(c)b.textContent='Vào lại phòng '+c;this.show('scOnline');},
+  showOnline(){const c=Online.lastRoom(),b=$('onResume');b.hidden=!c;if(c)b.textContent='Vào lại '+c;this.show('scOnline');},
   err(t){const e=$('onErr');e.textContent=t||'';e.hidden=!t;},
   async createRoom(){
     this.err('');
@@ -102,7 +101,7 @@ const Menu={
   /* Tin từ server: trước khi ván bắt đầu thì lo màn hình chờ, sau đó chuyển hết cho App */
   onNet(t,m){
     if(t==='welcome'&&!this.started){
-      $('waitMsg').textContent=m.started?'Đang vào ván…':m.players<2?(this.quick?'Đang tìm đối thủ…':'Đang chờ đối thủ. Gửi mã này cho bạn bè.'):'Đã đủ người, đang chia phe…';
+      $('waitMsg').textContent=m.started?'Đang vào…':m.players<2?(this.quick?'Đang tìm…':'Chờ đối thủ · gửi mã cho bạn'):'Đủ người · chia phe…';
       return;
     }
     if((t==='started'||t==='state')&&!this.started){           /* started: ván mới; state: vào lại ván đang chơi (tải lại trang / bấm "Vào lại phòng") */
@@ -122,9 +121,12 @@ const Menu={
     App.netIn(t,m);
   },
 
-  /* Hiện menu ở màn hình name */
+  /* Hiện menu ở màn hình name: đổi tên cửa sổ, menu chính không có nút X, cửa sổ "bật lên" mỗi lần chuyển màn hình */
   show(name){
     for(const s of this.screens)$(s).hidden=s!==name;
+    $('winTitle').textContent=this.titles[name]||'Bloc';
+    $('winX').hidden=name==='scHome';
+    const w=document.querySelector('#menu .win');w.classList.remove('pop');void w.offsetWidth;w.classList.add('pop');
     UI.el.ld.hidden=true;UI.el.menu.hidden=false;
   }
 };
