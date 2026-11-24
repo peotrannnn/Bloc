@@ -16,10 +16,13 @@ const App={
     S.ws={h:new Uint8Array(WN*WN),v:new Uint8Array(WN*WN)};
     S.left=[CFG.WALLS,CFG.WALLS];
     S.turn=0;S.mode='move';S.orient='h';S.over=false;S.draw=false;S.hov=null;S.ply=0;S.paused=false;
-    S.winner=-1;S.net=net?{conn:net.conn,wait:false,oppOnline:true,lost:null}:null;
+    S.winner=-1;S.net=net?{conn:net.conn,wait:false,offline:false,oppOnline:true,lost:null,reason:null,deadline:net.turnLeft?Date.now()+net.turnLeft:0,rematch:{me:false,opp:false}}:null;
     if(net)this.loadSnap(net.snap);
     Walls.clear();Badges.clear();Review.reset();Fireworks.stop();Pawns.reset();Camera.snapHome();Stage.invalidate(true);
     this.refresh();this.schedule();
+    if(net&&net.state)this.resync(net.state);          /* vào lại ván đang chơi (tải lại trang): dựng bàn cờ từ trạng thái server */
+    clearInterval(this.tick);
+    if(net)this.tick=setInterval(()=>{if(S.net&&!S.over&&S.net.deadline)UI.render();},1000);   /* đếm ngược đồng hồ lượt trên thanh trạng thái */
     if(net){this.netReady=true;this.netFlush();}   /* xử lý các tin của server đến trong lúc đang tải three.js */
   },
 
@@ -36,11 +39,32 @@ const App={
     this.play(a);
   },
 
+  /* Nút "Ván mới" (P). Online thì là "Đấu lại": chỉ khi ván đã xong, gửi một phiếu; đủ phiếu hai bên thì server bắt đầu ván mới */
+  resetOrRematch(){
+    if(!this.ready)return;
+    if(!S.net){this.newGame();return;}
+    if(S.over&&!S.net.lost&&!S.net.rematch.me){S.net.rematch.me=true;S.net.conn.rematch();UI.render();}
+  },
+
   /* ----- Đấu online: nhận tin từ server (Menu.onNet chuyển tới đây khi ván đã bắt đầu) ----- */
   netReady:false,netQ:[],
   loadSnap(snap){   /* chỉ lấy phần cần thiết; ván mới nên bàn cờ còn trống */
     const st=R.fromSnapshot(snap);
     S.pl=st.pl;S.left=st.left;S.turn=st.turn;S.ply=st.ply;
+  },
+  /* Dựng lại toàn bộ bàn cờ từ trạng thái server: nối lại sau rớt mạng, vào lại ván sau khi tải lại trang, hoặc khi lệch nước.
+     m = tin 'state' {snapshot,log,over,winner,reason}. Tường lấy theo nhật ký để đúng màu từng bên (snapshot không ghi chủ tường). */
+  resync(m){
+    const st=R.fromSnapshot(m.snapshot);
+    S.pl=st.pl;S.ws=st.ws;S.left=st.left;S.turn=st.turn;S.ply=st.ply;S.over=!!st.over;S.draw=!!st.draw;S.winner=st.over?st.winner:-1;
+    S.mode='move';S.hov=null;
+    S.net.wait=false;S.net.offline=false;S.net.reason=m.reason||null;
+    S.net.deadline=!S.over&&m.turnLeft?Date.now()+m.turnLeft:0;S.net.rematch=m.rematch||{me:false,opp:false};
+    Walls.clear();Badges.clear();Review.reset();Fireworks.stop();Pawns.reset();Camera.snapHome();Stage.invalidate(true);
+    if(m.log&&m.log.length){for(const e of m.log)if(e.a.wall)Walls.add(e.a.wall.o,e.a.wall.r,e.a.wall.c,e.p);}
+    else for(const w of m.snapshot.walls)Walls.add(w.o,w.r,w.c,0);
+    if(S.over&&S.winner>=0){Fireworks.play(S.pl[S.winner]);Pawns.win(S.winner);Camera.follow(S.winner,true);}
+    this.refresh();
   },
   netFlush(){const q=this.netQ;this.netQ=[];for(const [t,m] of q)this.netIn(t,m);},
   netLost(msg){if(!S.net||S.over)return;S.net.lost=msg;S.over=true;S.winner=-1;this.refresh();},
@@ -50,18 +74,24 @@ const App={
     switch(t){
       case'applied':
         if(S.over)return;
-        if(m.seq!==S.ply){this.netLost('Mất đồng bộ với server. Hãy thoát và vào lại phòng.');return;}
-        S.net.wait=false;this.play(m.action);return;
+        if(m.seq!==S.ply){S.net.conn.sync();return;}   /* lệch nước: xin trạng thái đầy đủ rồi dựng lại */
+        S.net.wait=false;S.net.deadline=!m.over&&m.turnLeft?Date.now()+m.turnLeft:0;this.play(m.action);return;
       case'rejected':
         S.net.wait=false;
-        if(m.reason==='seq'||m.reason==='turn')this.netLost('Mất đồng bộ với server. Hãy thoát và vào lại phòng.');
+        if(m.reason==='seq'||m.reason==='turn')S.net.conn.sync();
         else this.refresh();
         return;
       case'over':   /* thắng bằng đích đã tự tính ở endTurn; đây là các trường hợp khác (đối thủ đầu hàng...) */
         if(S.over)return;
-        S.over=true;S.winner=m.winner;
+        S.over=true;S.winner=m.winner;S.net.reason=m.reason;S.net.deadline=0;
         if(m.winner>=0){Fireworks.play(S.pl[m.winner]);Pawns.win(m.winner);Camera.follow(m.winner,true);}
         this.refresh();return;
+      case'state':this.resync(m);return;
+      case'rematchStatus':S.net.rematch={me:m.me,opp:m.opp};UI.render();return;
+      case'started':   /* đấu lại: server đã đổi phe và bắt đầu ván mới trong cùng phòng */
+        this.cfg.net.you=m.you;this.cfg.net.snap=m.snapshot;this.cfg.net.turnLeft=m.turnLeft;this.cfg.net.state=null;
+        this.newGame();return;
+      case'reconnecting':S.net.offline=true;this.refresh();return;   /* rớt mạng: khóa thao tác, tự nối lại; nối được thì server gửi 'state' */
       case'opponentStatus':S.net.oppOnline=m.online;UI.render();return;
       case'replaced':this.netLost('Phòng này vừa được mở ở tab khác.');return;
       case'close':if(!S.over)this.netLost('Mất kết nối với server.');return;
@@ -173,9 +203,9 @@ const App={
     if(S.net){   /* rời ván online: đang chơi thì tính là đầu hàng */
       if(!S.over&&!confirm('Rời ván online sẽ bị xử thua. Thoát?'))return;
       if(!S.over)S.net.conn.resign();
-      Menu.leaveRoom();S.net=null;
+      Menu.leaveRoom();Online.setLastRoom(null);S.net=null;
     }
-    clearTimeout(this.timer);this.aiTok++;Menu.show('scHome');
+    clearTimeout(this.timer);clearInterval(this.tick);this.aiTok++;Menu.show('scHome');
   },
 
   /* ----- Phím tắt (dùng ev.code nên đúng cả khi bật bộ gõ tiếng Việt) -----
@@ -189,7 +219,7 @@ const App={
     else if(k==='KeyR')this.rotateWall();
     else if(k==='KeyE')this.cycleView();
     else if(k==='KeyT')this.toggleAnalysis();
-    else if(k==='KeyP'){if(!S.net)this.newGame();}   /* online: đấu lại sẽ làm ở Giai đoạn 5 */
+    else if(k==='KeyP')this.resetOrRematch();
     else if(k==='Space'){if(!allAI()||S.over)return;S.paused=!S.paused;this.refresh();this.schedule();}   /* máy đấu máy: tạm dừng / tiếp tục */
     else if(k==='Escape')this.toMenu();
     else if(k.startsWith('Arrow')){if(!(S.mode==='wall'?this.arrowWall(k):this.arrowMove(k)))return;}
@@ -293,7 +323,7 @@ const App={
     e.bWall.onclick=()=>this.setMode('wall');
     e.bRot.onclick=()=>this.rotateWall();
     e.bPause.onclick=()=>{S.paused=!S.paused;this.refresh();this.schedule();};
-    e.bReset.onclick=()=>this.ready&&!S.net&&this.newGame();
+    e.bReset.onclick=()=>this.resetOrRematch();
     e.bView.onclick=()=>this.cycleView();
     e.bEval.onclick=()=>this.toggleAnalysis();
     e.bMenu.onclick=()=>this.toMenu();

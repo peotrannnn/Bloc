@@ -14,12 +14,12 @@ const S={
   analysis:true,    /* đang hiện thanh khả năng thắng + nhãn nước đi? (phím T). Tắt thì không tính gì cả: khỏi tốn máy */
   analysisLock:false/* true: chế độ này không cho bật/tắt (vd đấu online: giữ tắt để không ai nhờ engine hỗ trợ) */,
   winner:-1,        /* bên thắng khi ván kết thúc (0/1), -1 nếu chưa có hoặc hòa */
-  net:null          /* đấu online: {conn,wait,oppOnline,lost}; null nếu chơi với máy. wait = đã gửi nước đi, đang chờ server xác nhận */
+  net:null          /* đấu online: {conn,wait,offline,oppOnline,lost,reason}; null nếu chơi với máy. wait = đã gửi nước đi, đang chờ server xác nhận */
 };
 
 const isAI=p=>S.ai[p]!==null;                 /* bên p do máy điều khiển? */
 const allAI=()=>isAI(0)&&isAI(1);             /* máy đấu máy */
-const humanTurn=()=>!S.over&&!isAI(S.turn)&&(!S.net||(S.turn===S.me&&!S.net.wait));   /* đến lượt người bấm chuột? Online: chỉ lượt của mình và khi không còn nước đang chờ server */
+const humanTurn=()=>!S.over&&!isAI(S.turn)&&(!S.net||(S.turn===S.me&&!S.net.wait&&!S.net.offline));   /* đến lượt người bấm chuột? Online: chỉ lượt của mình và khi không còn nước đang chờ server */
 
 /* Phím E xoay vòng: quân mình → quân kia → mặc định. Máy đấu máy thì Trắng → Đen → mặc định. */
 const viewOrder=()=>S.me<0?[0,1]:[S.me,1-S.me];

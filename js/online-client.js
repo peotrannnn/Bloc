@@ -4,9 +4,18 @@
      const {code}=await Online.createRoom({mode:'classic',visibility:'private'});   // hoặc: await Online.quick('classic') → vào tự động
      const conn=Online.join(code);
      conn.on('welcome'|'started'|'applied'|'over'|'opponentStatus'|'full'|'error'|'close', m=>...);   // close: m.code 4004 = mã không tồn tại, 4001 = đầy
+     conn.autoReconnect(true)  → rớt mạng thì tự nối lại (phát 'reconnecting'), server trả 'welcome' rồi 'state'
      conn.action(seq,{move:[r,c]}) · conn.action(seq,{wall:{o,r,c}}) · conn.resign() · conn.sync() · conn.close() */
 const Online=(()=>{
-  const SERVER='https://bloc-online.peotrannnn.workers.dev';   /* ws/wss suy ra từ đây; đổi nếu sau này gắn tên miền riêng */
+  /* ws/wss suy ra từ đây; đổi nếu sau này gắn tên miền riêng. Chạy thử ở máy: mở trang với ?server=http://localhost:8787 để nối vào
+     server `wrangler dev` thay vì bản thật (chỉ có tác dụng khi trang đang mở từ localhost/127.0.0.1, trang trên mạng không bị đổi được). */
+  const SERVER=(()=>{
+    try{
+      const s=new URLSearchParams(location.search).get('server');
+      if(s&&/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(s)&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;
+    }catch(e){}
+    return 'https://bloc-online.peotrannnn.workers.dev';
+  })();
   const ALPHABET='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';           /* trùng với server: không có 0/O/1/I */
   const KEY='bloc.token';
 
@@ -39,31 +48,56 @@ const Online=(()=>{
     return r.json();
   }
 
+  /* Phòng gần nhất đang chơi (mỗi tab một giá trị): tải lại trang vẫn vào lại được đúng ván. */
+  function lastRoom(){try{return normalizeCode(sessionStorage.getItem('bloc.room'));}catch(e){return null;}}
+  function setLastRoom(code){try{if(code)sessionStorage.setItem('bloc.room',code);else sessionStorage.removeItem('bloc.room');}catch(e){}}
+
+  const RECONNECT_MS=50e3;                 /* tự nối lại tối đa ngần này; server giữ ghế 45 giây rồi xử thua */
+  const FATAL=[4000,4001,4002,4004];       /* bị thay thế, phòng đầy, hết hạn, không tồn tại: nối lại vô ích */
+
   function join(rawCode){
     const code=normalizeCode(rawCode);
     if(!code)throw new Error('bad_code');
-    const ws=new WebSocket(SERVER.replace(/^http/,'ws')+'/ws?room='+code);
+    const url=SERVER.replace(/^http/,'ws')+'/ws?room='+code;
     const handlers={};
     const emit=(t,m)=>{(handlers[t]||[]).forEach(f=>{try{f(m);}catch(e){console.error(e);}});};
-    const send=o=>{if(ws.readyState===1)ws.send(JSON.stringify(o));};
-    let closed=false;
-    const onClose=(c,r)=>{if(closed)return;closed=true;emit('close',{code:c,reason:r});};
+    let ws=null,keep=false,done=false,attempt=0,giveUpAt=0,timer=0;
+    const send=o=>{if(ws&&ws.readyState===1)ws.send(JSON.stringify(o));};
 
-    ws.onopen=()=>send({t:'hello',token:getToken()});
-    ws.onmessage=ev=>{let m;try{m=JSON.parse(ev.data);}catch(e){return;}if(m&&m.t)emit(m.t,m);};
-    ws.onclose=ev=>onClose(ev.code,ev.reason);
-    ws.onerror=()=>onClose(0,'network');
+    function open(){
+      const me=new WebSocket(url);ws=me;                       /* me!==ws nghĩa là kết nối cũ đã bị thay: bỏ qua mọi sự kiện của nó */
+      me.onopen=()=>{if(me===ws)send({t:'hello',token:getToken()});};
+      me.onmessage=ev=>{
+        if(me!==ws)return;
+        let m;try{m=JSON.parse(ev.data);}catch(e){return;}
+        if(!m||!m.t)return;
+        if(m.t==='welcome'){attempt=0;giveUpAt=0;}              /* nối được rồi: lần rớt sau tính lại từ đầu */
+        emit(m.t,m);
+      };
+      me.onclose=ev=>{
+        if(me!==ws||done)return;
+        if(keep&&!FATAL.includes(ev.code)){                     /* đang trong ván: rớt mạng thì tự nối lại, cùng token nên server trả đúng ghế */
+          if(!giveUpAt)giveUpAt=Date.now()+RECONNECT_MS;
+          if(Date.now()<giveUpAt){emit('reconnecting',{attempt:++attempt});timer=setTimeout(open,Math.min(3000,400*attempt));return;}
+        }
+        done=true;emit('close',{code:ev.code,reason:ev.reason});
+      };
+      me.onerror=()=>{};                                        /* lỗi luôn kéo theo onclose, xử lý ở đó */
+    }
+    open();
 
     return{
       code,
       on(t,f){(handlers[t]=handlers[t]||[]).push(f);return this;},
+      autoReconnect(on){keep=!!on;return this;},               /* bật khi ván bắt đầu; trước đó rớt mạng là báo lỗi ngay */
       action:(seq,a)=>send({t:'action',seq,...a}),
       resign:()=>send({t:'resign'}),
-      sync:()=>send({t:'sync'}),
+      rematch:()=>send({t:'rematch'}),                         /* ván xong: bấm "Đấu lại"; đủ cả hai thì server đổi phe và gửi 'started' mới */
+      sync:()=>send({t:'sync'}),                               /* xin server gửi lại trạng thái đầy đủ (state) */
       ping:()=>send({t:'ping'}),
-      close:()=>ws.close()
+      close(){done=true;clearTimeout(timer);if(ws)ws.close();}
     };
   }
 
-  return{createRoom,quick,join,normalizeCode,getToken};
+  return{createRoom,quick,join,normalizeCode,getToken,lastRoom,setLastRoom};
 })();

@@ -7,7 +7,12 @@
 export {Room} from './room.js';
 export {Lobby} from './lobby.js';
 import {CODE,MODES,VISIBILITY,newCode} from './codes.js';
+import {makeLimiter} from './limiter.js';
 
+/* Giới hạn theo IP (xem limiter.js). Rộng tay để người chơi thật không bao giờ chạm tới: tạo/ghép phòng tối đa 30 lượt dồn, nạp 1 lượt mỗi 2 giây;
+   mở kết nối WebSocket 60 lượt dồn, nạp 1 lượt mỗi giây (nối lại khi rớt mạng cũng tính). Chặn kẻ chạy vòng lặp tạo phòng hoặc dò mã phòng. */
+const postLimit=makeLimiter({capacity:30,perSec:.5}),wsLimit=makeLimiter({capacity:60,perSec:1});
+const ipOf=req=>req.headers.get('CF-Connecting-IP')||'unknown';
 const roomOf=(env,code)=>env.ROOM.get(env.ROOM.idFromName(code));
 const lobbyOf=env=>env.LOBBY.get(env.LOBBY.idFromName('main'));
 
@@ -62,6 +67,7 @@ export default{
         return new Response(null,{status:204,headers:{'Access-Control-Allow-Origin':origin||'*','Access-Control-Allow-Methods':'POST','Access-Control-Allow-Headers':'Content-Type','Access-Control-Max-Age':'86400','Vary':'Origin'}});
       }
       if(req.method!=='POST')return new Response('Method not allowed',{status:405});
+      if(!postLimit.take(ipOf(req)))return json({error:'ratelimit'},429,origin);
       try{return await handler(req,env,origin);}
       catch(e){return json({error:'internal',detail:String(e&&e.message||e)},500,origin);}   /* lỗi bất ngờ (vd Durable Object ném lỗi): trả JSON có nội dung lỗi thay vì trang HTML của Cloudflare */
     }
@@ -71,6 +77,7 @@ export default{
     if(!ok)return new Response('Forbidden origin',{status:403});
     const code=(url.searchParams.get('room')||'').toUpperCase();
     if(!CODE.test(code))return new Response('Bad room code',{status:400});
+    if(!wsLimit.take(ipOf(req)))return new Response('Too many requests',{status:429});
     return roomOf(env,code).fetch(req);
   }
 };
