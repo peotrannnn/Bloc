@@ -25,7 +25,7 @@
 <button id="bPause" hidden>Dừng</button>
 <button id="bView">Góc (E)</button>
 <button id="bEval" aria-pressed="true">Đánh giá (T)</button>
-<button id="bReset">Mới (P)</button>
+<span class="rmgrp"><button id="bReset">Mới (P)</button><span id="rmOpp" class="rmopp" role="status" aria-live="polite" hidden><i></i>Đối thủ sẵn sàng</span></span>
 <button id="bMenu">Menu (Esc)</button>
 </footer>
 
@@ -89,12 +89,12 @@
         <option value="public">Công khai</option>
       </select>
     </label>
-    <button class="big" id="onResume" hidden>Vô lại</button>
+    <button class="big" id="onResume" hidden>Vào lại</button>
     <button class="big p" id="onCreate">Tạo phòng</button>
     <button class="big" id="onQuick">Ghép nhanh</button>
     <div class="sub">hoặc nhập mã</div>
     <input id="onCode" maxlength="12" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Mã phòng" aria-label="Mã phòng">
-    <button class="big" id="onJoin">Vô</button>
+    <button class="big" id="onJoin">Vào</button>
     <div id="onErr" class="err" role="alert" hidden></div>
   </section>
 

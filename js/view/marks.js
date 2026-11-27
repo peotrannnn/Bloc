@@ -3,6 +3,7 @@
      • Dấu bền: sprite chỉ gồm một ký hiệu (không có nền tròn) đứng yên trên một ô cho tới khi bị gỡ:
          'x'    chữ X đỏ   — cổng bị chặn (cổng kia đang có người đứng)
          'ok'   dấu tick xanh — bẫy đang đóng (đạp lên an toàn)
+         'ban'  dấu cấm đỏ (vòng tròn gạch chéo) — quân đang lún cát, sắp mất lượt
          'warn' dấu "!" đỏ — bẫy đang bật (kết thúc lượt trên ô này là bị hất đi)
          'arrow' mũi tên cam chỉ xuống / 'n:3' số cam — "thấy lần cuối": đối thủ vừa chui vào bụi cỏ này (mũi tên), rồi số lượt nó đã đi kể từ đó (1…5, 'n:5+')
        Marks.set([{key,kind,x,z,y}]) mô tả TOÀN BỘ dấu cần có: key mới → phóng ra (easeOutBack) + hiện dần; key biến mất → mờ dần rồi gỡ; cùng key đổi kind → phóng lại.
@@ -42,14 +43,15 @@ const Marks={
     if(this.tex[kind])return this.tex[kind];
     const cv=document.createElement('canvas');cv.width=cv.height=128;
     const g=cv.getContext('2d');g.lineCap=g.lineJoin='round';g.textAlign='center';g.textBaseline='middle';
-    const col={x:'#ff3b30',ok:'#2fd45f',warn:'#ff3b30'}[kind]||'#ff9d1c';
+    const col={x:'#ff3b30',ok:'#2fd45f',warn:'#ff3b30',ban:'#ff3b30'}[kind]||'#ff9d1c';
     const stroke=(path,w)=>{   /* vẽ viền tối rồi tới nét màu */
       g.strokeStyle='rgba(10,10,20,.78)';g.lineWidth=w+14;path();g.stroke();
       g.strokeStyle='#fff';g.lineWidth=w+6;path();g.stroke();
       g.strokeStyle=col;g.lineWidth=w;path();g.stroke();
     };
     g.shadowColor='rgba(0,0,0,.45)';g.shadowBlur=8;g.shadowOffsetY=3;
-    if(kind==='x')stroke(()=>{g.beginPath();g.moveTo(32,32);g.lineTo(96,96);g.moveTo(96,32);g.lineTo(32,96);},16);
+    if(kind==='ban')stroke(()=>{g.beginPath();g.arc(64,64,40,0,TAU);g.moveTo(36,36);g.lineTo(92,92);},14);   /* dấu cấm: vòng tròn gạch chéo */
+    else if(kind==='x')stroke(()=>{g.beginPath();g.moveTo(32,32);g.lineTo(96,96);g.moveTo(96,32);g.lineTo(32,96);},16);
     else if(kind==='ok')stroke(()=>{g.beginPath();g.moveTo(26,68);g.lineTo(54,95);g.lineTo(104,36);},17);
     else if(kind==='arrow')stroke(()=>{g.beginPath();g.moveTo(64,22);g.lineTo(64,96);g.moveTo(34,66);g.lineTo(64,98);g.lineTo(94,66);},16);   /* mũi tên chỉ xuống */
     else if(kind.startsWith('g:')){   /* quà / vật phẩm: huy hiệu tròn tối viền vàng, biểu tượng emoji ở giữa (CFG.ITEMS) */
@@ -79,7 +81,7 @@ const Marks={
   /* Làm nóng trước (Stage.prewarm gọi lúc màn hình tải): vẽ sẵn mọi texture dấu/quà/số + tải lên GPU, tạo sẵn sprite trong hồ chứa và gắn map cho chúng
      (shader sprite "có map" biên dịch ngay bây giờ, không phải lúc quà nổi lên khi mở rương). */
   prewarm(ren){
-    const kinds=['x','ok','warn','arrow','n:1','n:2','n:3','n:4','n:5','n:5+'].concat(Object.keys(CFG.ITEMS).map(k=>'g:'+k));
+    const kinds=['x','ok','warn','ban','arrow','n:1','n:2','n:3','n:4','n:5','n:5+'].concat(Object.keys(CFG.ITEMS).map(k=>'g:'+k));
     for(const k of kinds){const t=this.texture(k);try{if(ren&&ren.initTexture)ren.initTexture(t);}catch(e){}}
     while(this.pool.length<6)this.pool.push(this.make());
     for(const sp of this.pool)if(!sp.material.map){sp.material.map=this.tex.ok;sp.material.needsUpdate=true;}

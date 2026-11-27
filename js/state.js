@@ -19,6 +19,7 @@ const S={
   terr:null,        /* Uint8Array(N*N) mã ô; null = bàn Classic */
   spawn:null,       /* ô xuất phát của hai bên */
   stuck:null,       /* [bool,bool] bên nào đang đứng yên (vừa lội xuống nước) */
+  sunk:null,        /* [bool,bool] bên nào đang bị LÚN CÁT (lượt kế tiếp của bên đó bị bỏ qua hoàn toàn) */
   inv:null,         /* túi đồ [[tên…],[tên…]] (công khai cả hai bên; tên: boots/glove/hammer/pick), null nếu không phải Hỗn Loạn */
   bonus:null,       /* [0|1|2,0|1|2]: giày của mỗi bên (1 = đã dùng, sắp có lượt thêm; 2 = đang trong lượt thêm chỉ được đi quân) */
   wo:null,dead:null,/* chủ từng tường ({h,v}: 0 trống, 1 Trắng, 2 Đen) và khe tường bị cuốc chim phá ({h,v}); cùng nghĩa với core.js */

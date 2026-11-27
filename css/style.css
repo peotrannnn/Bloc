@@ -120,6 +120,22 @@ body[data-biome="mountain"] :is(header,#board,footer,#cf){--bg:#5d6778;--pn:#464
 button.dn{color:var(--red);border-color:var(--red)}
 button.dn:hover:not(:disabled){background:#d62b2b;border-color:#d62b2b;color:#fff;box-shadow:0 0 10px rgba(255,60,60,.5)}
 footer button.dn{border-color:transparent}
+
+/* ===== Nút "Đấu lại" khi ván xong: sáng + nhấp nháy nhẹ (rm); đối thủ đã bấm thì nháy rõ hơn (rm2) và có nhãn "Đối thủ sẵn sàng" (#rmOpp) cạnh nút ===== */
+footer button.rm:not(:disabled){color:var(--g2);font-weight:700;text-shadow:0 0 8px rgba(var(--gr),.85);background:rgba(var(--gr),.14);
+  border-color:var(--g);animation:rmPulse 1.6s ease-in-out infinite}
+footer button.rm2:not(:disabled){animation-duration:1s}
+@keyframes rmPulse{
+  0%,100%{box-shadow:0 0 0 0 rgba(var(--gr),0),inset 0 0 6px rgba(var(--gr),.18);background:rgba(var(--gr),.10)}
+  50%{box-shadow:0 0 12px 2px rgba(var(--gr),.55),inset 0 0 10px rgba(var(--gr),.35);background:rgba(var(--gr),.24)}}
+.rmgrp{display:inline-flex;align-items:center;gap:6px;flex-wrap:nowrap}   /* nút + nhãn luôn đi liền nhau, không tách dòng */
+.rmopp{display:inline-flex;white-space:nowrap;align-items:center;gap:6px;padding:3px 9px;border:1px solid var(--g);color:var(--g2);font-size:.82rem;font-weight:700;
+  background:rgba(var(--gr),.14);box-shadow:var(--halo);animation:rmIn .35s cubic-bezier(.2,.9,.3,1.3) both}
+.rmopp[hidden]{display:none}
+.rmopp i{width:8px;height:8px;border-radius:50%;background:#34e07a;box-shadow:0 0 8px #34e07a;animation:rmDot 1s ease-in-out infinite}
+@keyframes rmDot{50%{opacity:.35;transform:scale(.7)}}
+@keyframes rmIn{from{opacity:0;transform:translateX(-8px) scale(.9)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){footer button.rm:not(:disabled),.rmopp,.rmopp i{animation:none}}
 #cf{position:fixed;inset:0;z-index:7;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;background:rgba(0,0,0,.5);color:var(--g);font-family:var(--font);font-size:13px}
 #cf .win{background:var(--pn);width:min(360px,92vw)}
 #cf .wb{display:flex;flex-direction:column;gap:14px}

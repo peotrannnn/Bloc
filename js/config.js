@@ -119,6 +119,7 @@ const CFG={
           drift:.09,stopJit:.07,                          /* lệch ngang tối đa của quỹ đạo · điểm dừng lệch tâm ô tối đa */
           landFall:.32},                                  /* thời gian ngã khi vừa đáp từ cú bay (không có đà trượt) */
     land:{squash:.1,per:.09,max:.3},        /* nhún khi đáp sau cú nhảy: độ bẹp = squash + per × độ cao bay, tối đa max */
+    sink:{depth:.35,k:55,damp:9,airFull:.06,airNone:.3},               /* lún CÁT (15% khi bước vào ô cát): sâu hơn nước nhiều, lò xo mềm hơn nên chìm chậm và nặng; cùng nghĩa với wade */
     wade:{depth:.065,k:190,damp:15,airFull:.06,airNone:.3},   /* lún xuống nước: độ sâu (đáy nước ở .03 dưới mặt .1 → .07 là chạm đáy) · độ cứng/giảm chấn lò xo · độ cao bay (so với mặt ô) còn lún đủ / hết lún */
     launch:{air:2.1,dur:1.1,flips:2},       /* bị bẫy hất: độ cao cung bay, thời gian bay (cộng thêm theo quãng đường), số vòng lộn */
     blink:{out:.5,gap:.14,in:.62,rise:1.0,turns:2}   /* dịch chuyển cổng: giây xoáy lên + co thành tia · khoảng tia sáng nối hai cổng · giây rơi xuống + hiện lại; độ cao bay, số vòng xoáy */
@@ -137,7 +138,7 @@ const CFG={
   CHEST:{wait:1.55,reveal:.5,popHold:1.0},
   MARK:{
     size:.55,popIn:.32,fadeOut:.2,          /* cỡ dấu (đơn vị thế giới), thời gian bật ra (phóng quá cỡ rồi về đúng cỡ) / mờ dần */
-    gateY:1.25,trapY:1.0,seenY:1.35,                   /* độ cao dấu so với mặt ô */
+    gateY:1.25,trapY:1.0,seenY:1.35,sinkY:1.15,                   /* độ cao dấu so với mặt ô */
     beamY:.45,beamColor:0x58d4ff            /* tia sáng cổng: độ cao, màu quầng */
   },
 

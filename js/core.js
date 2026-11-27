@@ -27,6 +27,9 @@
      • Bước vào ô nước (kể cả nhảy chéo vào) → stuck[p]=true. Lượt kế tiếp của p: moves()=[] và đi bị từ chối ('frozen'); chỉ đặt được tường. Dùng xong lượt đó thì stuck[p]=false,
        đi lại bình thường (đứng trên nước nhiều lượt cũng không bị kẹt; chỉ bước vào ô nước MỚI mới đứng yên).
      • Nếu p đang đứng yên mà hết tường (hoặc không còn chỗ đặt hợp lệ) thì lượt đó mất: apply tự bỏ qua, tính 1 nước (ply), và kết quả có skipped:[những bên bị mất lượt].
+   Luật cát lún (chỉ Hỗn Loạn): kết thúc nước ĐI trên ô cát (bước vào, nhảy xuống, hoặc trượt băng dừng đúng ô) thì bốc rnd(st) < rs.sandSink (mặc định 15%) → quân bị LÚN: st.sunk[p]=true.
+     Tới lượt kế tiếp của p thì lượt đó bị BỎ QUA hoàn toàn (không đi, không đặt tường, không dùng đồ; tính 1 nước ply; res.skipped có p và fx {t:'sunkskip',p}) rồi sunk[p]=false.
+     Lún không cho giày: lượt thêm bị hủy. Dịch chuyển cổng / bẫy hất không kích hoạt lún. fx:{t:'sink',p,cell:[r,c]} báo quân vừa bị lún.
    Ô "mở" = trong bàn, không phải đá, không có người chặn. BFS/nước đi chỉ đi qua ô mở.
    dist() trả NOPATH (9999) khi bị chặn kín (giữ nguyên 9999 và mảng Int16 để sau này đổi cỡ bàn không phải sửa lại).
 
@@ -72,7 +75,7 @@ const Core=(function(){
   const RULESETS={
     classic:{id:'classic',name:'Classic',N:9,walls:10,maxPly:300},
     chaos:{id:'chaos',name:'Hỗn Loạn',N:9,walls:10,maxPly:300,maxPlyCloser:true,trapClosed:2,trapOpen:1,slideMax:40,bag:2,
-           blockerPlan:{first:[20,30],stay:[5,7],gap:[20,30]}}   /* người chặn đường (CHỈ Hỗn Loạn, server chạy lịch; xem js/blocker-plan.js). Classic không có khóa này = không bao giờ có người chặn */
+           sandSink:.25,blockerPlan:{first:[20,30],stay:[5,7],gap:[20,30]}}   /* người chặn đường (CHỈ Hỗn Loạn, server chạy lịch; xem js/blocker-plan.js). Classic không có khóa này = không bao giờ có người chặn */
   };
   const ruleset=(id,over)=>Object.assign({},RULESETS[id||'classic'],over||{});
 
@@ -147,6 +150,10 @@ const Core=(function(){
       if(a.r===goal)return fx;
       const code=tc(st,a.r,a.c);
       if(code===TERR.WATER){st.stuck[p]=true;fx.push({t:'stuck',p});}   /* vừa lội xuống nước: lượt sau đứng yên */
+      else if(code===TERR.SAND){   /* cát: có xác suất bị lún, lượt kế tiếp của p bị bỏ qua (xem resolveSkips) */
+        const pr=rs.sandSink===undefined?.25:rs.sandSink;
+        if(pr>0&&rnd(st)<pr){st.sunk[p]=true;fx.push({t:'sink',p,cell:[a.r,a.c]});}
+      }
       else if(code===TERR.TRAP)trapHit(st,p,fx);
       else if(code===TERR.CHEST)openChest(st,p,a,fx);
       else if(code===TERR.GATE){
@@ -290,7 +297,7 @@ const Core=(function(){
         st.spawn=[{r:st.pl[0].r,c:st.pl[0].c},{r:st.pl[1].r,c:st.pl[1].c}];
         st.terr=opts.terr?Uint8Array.from(opts.terr):new Uint8Array(N*N);
         st.blocker=-1;
-        st.stuck=[false,false];st.gwait=[false,false];
+        st.stuck=[false,false];st.gwait=[false,false];st.sunk=[false,false];
         st.wo={h:new Uint8Array(WN*WN),v:new Uint8Array(WN*WN)};st.dead={h:new Uint8Array(WN*WN),v:new Uint8Array(WN*WN)};
         st.inv=[[],[]];st.bonus=[0,0];
         st.rng=opts.seed!==undefined?(opts.seed>>>0):20240601;   /* hạt giống cho băng/bẫy; client/server nên truyền seed */
@@ -360,12 +367,16 @@ const Core=(function(){
       }else st.draw=true;
     }
     /* Tới lượt một bên đang đứng yên mà không có tường nào đặt được → mất lượt đó, chuyển lượt (lặp nếu bên kia cũng vậy). Trả danh sách bên bị mất lượt. */
-    function resolveSkips(st){
+    function resolveSkips(st,fx){
       const sk=[];
       /* Mất lượt khi KHÔNG CÒN hành động nào: không đi được (đứng yên vì nước, hoặc bị tường/đá/người chặn đường/đối thủ vây kín), không đặt được tường, không có vật phẩm tốn lượt.
-         Chỉ áp dụng khi có địa hình (Hỗn Loạn); Classic giữ luật Quoridor gốc. */
-      while(st.stuck&&moves(st,st.turn).length===0&&!hasWall(st,st.turn)&&!hasPaidItem(st,st.turn)){
-        const q=st.turn;st.stuck[q]=false;sk.push(q);st.ply++;
+         Chỉ áp dụng khi có địa hình (Hỗn Loạn); Classic giữ luật Quoridor gốc. Bị lún cát thì mất TRỌN lượt (kể cả đặt tường / dùng đồ). */
+      while(st.stuck){
+        const q=st.turn;
+        if(st.sunk&&st.sunk[q]){st.sunk[q]=false;if(fx)fx.push({t:'sunkskip',p:q});}
+        else if(moves(st,q).length===0&&!hasWall(st,q)&&!hasPaidItem(st,q))st.stuck[q]=false;
+        else break;
+        sk.push(q);st.ply++;
         if(rs.maxPly&&st.ply>=rs.maxPly){finishByPly(st);break;}
         st.turn=1-q;
       }
@@ -413,9 +424,9 @@ const Core=(function(){
           let stay=false;   /* giày: p được thêm một lượt đi quân nếu còn nước đi (không đứng yên, không bị chặn kín) */
           if(st.bonus){
             if(wasExtra)st.bonus[p]=0;
-            else if(st.bonus[p]===1){if(!st.stuck[p]&&moves(st,p).length){st.bonus[p]=2;stay=true;}else st.bonus[p]=0;}
+            else if(st.bonus[p]===1){if(!st.stuck[p]&&!st.sunk[p]&&moves(st,p).length){st.bonus[p]=2;stay=true;}else st.bonus[p]=0;}
           }
-          if(!stay){st.turn=q;skipped=resolveSkips(st);}
+          if(!stay){st.turn=q;skipped=resolveSkips(st,fx);}
         }
       }
       const res={ok:true,over:st.over,winner:st.winner,draw:st.draw,by:p};
@@ -433,7 +444,7 @@ const Core=(function(){
       if(st.terr){   /* địa hình: chuỗi N*N chữ số (mã ô) cho gọn; Classic không có các khóa này nên snapshot cũ không đổi */
         sn.terr=Array.from(st.terr).join('');sn.blocker=st.blocker;
         sn.spawn=st.spawn.map(s=>({r:s.r,c:s.c}));
-        sn.stuck=(st.stuck||[false,false]).slice();sn.gwait=(st.gwait||[false,false]).slice();sn.rng=st.rng;
+        sn.stuck=(st.stuck||[false,false]).slice();sn.sunk=(st.sunk||[false,false]).slice();sn.gwait=(st.gwait||[false,false]).slice();sn.rng=st.rng;
         sn.inv=(st.inv||[[],[]]).map(b=>b.slice());sn.bonus=(st.bonus||[0,0]).slice();
         sn.dead=[];if(st.dead)for(const o of['h','v'])for(let i=0;i<WN*WN;i++)if(st.dead[o][i])sn.dead.push({o,r:(i/WN)|0,c:i%WN});
       }
@@ -447,6 +458,7 @@ const Core=(function(){
         st.terr=Uint8Array.from(sn.terr,ch=>ch.charCodeAt(0)-48);st.blocker=Number.isInteger(sn.blocker)?sn.blocker:-1;
         st.spawn=sn.spawn.map(s=>({r:s.r,c:s.c}));
         st.stuck=Array.isArray(sn.stuck)?[!!sn.stuck[0],!!sn.stuck[1]]:[false,false];
+        st.sunk=Array.isArray(sn.sunk)?[!!sn.sunk[0],!!sn.sunk[1]]:[false,false];
         st.gwait=Array.isArray(sn.gwait)?[!!sn.gwait[0],!!sn.gwait[1]]:[false,false];
         st.rng=Number.isInteger(sn.rng)?sn.rng>>>0:20240601;
         st.wo={h:new Uint8Array(WN*WN),v:new Uint8Array(WN*WN)};st.dead={h:new Uint8Array(WN*WN),v:new Uint8Array(WN*WN)};

@@ -14,6 +14,7 @@
    animation nào đang chạy → mọi animation (đi, nhảy, ngã, trượt, ăn mừng, dịch chuyển) nối với nhau đều liền mạch, không đoạn nào phải biết tới nước.
    Pawns.script(i,segs,final) nạp một chuỗi đoạn (final = ô cuối cùng, để vòng update không tự thêm đoạn đi thẳng). Không có script thì quân tự đi tới S.pl như cũ. */
 const WATER_CODE=(typeof Core!=='undefined'&&Core.TERR&&Core.TERR.WATER)||7;
+const SAND_CODE=(typeof Core!=='undefined'&&Core.TERR&&Core.TERR.SAND)||8;
 const JUMP_K=1.15,JUMP_F=.8/JUMP_K,JUMP_L=.2+JUMP_F;   /* nhảy: t∈[0,.2] nén lấy lực · [.2,JUMP_L] bay (cùng thời gian thật như trước) · [JUMP_L,1] đáp + nhún */
 const landSq=(w,A,e)=>1-A*Math.sin(Math.PI*Math.pow(w,e||.8));   /* hệ số cao khi nhún lúc đáp, w∈[0,1]: ép xuống nhanh rồi bật lại chậm (e=1: đối xứng, êm); =1 ở hai đầu */
 const Pawns={
@@ -399,18 +400,25 @@ const Pawns={
   /* ----- Lún xuống nước. s.sk.position.y = -sink. Mục tiêu lún chỉ tính từ VỊ TRÍ + ĐỘ CAO hiện tại của quân (ô dưới chân là nước và quân đang chạm/gần mặt ô),
      rồi một lò xo hơi dập (có chút nảy "ùm") đuổi theo mục tiêu → liền mạch với mọi animation: đi từ bờ xuống nước thì chìm dần theo bước chân, nhảy qua nước thì không lún
      giữa không trung mà lún lúc đáp, bị hất khỏi nước thì nhô lên. ----- */
-  syncWater(){if(this.wt!==S.terr){this.wt=S.terr;this.hasWater=!!S.terr&&S.terr.indexOf(WATER_CODE)>=0;}},   /* đổi bàn thì xét lại có nước không */
+  syncWater(){if(this.wt!==S.terr){this.wt=S.terr;this.hasWater=!!S.terr&&(S.terr.indexOf(WATER_CODE)>=0||S.terr.indexOf(SAND_CODE)>=0);}},   /* hasWater = bàn có nước HOẶC cát (cát lún dùng chung lò xo lún này) */   /* đổi bàn thì xét lại có nước không */
   wadeTarget(s){
+    s.wp=CFG.PAWN.wade;
     if(!this.hasWater||!S.terr)return 0;
-    const W=CFG.PAWN.wade,p=s.g.position,c=Math.round(p.x/CFG.PITCH+HALF),r=Math.round(p.z/CFG.PITCH+HALF);
-    if(c<0||c>=N||r<0||r>=N||S.terr[r*N+c]!==WATER_CODE)return 0;
+    const p=s.g.position,c=Math.round(p.x/CFG.PITCH+HALF),r=Math.round(p.z/CFG.PITCH+HALF);
+    if(c<0||c>=N||r<0||r>=N)return 0;
+    const code=S.terr[r*N+c];
+    /* Bị lún cát (S.sunk của quân này, đang đứng trên ô cát): chìm SÂU hơn nước nhiều, lò xo mềm (CFG.PAWN.sink). Không lún thì cát không làm gì. */
+    let W=null;
+    if(code===SAND_CODE){s.wp=CFG.PAWN.sink;if(S.sunk&&S.sunk[this.list.indexOf(s)])W=s.wp;}   /* trên cát dùng lò xo mềm cả lúc trồi lên khi hết lún */
+    else if(code===WATER_CODE)W=CFG.PAWN.wade;
+    if(!W)return 0;
     const air=p.y-TOP;   /* bước đi nhún tối đa .035 < airFull nên không làm lún chớp theo nhịp chân */
     return W.depth*(air<=W.airFull?1:air>=W.airNone?0:1-(air-W.airFull)/(W.airNone-W.airFull));
   },
   snapSink(s){this.syncWater();s.sink=this.wadeTarget(s);s.sv=0;if(s.sk)s.sk.position.y=-s.sink;},   /* đặt ngay, không lò xo (ván mới, dựng lại ván) */
   wade(s,dt){
     if(!this.hasWater&&s.sink===0&&s.sv===0)return false;   /* bàn không có nước: không tốn gì */
-    const W=CFG.PAWN.wade,tg=this.wadeTarget(s),m=Math.max(1,Math.ceil(dt/.008)),h=dt/m;
+    const tg=this.wadeTarget(s),W=s.wp,m=Math.max(1,Math.ceil(dt/.008)),h=dt/m;   /* W: bộ tham số của loại lún đang áp dụng (nước / cát) */
     let x=s.sink,v=s.sv;
     for(let i=0;i<m;i++){v+=((tg-x)*W.k-v*W.damp)*h;x+=v*h;}
     if(x<0){x=0;if(v<0)v=0;}   /* không bao giờ nổi lên khỏi mặt ô */

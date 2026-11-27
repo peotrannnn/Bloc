@@ -71,7 +71,7 @@ const App={
     S.turn=0;S.mode='move';S.orient='h';S.over=false;S.draw=false;S.hov=null;S.ply=0;S.paused=false;
     S.winner=-1;S.net=net?{conn:net.conn,wait:false,offline:false,oppOnline:true,lost:null,reason:null,deadline:net.turnLeft?Date.now()+net.turnLeft:0,rematch:{me:false,opp:false}}:null;
     /* Hỗn Loạn: reset mọi trường địa hình trước (PvE/EvE/Classic luôn về trạng thái trống), rồi nạp từ snapshot của server */
-    S.animLock=false;S.event=null;S.bplan=BlockerPlan.init(CFG.BLOCKER.plan);S.chaos=!!net&&net.mode==='chaos';S.terr=null;S.spawn=null;S.stuck=null;S.blocker=-1;S.hid=[false,false];S.last=[null,null];S.mapInfo=null;
+    S.animLock=false;S.event=null;S.bplan=BlockerPlan.init(CFG.BLOCKER.plan);S.chaos=!!net&&net.mode==='chaos';S.terr=null;S.spawn=null;S.stuck=null;S.sunk=null;S.blocker=-1;S.hid=[false,false];S.last=[null,null];S.mapInfo=null;
     S.inv=null;S.bonus=null;S.wo=null;S.dead=null;S.use=null;S.tgt=null;
     if(net)this.loadSnap(net.snap);
   },
@@ -108,7 +108,7 @@ const App={
   /* Đang chơi một ván có thể đầu hàng? (người vs người online, hoặc người vs máy; máy đấu máy thì không). Online đang mất mạng: chưa gửi được nên chưa cho. */
   canResign(){return this.ready&&!S.over&&!allAI()&&(!S.net||(!S.net.lost&&!S.net.offline));},
   askResign(){
-    UI.ask({title:'Đầu hàng',msg:'Bạn sẽ thua ván này.'+(S.net?' Vẫn ở lại phòng.':''),yes:'Đầu hàng',danger:true,check:()=>this.canResign()},()=>this.doResign());
+    UI.ask({title:'Đầu hàng',msg:'Bạn sẽ thua ván này.'+(S.net?' Vẫn ở lại phòng, có thể đấu lại.':''),yes:'Đầu hàng',danger:true,check:()=>this.canResign()},()=>this.doResign());
   },
   doResign(){
     if(!this.canResign())return;
@@ -134,7 +134,7 @@ const App={
     const sn=hid.some(Boolean)?Object.assign({},snap,{pl:snap.pl.map((p,i)=>p||(keep&&keep[i])||snap.spawn[i])}):snap;
     const st=R.fromSnapshot(sn);
     S.pl=st.pl;S.left=st.left;S.turn=st.turn;S.ply=st.ply;S.hid=hid;
-    if(st.terr){S.terr=st.terr;S.spawn=st.spawn;S.stuck=st.stuck;S.blocker=st.blocker;S.inv=st.inv;S.bonus=st.bonus;S.wo=st.wo;S.dead=st.dead;}
+    if(st.terr){S.terr=st.terr;S.spawn=st.spawn;S.stuck=st.stuck;S.sunk=st.sunk;S.blocker=st.blocker;S.inv=st.inv;S.bonus=st.bonus;S.wo=st.wo;S.dead=st.dead;}
     return st;
   },
   /* Dựng địa hình 3D cho ván (Classic: xóa địa hình). map = {biome,seed} do server gửi; 'balanced' dùng bảng màu meadow. */
@@ -197,6 +197,10 @@ const App={
     const sp=this.specials(),M=CFG.MARK,armed=!!S.chaos&&R.trapOn(S,0),list=[];
     for(const g of sp.blocked)list.push({key:'g'+g[0]+','+g[1],kind:'x',x:cellX(g[1]),z:cellZ(g[0]),y:M.gateY});
     for(const t of sp.traps)list.push({key:'t'+t[0]+','+t[1],kind:armed?'warn':'ok',x:cellX(t[1]),z:cellZ(t[0]),y:M.trapY});
+    if(S.chaos&&S.sunk)for(let i=0;i<2;i++){   /* quân đang lún cát: dấu cấm nổi trên đầu (quân bị cỏ che thì không lộ; cát không phải cỏ nên thực tế luôn thấy) */
+      if(!S.sunk[i]||S.hid[i]||!S.pl[i])continue;
+      list.push({key:'sk'+i,kind:'ban',x:cellX(S.pl[i].c),z:cellZ(S.pl[i].r),y:M.sinkY});
+    }
     this.markBase=list.slice();   /* dấu cổng/bẫy hiện hành: syncSeen dùng lại để chỉ đổi dấu "thấy lần cuối" mà không đụng cổng/bẫy */
     Marks.set(list.concat(this.seenMarks()));
     Terrain.setGateBlocked(sp.blocked);
@@ -296,8 +300,10 @@ const App={
         S.last[i]={r:S.pl[i].r,c:S.pl[i].c,n:0};
       }else if(m.by===i&&S.last[i])S.last[i].n++;   /* vẫn trong cỏ và vừa đi thêm một lượt (không biết đi đâu) */
     }
-    S.left=m.left.slice();S.stuck=m.stuck.slice();S.ply=m.ply;S.turn=m.turn;
+    S.left=m.left.slice();S.stuck=m.stuck.slice();S.sunk=(m.sunk||[false,false]).slice();S.ply=m.ply;S.turn=m.turn;
     S.mode='move';S.use=null;S.tgt=null;S.hov=null;
+    const ss=(m.fx||[]).find(e=>e.t==='sunkskip'&&e.p===S.me);if(ss)S.net.note='Bạn bị lún cát: mất lượt';   /* lượt của mình vừa bị bỏ qua */
+    else if((m.fx||[]).some(e=>e.t==='sunkskip'))S.net.note='Đối thủ lún cát: bị mất lượt';
     const dr=(m.fx||[]).find(e=>e.t==='chest'&&e.drop&&e.p===S.me);if(dr)S.net.note='Túi đầy: bỏ '+CFG.ITEMS[dr.drop].name;
     if(m.over){
       S.over=true;S.draw=!!m.draw;S.winner=m.draw?-1:m.winner;S.net.deadline=0;

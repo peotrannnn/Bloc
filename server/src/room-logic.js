@@ -62,7 +62,8 @@ export class RoomLogic{
     if(g.mode!=='chaos')return R.snapshot(st);
     const v=g.side[slot],sn=st.over?R.snapshot(st):R.snapshotFor(st,v);
     delete sn.rng;
-    if(sn.pl[1-v]===null&&sn.stuck)sn.stuck[1-v]=false;         /* quân bị che thì cũng không lộ việc nó đang đứng yên */
+    if(sn.pl[1-v]===null&&sn.stuck)sn.stuck[1-v]=false;
+    if(sn.pl[1-v]===null&&sn.sunk)sn.sunk[1-v]=false;         /* quân bị che thì cũng không lộ việc nó đang đứng yên */
     return sn;
   }
   /* Nhật ký gửi client chỉ để dựng lại tường: chaos chỉ gửi các nước đặt tường (nước đi của quân có thể lộ vị trí quân bị che) */
@@ -225,9 +226,9 @@ export class RoomLogic{
       const s=this.io.getSeat(c);if(s<0)continue;
       const v=g.side[s],o=1-v,seen=st.over||R.sees(st,v,o);
       let slideIn=null;   /* quân đối thủ trượt băng rồi dừng trong bụi cỏ: giữ lại đoạn trượt (xem dưới) */
-      const m=Object.assign({},base,{pl:[st.pl[0],st.pl[1]],left:st.left.slice(),stuck:st.stuck.slice(),inv:st.inv.map(b=>b.slice()),bonus:st.bonus.slice()});   /* túi đồ và giày là thông tin CÔNG KHAI của cả hai bên */
+      const m=Object.assign({},base,{pl:[st.pl[0],st.pl[1]],left:st.left.slice(),stuck:st.stuck.slice(),sunk:st.sunk.slice(),inv:st.inv.map(b=>b.slice()),bonus:st.bonus.slice()});   /* túi đồ và giày là thông tin CÔNG KHAI của cả hai bên */
       if(!seen){
-        m.pl[o]=null;m.stuck[o]=false;
+        m.pl[o]=null;m.stuck[o]=false;m.sunk[o]=false;
         if(res.by===o&&base.action.move){
           m.action={hidden:true};
           if(was&&was[v]){

@@ -4,7 +4,7 @@ const UI={
   el:{},
 
   init(){
-    for(const id of['evalbar','evW','evBt','evWt','status','info','host','menu','ld','bar','msg','bMove','bWall','bRot','bPause','bView','bEval','bReset','bMenu'])this.el[id]=$(id);
+    for(const id of['evalbar','evW','evBt','evWt','status','info','host','menu','ld','bar','msg','bMove','bWall','bRot','bPause','bView','bEval','bReset','rmOpp','bMenu'])this.el[id]=$(id);
     $('cfNo').onclick=$('cfX').onclick=()=>this.closeAsk();
     $('cf').addEventListener('mousedown',ev=>{if(ev.target===$('cf'))this.closeAsk();});   /* bấm ra ngoài = hủy */
     $('cfYes').onclick=()=>{const f=this.cfYes;this.closeAsk();if(f)f();};
@@ -91,7 +91,9 @@ const UI={
       if(S.turn!==S.me){
         P.push('Lượt đối thủ');if(clock)P.push(clock);if(off)P.push(off);if(hid)P.push(hid);
         if(S.chaos&&S.stuck&&S.stuck[1-S.me]&&!S.hid[1-S.me])P.push(tg('warn','đứng yên'));
+        if(S.chaos&&S.sunk&&S.sunk[1-S.me]&&!S.hid[1-S.me])P.push(tg('warn','🚫 lún cát: mất lượt sau'));
         if(S.chaos&&S.bonus&&S.bonus[1-S.me]===2)P.push(tg('warn','👟 lượt thêm'));
+        if(n.note&&/^Bạn bị lún/.test(n.note))P.push(tg('warn',n.note));   /* lượt của mình vừa bị bỏ qua: đối thủ đang đi tiếp */
         return P;
       }
       if(S.animLock)return['Đối thủ đang đi…'].concat(off?[off]:[],hid?[hid]:[]);   /* tới lượt mình nhưng quân đối thủ chưa diễn xong (vd trượt băng): chưa cho đi */
@@ -102,7 +104,7 @@ const UI={
       else if(S.chaos&&S.stuck&&S.stuck[S.me])P.push(tg('warn','⚓ Đứng yên'),'đặt tường / dùng đồ'+(S.mode==='wall'?' · '+(S.orient==='h'?'ngang':'dọc'):''));
       else P.push(S.mode==='wall'?'tường '+(S.orient==='h'?'ngang':'dọc'):'chọn ô');
       if(off)P.push(off);if(hid)P.push(hid);
-      if(n.note)P.push(tg(/^Túi đầy/.test(n.note)?'warn':'bad',n.note));
+      if(n.note)P.push(tg(/^(Túi đầy|Bạn bị lún|Đối thủ lún)/.test(n.note)?'warn':'bad',n.note));
       return P;
     }
     if(S.over){
@@ -145,7 +147,10 @@ const UI={
       e.bReset.hidden=!!S.net.lost;
       e.bReset.disabled=rs?false:S.over?rm.me:true;   /* đang chờ nối lại mạng: khóa */
       e.bReset.textContent=rs?'Đầu hàng (P)':S.over?(rm.me?'Chờ đối thủ…':rm.opp?'Đồng ý đấu lại':'Đấu lại (P)'):'Đầu hàng (P)';
-    }else{e.bReset.hidden=false;e.bReset.disabled=false;e.bReset.textContent=rs?'Đầu hàng (P)':'Mới (P)';}
+      /* Ván xong mà mình chưa bấm: nút Đấu lại sáng + nhấp nháy nhẹ (class rm). Đối thủ đã bấm: hiện thêm nhãn "Đối thủ sẵn sàng" cạnh nút và nháy mạnh hơn (rm2) */
+      const want=!!S.over&&!S.net.lost&&!rm.me,opp=!!S.over&&!S.net.lost&&!!rm.opp;
+      e.bReset.classList.toggle('rm',want);e.bReset.classList.toggle('rm2',want&&opp);e.rmOpp.hidden=!opp;
+    }else{e.bReset.classList.remove('rm','rm2');e.rmOpp.hidden=true;e.bReset.hidden=false;e.bReset.disabled=false;e.bReset.textContent=rs?'Đầu hàng (P)':'Mới (P)';}
     e.bEval.hidden=S.analysisLock;e.bEval.setAttribute('aria-pressed',S.analysis);   /* chế độ khóa (online): ẩn luôn nút */
   }
 };
