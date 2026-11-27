@@ -28,7 +28,7 @@ const AIWorker=(function(){
   }
 
   /* Dấu vân tay của thế cờ + bên đi, để nhận ra "cùng một câu hỏi" */
-  const keyOf=(id,p)=>id+'|'+p+'|'+S.ply+'|'+S.pl.map(x=>x.r+','+x.c).join(';')+'|'+S.left.join(',')+'|'+S.ws.h.join('')+S.ws.v.join('');
+  const keyOf=(id,p)=>id+'|'+p+'|'+S.ply+'|'+S.pl.map(x=>x.r+','+x.c).join(';')+'|'+S.left.join(',')+'|'+S.blocker+'|'+S.ws.h.join('')+S.ws.v.join('');
 
   function decide(aiId,p){
     const key=keyOf(aiId,p);
@@ -40,7 +40,7 @@ const AIWorker=(function(){
       const guard=setTimeout(()=>{if(pending.has(id))fail('worker không trả lời kịp');},(CFG.AI.biet.ms||500)+3000);
       pending.set(id,v=>{clearTimeout(guard);resolve(v);});
       try{
-        wk.postMessage({id:id,ai:aiId,p:p,ply:S.ply,pl:S.pl.map(x=>({r:x.r,c:x.c})),left:S.left.slice(),h:S.ws.h.slice(),v:S.ws.v.slice()});
+        wk.postMessage({id:id,ai:aiId,p:p,ply:S.ply,pl:S.pl.map(x=>({r:x.r,c:x.c})),left:S.left.slice(),blocker:S.blocker,h:S.ws.h.slice(),v:S.ws.v.slice()});
       }catch(err){fail('không gửi được thế cờ');}
     });
     cur={key:key,promise:promise};

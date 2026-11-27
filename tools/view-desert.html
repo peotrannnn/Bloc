@@ -1,0 +1,91 @@
+<!doctype html><html lang="vi"><head><meta charset="utf-8"><title>Map Hỗn Loạn</title>
+<style>
+body{margin:0;padding:20px;background:#1b1d23;color:#e6e6e6;font:14px system-ui,sans-serif}
+h1{font-size:18px;margin:0 0 6px}
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin:10px 0 18px;font-size:13px;color:#b8bcc6}
+.legend i{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-3px;margin-right:5px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:18px}
+.card{background:#262932;border-radius:10px;padding:12px}
+.card h2{font-size:14px;margin:0 0 4px}
+.card p{margin:4px 0 0;font-size:12px;color:#9aa0ac;line-height:1.5}
+canvas{display:block;width:100%;max-width:440px;margin-left:auto;margin-right:auto;height:auto;border-radius:6px;margin-top:8px}
+.tag{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;margin-left:6px;color:#111}
+.forest{background:#7bc77f}.mountain{background:#b6bcc6}.snow{background:#a8dcf2}.balanced{background:#e7c56a}.river{background:#5aa9e6}.desert{background:#e6c27a}
+</style></head><body>
+<h1>Map Hỗn Loạn <span id="sub" style="font-weight:400;color:#9aa0ac"></span></h1>
+<div class="legend">
+<span><i style="background:#6b7280"></i>đá</span><span><i style="background:#4ea45f"></i>cỏ</span>
+<span><i style="background:#bfe6f5"></i>băng</span><span><i style="background:#4aa3df"></i>nước (bước vào: lượt sau chỉ đặt tường)</span><span><i style="background:#e3c88a"></i>cát</span>
+<span><i style="background:#fff;border:1px dashed #333"></i>nét đứt = cạnh giữa 2 ô nước/cát kề nhau, không đặt tường</span><span><i style="background:#d9534f"></i>bẫy</span>
+<span><i style="background:#f0b429"></i>rương (ô vật phẩm, chưa có hiệu ứng)</span><span><i style="background:#9b6bdc"></i>cổng (cùng chữ = một cặp)</span>
+<span><i style="background:#fff;border:1px solid #666"></i>Trắng (dưới)</span><span><i style="background:#222;border:1px solid #888"></i>Đen (trên)</span>
+</div>
+<div class="grid" id="grid"></div>
+<script id="data" type="application/json">{"N":9,"SAFE":2,"T":{"FLOOR":0,"STONE":1,"BRUSH":2,"ICE":3,"TRAP":4,"CHEST":5,"PORTAL":6,"WATER":7,"SAND":8},"maps":[{"seed":1,"biome":"desert","attempt":0,"fallback":false,"costs":[8,9],"terr":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,4,0,8,8,1,1,1,5,0,0,0,8,8,8,2,1,1,8,8,8,8,8,8,2,1,8,8,8,8,8,8,0,5,1,1,8,8,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"spawn":[6,2],"portals":[],"paths":[8,9],"clusters":[{"kind":"sand","n":10,"shape":"corner"},{"kind":"sand","n":10,"shape":"corner"},{"kind":"stone","n":5,"shape":"lump"},{"kind":"stone","n":5,"shape":"lump"},{"kind":"brush","n":2,"shape":"lump"}]},{"seed":2,"biome":"desert","attempt":0,"fallback":false,"costs":[8,9],"terr":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,8,8,2,2,2,1,1,5,8,8,8,2,8,5,1,1,1,8,8,8,8,8,8,0,1,1,1,4,0,8,8,8,8,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"spawn":[1,3],"portals":[],"paths":[8,9],"clusters":[{"kind":"sand","n":9,"shape":"corner"},{"kind":"sand","n":8,"shape":"corner"},{"kind":"stone","n":5,"shape":"lump"},{"kind":"stone","n":5,"shape":"lump"},{"kind":"brush","n":4,"shape":"meander"}]},{"seed":3,"biome":"desert","attempt":0,"fallback":false,"costs":[8,8],"terr":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,8,8,5,1,1,0,8,8,8,8,8,0,1,1,8,8,8,8,8,8,4,0,0,0,8,8,0,8,0,0,0,0,0,8,8,0,0,4,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"spawn":[2,1],"portals":[],"paths":[8,8],"clusters":[{"kind":"sand","n":9,"shape":"corner"},{"kind":"sand","n":10,"shape":"corner"},{"kind":"stone","n":4,"shape":"lump"},{"kind":"stone","n":4,"shape":"ridge"}]},{"seed":4,"biome":"desert","attempt":0,"fallback":false,"costs":[10,9],"terr":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,8,8,8,0,0,0,5,1,8,8,8,8,5,0,1,1,1,8,8,0,1,1,4,0,0,0,8,8,8,8,1,0,0,0,0,8,8,8,8,1,0,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"spawn":[7,3],"portals":[],"paths":[10,9],"clusters":[{"kind":"sand","n":10,"shape":"corner"},{"kind":"sand","n":8,"shape":"corner"},{"kind":"stone","n":4,"shape":"ridge"},{"kind":"stone","n":4,"shape":"ridge"}]},{"seed":5,"biome":"desert","attempt":0,"fallback":false,"costs":[9,8],"terr":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,8,8,8,0,0,0,0,0,8,8,8,8,0,0,1,1,1,8,8,8,0,0,0,1,1,1,8,8,8,8,4,0,5,1,1,8,8,8,0,6,0,0,0,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"spawn":[8,4],"portals":[[58,62]],"paths":[9,8],"clusters":[{"kind":"sand","n":10,"shape":"corner"},{"kind":"sand","n":8,"shape":"corner"},{"kind":"stone","n":4,"shape":"lump"},{"kind":"stone","n":4,"shape":"oval"}]},{"seed":6,"biome":"desert","attempt":0,"fallback":false,"costs":[8,8],"terr":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,8,8,8,0,0,4,0,0,8,8,8,8,0,1,0,0,0,8,8,8,8,0,1,1,1,6,8,8,0,0,0,2,2,2,0,8,8,6,0,0,0,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"spawn":[8,0],"portals":[[56,44]],"paths":[8,8],"clusters":[{"kind":"sand","n":7,"shape":"corner"},{"kind":"sand","n":9,"shape":"corner"},{"kind":"stone","n":4,"shape":"oval"},{"kind":"brush","n":3,"shape":"meander"}]},{"seed":7,"biome":"desert","attempt":0,"fallback":false,"costs":[12,13],"terr":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,0,0,0,0,1,1,1,1,0,0,0,6,5,1,1,8,8,8,8,8,4,1,1,1,8,8,8,8,8,0,0,1,8,8,8,0,8,8,2,2,2,0,8,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"spawn":[7,8],"portals":[[18,30]],"paths":[12,13],"clusters":[{"kind":"sand","n":9,"shape":"corner"},{"kind":"sand","n":8,"shape":"corner"},{"kind":"stone","n":5,"shape":"oval"},{"kind":"stone","n":5,"shape":"oval"},{"kind":"brush","n":3,"shape":"oval"}]},{"seed":8,"biome":"desert","attempt":0,"fallback":false,"costs":[8,8],"terr":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0,0,1,1,1,8,8,8,8,0,1,1,1,1,8,8,8,8,8,1,1,2,0,8,8,8,8,8,8,5,2,0,0,8,8,8,8,8,6,0,0,0,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"spawn":[7,0],"portals":[[61,57]],"paths":[8,8],"clusters":[{"kind":"sand","n":11,"shape":"corner"},{"kind":"sand","n":9,"shape":"corner"},{"kind":"stone","n":4,"shape":"ridge"},{"kind":"stone","n":5,"shape":"lump"},{"kind":"brush","n":2,"shape":"oval"}]},{"seed":9,"biome":"desert","attempt":0,"fallback":false,"costs":[8,8],"terr":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,8,0,0,1,5,0,4,0,8,8,8,1,1,1,0,0,4,8,8,8,6,1,1,0,8,8,0,0,0,0,0,1,8,8,8,0,6,0,0,0,1,0,8,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"spawn":[7,8],"portals":[[55,39]],"paths":[8,8],"clusters":[{"kind":"sand","n":8,"shape":"corner"},{"kind":"sand","n":7,"shape":"corner"},{"kind":"stone","n":4,"shape":"ridge"},{"kind":"stone","n":4,"shape":"ridge"}]},{"seed":10,"biome":"desert","attempt":0,"fallback":false,"costs":[9,8],"terr":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0,0,0,4,0,1,1,1,0,5,0,0,0,0,1,5,8,8,8,0,5,0,0,8,8,8,8,8,8,0,1,1,8,8,8,8,8,8,0,1,1,8,8,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"spawn":[4,0],"portals":[],"paths":[9,8],"clusters":[{"kind":"sand","n":8,"shape":"corner"},{"kind":"sand","n":10,"shape":"corner"},{"kind":"stone","n":4,"shape":"lump"},{"kind":"stone","n":4,"shape":"lump"}]},{"seed":11,"biome":"desert","attempt":0,"fallback":false,"costs":[9,9],"terr":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,0,0,0,6,0,0,4,8,8,0,0,1,1,1,0,8,8,8,0,0,5,1,8,8,8,8,8,8,1,1,1,8,8,8,8,8,0,1,1,8,8,8,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"spawn":[3,6],"portals":[[19,23]],"paths":[9,9],"clusters":[{"kind":"sand","n":9,"shape":"corner"},{"kind":"sand","n":11,"shape":"corner"},{"kind":"stone","n":5,"shape":"ridge"},{"kind":"stone","n":4,"shape":"oval"}]},{"seed":12,"biome":"desert","attempt":0,"fallback":false,"costs":[8,10],"terr":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,1,1,5,0,0,0,0,0,1,1,1,0,1,1,0,0,8,8,8,8,0,5,1,8,8,8,8,8,8,4,0,1,8,8,8,8,8,8,8,0,8,8,8,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"spawn":[6,1],"portals":[],"paths":[8,10],"clusters":[{"kind":"sand","n":10,"shape":"corner"},{"kind":"sand","n":11,"shape":"corner"},{"kind":"stone","n":5,"shape":"ridge"},{"kind":"stone","n":4,"shape":"oval"}]},{"seed":13,"biome":"desert","attempt":2,"fallback":false,"costs":[8,9],"terr":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,4,5,0,1,6,8,8,4,8,0,2,2,1,1,8,8,8,8,8,8,2,1,1,8,8,8,8,8,8,5,0,0,1,1,1,8,8,8,8,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"spawn":[1,4],"portals":[[18,23]],"paths":[8,9],"clusters":[{"kind":"sand","n":11,"shape":"corner"},{"kind":"sand","n":8,"shape":"corner"},{"kind":"stone","n":5,"shape":"ridge"},{"kind":"stone","n":5,"shape":"lump"},{"kind":"brush","n":3,"shape":"oval"}]},{"seed":14,"biome":"desert","attempt":0,"fallback":false,"costs":[10,9],"terr":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,0,4,0,0,0,0,8,8,0,0,0,0,0,1,8,8,8,8,8,8,0,0,1,1,8,8,8,8,8,0,5,1,1,1,8,8,8,8,8,1,1,1,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"spawn":[5,7],"portals":[],"paths":[10,9],"clusters":[{"kind":"sand","n":10,"shape":"corner"},{"kind":"sand","n":8,"shape":"corner"},{"kind":"stone","n":5,"shape":"ridge"},{"kind":"stone","n":4,"shape":"ridge"}]},{"seed":15,"biome":"desert","attempt":0,"fallback":false,"costs":[9,11],"terr":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,8,8,8,0,0,5,8,8,8,8,8,0,0,0,8,8,8,8,8,0,0,0,0,8,8,8,5,1,1,0,0,4,0,0,5,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"spawn":[2,0],"portals":[],"paths":[9,11],"clusters":[{"kind":"sand","n":8,"shape":"corner"},{"kind":"sand","n":9,"shape":"corner"},{"kind":"stone","n":5,"shape":"lump"}]},{"seed":16,"biome":"desert","attempt":0,"fallback":false,"costs":[8,8],"terr":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,0,0,0,8,8,8,8,0,0,0,0,0,8,8,8,8,0,0,1,6,4,8,8,8,8,0,0,1,1,0,0,8,8,8,0,0,1,5,0,8,8,8,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"spawn":[1,8],"portals":[[19,39]],"paths":[8,8],"clusters":[{"kind":"sand","n":11,"shape":"corner"},{"kind":"sand","n":8,"shape":"corner"},{"kind":"stone","n":4,"shape":"oval"}]},{"seed":17,"biome":"desert","attempt":0,"fallback":false,"costs":[8,8],"terr":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,8,8,8,0,0,6,4,0,8,8,8,8,2,1,0,0,0,8,8,8,4,2,1,1,0,6,8,8,8,5,2,1,1,0,0,8,8,8,8,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"spawn":[4,7],"portals":[[44,24]],"paths":[8,8],"clusters":[{"kind":"sand","n":8,"shape":"corner"},{"kind":"sand","n":10,"shape":"corner"},{"kind":"stone","n":5,"shape":"lump"},{"kind":"brush","n":4,"shape":"wrap"}]},{"seed":18,"biome":"desert","attempt":1,"fallback":false,"costs":[8,7],"terr":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,8,0,0,0,0,6,0,0,8,8,8,5,0,0,5,0,0,8,8,8,8,6,4,0,0,4,8,8,8,8,0,0,0,1,1,8,8,8,8,8,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"spawn":[6,6],"portals":[[24,40]],"paths":[8,7],"clusters":[{"kind":"sand","n":8,"shape":"corner"},{"kind":"sand","n":10,"shape":"corner"},{"kind":"stone","n":4,"shape":"oval"}]},{"seed":19,"biome":"desert","attempt":0,"fallback":false,"costs":[10,8],"terr":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,5,0,0,8,8,8,1,2,2,0,0,0,8,8,8,1,5,0,0,0,8,8,8,8,1,1,0,0,0,8,8,8,8,1,0,4,0,0,8,8,8,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"spawn":[0,3],"portals":[],"paths":[10,8],"clusters":[{"kind":"sand","n":10,"shape":"corner"},{"kind":"sand","n":8,"shape":"corner"},{"kind":"stone","n":5,"shape":"oval"},{"kind":"brush","n":3,"shape":"wrap"}]},{"seed":20,"biome":"desert","attempt":0,"fallback":false,"costs":[8,8],"terr":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,0,1,1,8,8,8,8,0,2,5,1,1,1,8,8,8,8,8,8,0,0,0,0,8,8,8,8,8,6,4,0,0,4,0,8,8,8,8,0,0,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"spawn":[0,7],"portals":[[60,48]],"paths":[8,8],"clusters":[{"kind":"sand","n":10,"shape":"corner"},{"kind":"sand","n":9,"shape":"corner"},{"kind":"stone","n":5,"shape":"lump"},{"kind":"brush","n":3,"shape":"oval"}]}],"biomeOpt":"desert"}</script>
+<script>
+const D=JSON.parse(document.getElementById('data').textContent),N=D.N,T=D.T,S=18,Z=2.6;   /* S: cỡ ô khi vẽ; Z: phóng to cho bàn 9×9 nhỏ */
+document.getElementById('sub').textContent='· '+D.maps.length+' map · biome: '+D.biomeOpt;
+const NAME={forest:'rừng',mountain:'núi',snow:'tuyết',balanced:'cân bằng',river:'sông',desert:'sa mạc'};
+const grid=document.getElementById('grid');
+function draw(m){
+  const cv=document.createElement('canvas'),dpr=window.devicePixelRatio||1;
+  cv.width=N*S*Z*dpr;cv.height=N*S*Z*dpr;
+  const g=cv.getContext('2d');g.scale(dpr*Z,dpr*Z);
+  const xy=k=>[(k%N)*S,((k/N)|0)*S];
+  for(let k=0;k<N*N;k++){
+    const [x,y]=xy(k),r=(k/N)|0,c=k%N,v=m.terr[k];
+    g.fillStyle=(r+c)%2?'#e9e5d9':'#dfdac9';g.fillRect(x,y,S,S);
+    if(r<D.SAFE||r>N-D.SAFE-1){g.fillStyle='rgba(120,140,200,.12)';g.fillRect(x,y,S,S);}
+    if(v===T.STONE){g.fillStyle='#6b7280';g.fillRect(x,y,S,S);g.fillStyle='#4b5260';g.fillRect(x,y+S-3,S,3);g.fillStyle='#8a92a1';g.fillRect(x+2,y+2,S-8,3);}
+    else if(v===T.BRUSH){g.fillStyle='#4ea45f';g.fillRect(x,y,S,S);g.strokeStyle='#2f7a40';g.lineWidth=1.3;g.beginPath();
+      for(const[a,b]of[[4,14],[9,15],[14,14]]){g.moveTo(x+a,y+b);g.lineTo(x+a-1.5,y+b-8);g.moveTo(x+a,y+b);g.lineTo(x+a+2,y+b-7);}g.stroke();}
+    else if(v===T.ICE){g.fillStyle='#bfe6f5';g.fillRect(x,y,S,S);g.fillStyle='rgba(255,255,255,.75)';g.fillRect(x+2,y+2,S-9,2);g.fillRect(x+2,y+2,2,S-9);
+      g.strokeStyle='#8cc8e0';g.lineWidth=1;g.strokeRect(x+.5,y+.5,S-1,S-1);}
+    else if(v===T.WATER){g.fillStyle='#4aa3df';g.fillRect(x,y,S,S);g.strokeStyle='rgba(255,255,255,.75)';g.lineWidth=1.2;g.beginPath();
+      for(const[a,b]of[[2,6],[9,6],[5,12],[12,12]]){g.moveTo(x+a,y+b);g.quadraticCurveTo(x+a+2,y+b-3,x+a+4,y+b);g.quadraticCurveTo(x+a+6,y+b+3,x+a+8,y+b);}g.stroke();}
+    else if(v===T.SAND){g.fillStyle='#e3c88a';g.fillRect(x,y,S,S);g.fillStyle='#c9a95e';
+      for(const[a,b]of[[4,4],[11,6],[7,10],[14,13],[3,14]]){g.fillRect(x+a,y+b,1.6,1.6);}}
+  }
+  g.strokeStyle='rgba(0,0,0,.06)';g.lineWidth=1;
+  for(let i=0;i<=N;i++){g.beginPath();g.moveTo(i*S,0);g.lineTo(i*S,N*S);g.moveTo(0,i*S);g.lineTo(N*S,i*S);g.stroke();}
+  /* cạnh giữa hai ô nước/cát kề nhau: không đặt tường được */
+  const soft=k=>m.terr[k]===T.WATER||m.terr[k]===T.SAND;
+  g.setLineDash([2,2]);g.strokeStyle='rgba(255,255,255,.95)';g.lineWidth=1.4;
+  for(let k=0;k<N*N;k++){
+    if(!soft(k))continue;const[x,y]=xy(k),r=(k/N)|0,c=k%N;
+    if(c<N-1&&soft(k+1)){g.beginPath();g.moveTo(x+S,y+2);g.lineTo(x+S,y+S-2);g.stroke();}
+    if(r<N-1&&soft(k+N)){g.beginPath();g.moveTo(x+2,y+S);g.lineTo(x+S-2,y+S);g.stroke();}
+  }
+  g.setLineDash([]);
+  /* đường nối cặp cổng */
+  g.setLineDash([4,4]);g.strokeStyle='rgba(155,107,220,.7)';g.lineWidth=1.5;
+  for(const[a,b]of m.portals){const[ax,ay]=xy(a),[bx,by]=xy(b);g.beginPath();g.moveTo(ax+S/2,ay+S/2);g.lineTo(bx+S/2,by+S/2);g.stroke();}
+  g.setLineDash([]);
+  for(let k=0;k<N*N;k++){
+    const [x,y]=xy(k),v=m.terr[k],cx=x+S/2,cy=y+S/2;
+    if(v===T.TRAP){g.fillStyle='#d9534f';g.beginPath();g.moveTo(cx,y+2);g.lineTo(x+S-2,y+S-3);g.lineTo(x+2,y+S-3);g.closePath();g.fill();
+      g.fillStyle='#fff';g.font='bold 10px sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText('!',cx,cy+2);}
+    else if(v===T.CHEST){g.fillStyle='#f0b429';g.fillRect(x+2,y+5,S-4,S-8);g.fillStyle='#b9801a';g.fillRect(x+2,y+9,S-4,2);g.fillRect(cx-1.5,y+8,3,4);}
+  }
+  m.portals.forEach(([a,b],i)=>{for(const k of[a,b]){const[x,y]=xy(k);
+    g.fillStyle='#9b6bdc';g.beginPath();g.arc(x+S/2,y+S/2,S/2-1.5,0,7);g.fill();g.strokeStyle='#fff';g.lineWidth=1.2;g.stroke();
+    g.fillStyle='#fff';g.font='bold 11px sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(String.fromCharCode(65+i),x+S/2,y+S/2+.5);}});
+  const pawn=(col,row,fill,stroke,ch)=>{const x=col*S+S/2,y=row*S+S/2;
+    g.fillStyle=fill;g.strokeStyle=stroke;g.lineWidth=2;g.beginPath();g.arc(x,y,S/2-1,0,7);g.fill();g.stroke();
+    g.fillStyle=stroke;g.font='bold 11px sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(ch,x,y+.5);};
+  pawn(m.spawn[0],N-1,'#fff','#222','T');
+  pawn(m.spawn[1],0,'#222','#fff','Đ');
+  return cv;
+}
+for(const m of D.maps){
+  const card=document.createElement('div');card.className='card';
+  const kinds={stone:'đá',brush:'cỏ',ice:'băng',water:'sông',sand:'cát góc'};
+  const cl=['stone','brush','ice','water','sand'].filter(k=>k!=='water'&&k!=='sand'||m.clusters.some(c=>c.kind===k)).map(k=>{const l=m.clusters.filter(c=>c.kind===k);return kinds[k]+': '+(l.length?l.map(c=>c.n+' ('+c.shape+')').join(', '):'-');}).join(' · ');
+  const cnt=v=>m.terr.filter(x=>x===v).length;
+  card.innerHTML='<h2>seed '+m.seed+'<span class="tag '+m.biome+'">'+(NAME[m.biome]||m.biome)+'</span></h2>'+
+    '<p>đường đi ngắn nhất: Trắng '+m.paths[0]+' · Đen '+m.paths[1]+' · chi phí (nước ×2): Trắng '+m.costs[0]+' · Đen '+m.costs[1]+' · thử lần '+(m.attempt+1)+(m.fallback?' · <b style="color:#f66">BÀN TRỐNG DỰ PHÒNG</b>':'')+'</p>';
+  card.appendChild(draw(m));
+  const p=document.createElement('p');p.textContent=cl+' · bẫy '+cnt(T.TRAP)+' · rương '+cnt(T.CHEST)+' · cặp cổng '+m.portals.length+' · ô nước '+cnt(T.WATER)+' · ô cát '+cnt(T.SAND);card.appendChild(p);
+  grid.appendChild(card);
+}
+</script></body></html>

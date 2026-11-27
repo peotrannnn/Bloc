@@ -16,7 +16,7 @@ export class Room extends DurableObject{
       close:(ws,code,reason)=>{try{ws.close(code,reason);}catch(e){}},
       alarm:ms=>this.ctx.storage.setAlarm(Date.now()+ms),
       wipe:()=>this.ctx.storage.deleteAll(),
-      lobby:async(op,g)=>{try{await this.env.LOBBY.get(this.env.LOBBY.idFromName('main')).fetch('https://lobby/'+op,{method:'POST',body:JSON.stringify({code:g.code,mode:g.mode})});}catch(e){}}   /* báo Lobby: add / remove */
+      lobby:async(op,g)=>{try{await this.env.LOBBY.get(this.env.LOBBY.idFromName('main')).fetch('https://lobby/'+op,{method:'POST',body:JSON.stringify({code:g.code,mode:g.mode,biome:g.biome})});}catch(e){}}   /* báo Lobby: add / remove */
     });
   }
   async fetch(req){

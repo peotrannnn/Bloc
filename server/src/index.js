@@ -1,12 +1,12 @@
 /* [SERVER/INDEX] Cửa vào của Worker:
-     POST /create  {mode,visibility} → {code}      server cấp mã phòng 6 ký tự (bỏ 0/O/1/I) và tạo Durable Object tên = mã
-     POST /quick   {mode} → {code, created}        vào tự động: ghép vào phòng công khai đang chờ lâu nhất, chưa có thì tạo phòng mới
+     POST /create  {mode,visibility[,biome]} → {code}      server cấp mã phòng 6 ký tự (bỏ 0/O/1/I) và tạo Durable Object tên = mã
+     POST /quick   {mode[,biome]} → {code, created}        vào tự động: ghép vào phòng công khai đang chờ lâu nhất, chưa có thì tạo phòng mới
      GET  /ws?room=CODE (WebSocket)                chuyển tiếp tới Durable Object của phòng; mã chưa tạo thì phòng tự báo lỗi
      GET  /health
    Mọi luật chơi và trạng thái ván nằm trong Room (room-logic.js); danh sách phòng chờ nằm trong Lobby. Worker này không giữ gì cả. */
 export {Room} from './room.js';
 export {Lobby} from './lobby.js';
-import {CODE,MODES,VISIBILITY,newCode} from './codes.js';
+import {CODE,MODES,VISIBILITY,newCode,pickBiome} from './codes.js';
 import {makeLimiter} from './limiter.js';
 
 /* Giới hạn theo IP (xem limiter.js). Rộng tay để người chơi thật không bao giờ chạm tới: tạo/ghép phòng tối đa 30 lượt dồn, nạp 1 lượt mỗi 2 giây;
@@ -29,14 +29,14 @@ function json(obj,status,origin){
 
 async function create(req,env,origin){
   let b={};try{b=await req.json();}catch(e){}
-  const mode=b.mode||'classic',visibility=b.visibility||'private';
-  if(!MODES.includes(mode)||!VISIBILITY.includes(visibility))return json({error:'badparams'},400,origin);
+  const mode=b.mode||'classic',visibility=b.visibility||'private',biome=pickBiome(mode,b.biome);   /* biome chỉ có nghĩa ở chế độ chaos */
+  if(!MODES.includes(mode)||!VISIBILITY.includes(visibility)||biome===undefined)return json({error:'badparams'},400,origin);
   for(let i=0;i<5;i++){                                    /* trùng mã (hiếm) thì thử mã khác */
     const code=newCode();
-    const r=await roomOf(env,code).fetch('https://room/init',{method:'POST',body:JSON.stringify({mode,visibility,code})});
+    const r=await roomOf(env,code).fetch('https://room/init',{method:'POST',body:JSON.stringify({mode,visibility,code,biome})});
     if(r.status===200){
-      if(visibility==='public'){try{await lobbyOf(env).fetch('https://lobby/add',{method:'POST',body:JSON.stringify({code,mode})});}catch(e){}}
-      return json({code,mode,visibility},200,origin);
+      if(visibility==='public'){try{await lobbyOf(env).fetch('https://lobby/add',{method:'POST',body:JSON.stringify({code,mode,biome})});}catch(e){}}
+      return json({code,mode,visibility,biome},200,origin);
     }
     if(r.status!==409)break;
   }
@@ -45,9 +45,9 @@ async function create(req,env,origin){
 
 async function quick(req,env,origin){
   let b={};try{b=await req.json();}catch(e){}
-  const mode=b.mode||'classic';
-  if(!MODES.includes(mode))return json({error:'badparams'},400,origin);
-  const r=await lobbyOf(env).fetch('https://lobby/quick',{method:'POST',body:JSON.stringify({mode})});
+  const mode=b.mode||'classic',biome=pickBiome(mode,b.biome);
+  if(!MODES.includes(mode)||biome===undefined)return json({error:'badparams'},400,origin);
+  const r=await lobbyOf(env).fetch('https://lobby/quick',{method:'POST',body:JSON.stringify({mode,biome})});
   if(!r.ok)return json({error:'busy'},503,origin);
   return json(await r.json(),200,origin);
 }

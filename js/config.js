@@ -29,9 +29,68 @@ const CFG={
     arrowSize:.75,                          /* cỡ mũi tên phím trên ô gợi ý (so với cạnh ô) */
     arrowOpacity:.8,                        /* độ đậm tối đa của mũi tên */
     hintFade:9,                           /* tốc độ fade in/out (càng lớn càng nhanh) */
+    ghostItem:0xffa21f,                     /* tường của đối thủ đang được chọn làm mục tiêu búa / cuốc chim: cam sáng */
     ghostOk:0x3db8ff,                       /* tường "ma" đặt được: xanh da trời phát sáng */
     ghostBad:0xe8392f,                     /* tường "ma" đặt sai chỗ */
     shadowOpacity:.35
+  },
+
+  /* Địa hình chế độ Hỗn Loạn (view/terrain.js). Thiếu khóa nào thì dùng mặc định trong terrain.js. */
+  TERRAIN:{
+    stoneH:.7,                 /* cao khối đá trên mặt ô; quân cờ cao ≈ .7 */
+    tufts:7,tuftBlades:5,      /* số cụm cỏ mỗi ô và số lưỡi mỗi cụm (±1) */
+    bladeH:[.4,.75],           /* khoảng cao lưỡi cỏ */
+    sway:.34,swaySpeed:1.2,    /* biên độ ngọn cỏ khi gió thổi và tốc độ */
+    anim:true,                 /* false: tắt chuyển động liên tục (cỏ, nước, cổng) để đỡ tốn pin */
+    gateColor:0x7b3fd0,        /* màu tím của lõi cổng */
+    gateColor2:0x2fd2ff,       /* màu xanh của lõi cổng */
+    gateBack:.3                /* dịch sprite cổng ra xa camera để quân đứng trên ô cổng không bị cắt ngang */
+  },
+
+
+
+  /* Người chặn đường (view/blocker.js): nhân vật vàng "Crash Test Dummy" bay từ trời xuống đáp vào một choke point (ô chặn đường nhiều nhất), đứng đó vài nước rồi chạy ra mép bàn
+     nhảy xuống (không có đường thì bay vút lên). Lúc bay có lửa phản lực ở hai chân. Cả hai bên tạm dừng (S.event) và camera khóa vào nhân vật này khi nó diễn.
+     Ô bị chiếm được ghi vào S.blocker (core.js coi như đá). Lịch xuất hiện: js/blocker-plan.js.
+     CHỈ có ở chế độ Hỗn Loạn (online, do SERVER chạy lịch: ruleset 'chaos'.blockerPlan trong core.js). Classic (và mọi ván offline) KHÔNG BAO GIỜ có người chặn đường. */
+  BLOCKER:{
+    /* Model = Y HỆT quân cờ (cùng cỡ CFG.PAWN.scale, cùng hình), chỉ khác màu + hiệu ứng */
+    color:'#FFD700',glowColor:0xffb400,      /* màu thân vàng; màu phát sáng */
+    sym:{glow:.35,cycle:2.2,flash:.8},       /* phát sáng nhấp nháy: độ sáng tối đa, chu kỳ nhấp nháy (giây), độ bùng sáng lúc đứng vào ô */
+    blinkIdle:true,                          /* false: đứng yên thì biểu tượng không nhấp nháy (đỡ vẽ liên tục, tiết kiệm pin) */
+    delay:1,                                 /* chờ sau khi hai quân đứng yên rồi mới bắt đầu sự kiện */
+
+    /* LỊCH (đơn vị: nước đi, mỗi bên đi một nước = 1; mỗi khoảng là số nguyên ngẫu nhiên trong [min,max]) */
+    auto:true,                               /* chỉ để thử (cần S.chaos): tự xuất hiện theo lịch plan bên dưới ở ván không online. Ván thật: server quyết định, không đọc cờ này */
+    plan:{first:[20,30],stay:[5,7],gap:[20,30]},   /* đầu ván đợi first nước → ở lại stay nước → trống gap nước → quay lại, lặp mãi */
+
+    /* VÀO SÂN: bay từ một điểm ngẫu nhiên trên trời, lượn tới trên đầu ô rồi hạ xuống đáp */
+    fly:{dist:[10,14],up:[6,8],              /* điểm xuất phát (xa): cách ô đích ngang [min,max], cao [min,max] so với mặt ô */
+         hover:2.8,                          /* độ cao điểm "treo" ngay trên ô: bay tới đây trước rồi mới hạ thẳng đứng xuống */
+         speed:3.6,min:2.8,max:4.8,          /* chặng bay tới điểm treo: tốc độ (đơn vị/giây), thời gian kẹp trong [min,max] giây (phanh dần) */
+         descend:2.4,                        /* giây hạ thẳng đứng từ điểm treo xuống ô (chậm lúc bắt đầu và lúc chạm đất) */
+         lean:.35,                           /* độ chúi người theo hướng bay (rad) */
+         land:.45},                          /* giây nhún lúc chạm đất */
+
+    /* LỬA PHẢN LỰC ở hai chân (chỉ cháy lúc bay) */
+    jet:{len:.9,r:.075,flick:.25,            /* chiều dài ngọn lửa (đơn vị model), bán kính gốc, độ chập chờn */
+         core:0xfff3b0,flame:0xff6a10,       /* màu lõi, màu ngoài */
+         sparks:true,rate:90,max:140,        /* tia lửa rơi: bật/tắt, số hạt phát ra mỗi giây, trần số hạt cùng lúc */
+         life:[.3,.6],size:.12},             /* tuổi thọ hạt (giây), cỡ hạt */
+
+    /* CHẠY (đường ra mép bàn lúc rời đi) */
+    speed:2.3,stride:.85,lean:.1,            /* tốc độ chạy (đơn vị/giây), độ dài một nhịp chân, độ chúi người */
+    arrive:{dur:.9,hop:.14},                 /* khựng lại nhảy một cái khi vào ô */
+    hold:1.6,                                /* đứng yên cho người chơi nhìn trước khi trả quyền chơi */
+
+    /* RỜI ĐI: chạy ra một ô mép bàn rồi nhảy xuống. Không có đường (bị tường/quân vây kín) thì bay vút lên. */
+    exit:{near:2,                            /* chọn ngẫu nhiên trong các ô mép có đường chạy không dài hơn ô mép gần nhất quá chừng này ô */
+          jump:{vy:3.0,vx:.9,g:12,flip:4,fall:7},   /* cú nhảy: vận tốc lên, vận tốc ra ngoài (x tốc độ chạy), trọng lực, tốc độ lộn (rad/giây), rơi sâu bao nhiêu thì biến mất */
+          rise:{charge:.8,acc:5,top:16}},  /* bay lên: giây nén người + nhóm lửa, gia tốc, độ cao thì biến mất */
+
+    cam:{dist:6.2,pitch:.42,look:.45,        /* camera khóa: khoảng cách, góc nghiêng, độ cao điểm nhìn */
+         rate:{pos:1.6,ang:1.8,yaw:.9}},     /* độ nhanh làm mượt khi khóa (càng nhỏ càng chậm, đỡ chóng mặt): điểm nhìn đi theo · nghiêng/khoảng cách · xoay quanh */
+    key:true                                 /* phím B: gọi / đuổi người chặn đường (để thử; đặt false khi phát hành) */
   },
 
   LIGHT:{
@@ -48,7 +107,38 @@ const CFG={
     yawJitter:.4,                           /* hướng mặt lúc đáp lệch tối đa (rad) */
     sway:.2,                                /* nhún nghiêng sang hai bên khi đi (rad) */
     plant:.7,                               /* 1 = chân bám đất khi nghiêng, 0 = cả người trượt theo */
-    bob:.035                                /* nhún lên xuống theo từng bước */
+    bob:.035,                               /* nhún lên xuống theo từng bước */
+    lieY:.14,                               /* độ cao tâm thân khi nằm ngửa/sấp trên sàn (ngã) */
+    lieYSide:.21,                           /* ... khi nằm nghiêng một bên (thân dày hơn theo chiều ngang) */
+    /* Ngã + trượt băng. Mỗi lần bốc ngẫu nhiên: kiểu ngã (ngửa / sấp / nghiêng), kiểu trượt (xoay tròn / lăn / trượt thẳng lắc lư), độ chậm dần,
+       độ lệch quỹ đạo, điểm dừng lệch tâm ô, thời lượng mỗi pha (±var). Bẫy hất cũng dùng đúng khung này (n=0 ô trượt): đáp xuống → ngã → nằm im → đứng dậy. */
+    slip:{fall:.42,hop:.42,rest:.45,rise:.7,var:.18,      /* giây: ngã · mỗi ô trượt · nằm im · đứng dậy; var = biên độ ngẫu nhiên ±% của từng pha */
+          power:[1.3,2.1],                                /* > 1 = chậm dần như có ma sát; mỗi lần một giá trị */
+          sty:[.45,.3,.25],                               /* tỉ lệ kiểu ngã: ngửa · sấp · nghiêng */
+          mode:[.35,.3,.35],                              /* tỉ lệ kiểu trượt: xoay tròn · lăn quanh thân · trượt thẳng lắc lư */
+          drift:.09,stopJit:.07,                          /* lệch ngang tối đa của quỹ đạo · điểm dừng lệch tâm ô tối đa */
+          landFall:.32},                                  /* thời gian ngã khi vừa đáp từ cú bay (không có đà trượt) */
+    land:{squash:.1,per:.09,max:.3},        /* nhún khi đáp sau cú nhảy: độ bẹp = squash + per × độ cao bay, tối đa max */
+    wade:{depth:.065,k:190,damp:15,airFull:.06,airNone:.3},   /* lún xuống nước: độ sâu (đáy nước ở .03 dưới mặt .1 → .07 là chạm đáy) · độ cứng/giảm chấn lò xo · độ cao bay (so với mặt ô) còn lún đủ / hết lún */
+    launch:{air:2.1,dur:1.1,flips:2},       /* bị bẫy hất: độ cao cung bay, thời gian bay (cộng thêm theo quãng đường), số vòng lộn */
+    blink:{out:.5,gap:.14,in:.62,rise:1.0,turns:2}   /* dịch chuyển cổng: giây xoáy lên + co thành tia · khoảng tia sáng nối hai cổng · giây rơi xuống + hiện lại; độ cao bay, số vòng xoáy */
+  },
+
+  /* Dấu nổi trên ô đặc biệt (view/marks.js): X đỏ trên cổng bị chặn, ✓ xanh / ! đỏ trên bẫy; tia sáng nối hai cổng khi dịch chuyển */
+  /* Rương và vật phẩm (Hỗn Loạn; luật ở core.js). icon = biểu tượng trên ô/túi đồ; wait = thời gian quân đứng chờ lúc rương mở (rồi mới bước vào ô);
+     reveal = lúc món quà hiện ra (tính từ khi rương bắt đầu mở); popHold = quà lơ lửng bao lâu */
+  ITEMS:{
+    brick:{icon:'🧱',name:'Cục gạch',tip:'+1 tường'},
+    boots:{icon:'👟',name:'Đôi giày',tip:'Thêm một lượt, chỉ để đi quân (miễn phí, không tốn lượt)'},
+    glove:{icon:'🧤',name:'Găng tay',tip:'Cướp 1 tường của đối thủ (khi họ còn ít nhất 2 tường). Tốn một lượt'},
+    hammer:{icon:'🔨',name:'Búa',tip:'Tháo một tường của đối thủ, trả lại cho họ. Tốn một lượt'},
+    pick:{icon:'⛏️',name:'Cuốc chim',tip:'Phá hẳn một tường của đối thủ: khe đó không ai xây lại được. Tốn một lượt'}
+  },
+  CHEST:{wait:1.55,reveal:.5,popHold:1.0},
+  MARK:{
+    size:.55,popIn:.32,fadeOut:.2,          /* cỡ dấu (đơn vị thế giới), thời gian bật ra (phóng quá cỡ rồi về đúng cỡ) / mờ dần */
+    gateY:1.25,trapY:1.0,seenY:1.35,                   /* độ cao dấu so với mặt ô */
+    beamY:.45,beamColor:0x58d4ff            /* tia sáng cổng: độ cao, màu quầng */
   },
 
   WALL:{
@@ -176,7 +266,7 @@ const CFG={
   CELEB:{
     kinds:['flip','hiphop','bounce','run'],  /* mỗi kiểu 25% */
     force:null,                              /* đặt 'flip' | 'hiphop' | 'bounce' | 'run' để luôn xem một kiểu (thử/chỉnh) */
-    dur:{flip:1.25,hiphop:3.2,bounce:3,run:3},   /* thời lượng từng kiểu (giây) */
+    dur:{flip:1.4,hiphop:3.2,bounce:3,run:3},   /* thời lượng từng kiểu (giây) */
     flip:{air:1.1},                          /* lộn một vòng tại chỗ: độ cao bay */
     hiphop:{turns:4,drop:.16,swing:9,legAmp:.8},   /* trồng cây chuối: số vòng xoay, hạ thân cho đầu chạm sàn, nhịp và biên độ chân (rad) */
     bounce:{hops:5,h:.4,squash:.3},          /* nảy cà tưng: số lần nảy, độ cao, độ bẹp lúc chạm đất */

@@ -5,7 +5,34 @@
 const Stage={
   ren:null,scene:null,cam:null,cells:[],hints:[],need:0,shadowDirty:true,
 
+  /* Biên dịch TRƯỚC mọi shader của cảnh (kể cả vật đang ẩn: pháo bông, cổng, rương, bẫy, nhãn...). three.js r128 chỉ biên dịch chương trình
+     shader lúc vật đó hiện ra lần đầu; trên GPU/driver chậm (nhất là Windows/ANGLE) mỗi lần như vậy làm cả trang đứng 1-5 giây
+     (vd: mở rương lần đầu, cổng dịch chuyển lần đầu, pháo bông khi thắng). Gọi lúc đang ở màn hình tải thì người chơi không thấy. */
+  warm(){try{this.ren.compile(this.scene,this.cam);}catch(e){}},
+
+  /* Làm nóng TOÀN BỘ đường vẽ trước khi vào ván (gọi lúc màn hình tải đang che): renderer.compile chỉ biên dịch shader của vật liệu như nó đang có;
+     nó KHÔNG biết (1) sprite sẽ được gắn texture về sau (quà nổi lên khi mở rương, nhãn, dấu cổng/bẫy: bản shader "có map" chưa từng được biên dịch),
+     (2) shader đổ bóng của từng vật, (3) texture chưa tải lên GPU (emoji vật phẩm). Cả ba chỉ phát sinh lúc vẽ thật nên rơi vào đúng lúc mở rương lần đầu
+     → khựng 3-5s trên GPU/driver chậm. Cách làm: nạp sẵn texture + sprite có map, rồi vẽ THẬT một khung với mọi vật tạm thời hiện hết (kể cả bản đồ bóng),
+     ép GPU xong việc (finish) rồi trả lại trạng thái ẩn/hiện cũ. Khung này không bao giờ tới mắt người chơi: cùng tác vụ, màn hình tải đang phủ kín. */
+  prewarm(){
+    const sc=this.scene,saved=[];
+    try{
+      if(typeof Marks!=='undefined')Marks.prewarm(this.ren);
+      this.ren.compile(sc,this.cam);
+      sc.traverse(o=>{saved.push(o,o.visible);o.visible=true;});
+      this.ren.shadowMap.needsUpdate=true;
+      this.ren.render(sc,this.cam);
+      const gl=this.ren.getContext();if(gl&&gl.finish)gl.finish();
+    }catch(e){}
+    for(let i=0;i<saved.length;i+=2)saved[i].visible=saved[i+1];
+    this.shadowDirty=true;this.invalidate(true);
+  },
+
   invalidate(shadows){this.need=3;if(shadows)this.shadowDirty=true;},
+
+  /* Chế độ Hỗn Loạn: dựng địa hình 3D từ mảng terr (xem view/terrain.js). terr rỗng/null = bàn Classic. */
+  setTerrain(terr,seed){if(typeof Terrain!=='undefined')Terrain.build(this,terr,seed);this.invalidate(true);}   /* biên dịch shader do prewarm() lo (App.newGame, sau màn hình tải) */,
 
   init(host){
     this.scene=new THREE.Scene();

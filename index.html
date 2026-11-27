@@ -29,6 +29,15 @@
 <button id="bMenu">Menu (Esc)</button>
 </footer>
 
+<!-- Cửa sổ xác nhận (đầu hàng / thoát game): mở bằng UI.ask(). Màu theo biome đang chơi, mặc định xanh lá. -->
+<div id="cf" hidden>
+ <div class="win pop" role="alertdialog" aria-modal="true" aria-labelledby="cfT" aria-describedby="cfM">
+  <div class="tb"><span id="cfT">Xác nhận</span><button id="cfX" class="wx" aria-label="Đóng" title="Đóng (Esc)">X</button></div>
+  <div class="wb"><div id="cfM"></div>
+   <div class="cfb"><button id="cfNo">Hủy</button><button id="cfYes" class="p">Đồng ý</button></div></div>
+ </div>
+</div>
+
 <div id="menu">
  <div class="win">
   <div class="tb"><span id="winTitle">Bloc - menu</span><button id="winX" class="wx" aria-label="Đóng cửa sổ" title="Đóng (Esc)" hidden>X</button></div>
@@ -64,19 +73,28 @@
 
   <!-- Đấu online: tạo phòng hoặc nhập mã -->
   <section class="scr" id="scOnline" hidden>
-    <div class="sub">Online · Classic</div>
+    <div class="sub" id="onSub">Online · Classic</div>
+    <label class="row">Chế độ
+      <select id="onMode">
+        <option value="classic">Classic</option>
+        <option value="chaos">Hỗn Loạn</option>
+      </select>
+    </label>
+    <label class="row" id="onBiomeRow" hidden>Bản đồ
+      <select id="onBiome"></select>
+    </label>
     <label class="row">Phòng
       <select id="onVis">
         <option value="private">Riêng tư</option>
         <option value="public">Công khai</option>
       </select>
     </label>
-    <button class="big" id="onResume" hidden>Vào lại</button>
+    <button class="big" id="onResume" hidden>Vô lại</button>
     <button class="big p" id="onCreate">Tạo phòng</button>
     <button class="big" id="onQuick">Ghép nhanh</button>
     <div class="sub">hoặc nhập mã</div>
     <input id="onCode" maxlength="12" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Mã phòng" aria-label="Mã phòng">
-    <button class="big" id="onJoin">Vào</button>
+    <button class="big" id="onJoin">Vô</button>
     <div id="onErr" class="err" role="alert" hidden></div>
   </section>
 
@@ -84,6 +102,7 @@
   <section class="scr" id="scWait" hidden>
     <div class="sub">Mã phòng</div>
     <div id="waitCode" class="code"></div>
+    <div id="waitMode" class="sub"></div>
     <button id="waitCopy">Chép mã</button>
     <div id="waitMsg" class="sub"></div>
   </section>
@@ -93,9 +112,20 @@
  </div>
 </div>
 
+<!-- Màn hình tải dùng chung (xem js/loading.js): vào phòng, đấu lại -->
+<div id="loading" hidden role="status" aria-live="polite">
+ <div class="ldbox">
+  <div class="ldspin" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+  <div class="ldtitle">Đang tải</div>
+  <div class="ldbar"><b></b></div>
+  <div class="ldmsg"></div>
+ </div>
+</div>
+
 <!-- Thứ tự nạp quan trọng: module sau dùng biến của module trước -->
 <script src="js/config.js"></script>
 <script src="js/util.js"></script>
+<script src="js/loading.js"></script>
 <script src="js/loader.js"></script>
 <script src="js/online-client.js"></script>
 <script src="js/state.js"></script>
@@ -120,9 +150,13 @@
 <script src="js/ai/client.js"></script>
 
 <script src="js/view/stage.js"></script>
+<script src="js/view/terrain.js"></script>
 <script src="js/view/pawns.js"></script>
+<script src="js/blocker-plan.js"></script>
+<script src="js/view/blocker.js"></script>
 <script src="js/view/walls.js"></script>
 <script src="js/view/badges.js"></script>
+<script src="js/view/marks.js"></script>
 <script src="js/view/fireworks.js"></script>
 <script src="js/view/camera.js"></script>
 <script src="js/ui.js"></script>

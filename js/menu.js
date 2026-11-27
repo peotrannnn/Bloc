@@ -5,6 +5,8 @@ const Menu={
   screens:['scHome','scPve','scEve','scOnline','scWait'],
   titles:{scHome:'Bloc - menu',scPve:'Bloc - Chơi với máy',scEve:'Bloc - Cá cược',scOnline:'Bloc - Chơi online',scWait:'Bloc - Phòng chờ'},   /* tên cửa sổ theo màn hình */
   pveId:null,   /* AI đang chọn làm đối thủ ở chế độ đấu với máy */
+  /* Bản đồ của chế độ Hỗn Loạn (khóa trùng với server/src/codes.js BIOMES; 'random' = server bốc ngẫu nhiên mỗi ván) */
+  biomeNames:{random:'Ngẫu nhiên',balanced:'Cân bằng',forest:'Rừng',mountain:'Núi',snow:'Tuyết',river:'Sông',desert:'Sa mạc'},
 
   init(){
     this.pveId=AIs.defaultId();
@@ -14,6 +16,9 @@ const Menu={
       for(const a of AIs.list)sel.add(new Option(a.name,a.id));
       sel.value=AIs.defaultId();
     }
+    for(const k in this.biomeNames)$('onBiome').add(new Option(this.biomeNames[k],k));
+    $('onBiome').value='random';
+    $('onMode').onchange=()=>this.syncMode();
     $('mOnline').onclick=()=>{this.err('');this.showOnline();};
     $('onResume').onclick=()=>{const c=Online.lastRoom();if(c)this.joinRoom(c);};
     $('winX').onclick=()=>this.back();   /* nút X: từ màn hình con về menu chính (đang ở phòng chờ thì rời phòng) */
@@ -58,15 +63,20 @@ const Menu={
     if($('scHome').hidden)this.show('scHome');
   },
 
-  /* ----- Đấu online (Classic): tạo phòng hoặc vào bằng mã ----- */
-  conn:null,started:false,quick:false,tries:0,
+  /* ----- Đấu online (Classic / Hỗn Loạn): tạo phòng hoặc vào bằng mã ----- */
+  conn:null,started:false,quick:false,tries:0,mode:'classic',biome:null,
+  /* Lựa chọn trên màn hình online: Hỗn Loạn thì có thêm bản đồ; Classic không gửi biome */
+  onlineOpts(){const mode=$('onMode').value==='chaos'?'chaos':'classic';return{mode,biome:mode==='chaos'?$('onBiome').value:undefined};},
+  syncMode(){const chaos=$('onMode').value==='chaos';$('onBiomeRow').hidden=!chaos;$('onSub').textContent='Online · '+(chaos?'Hỗn Loạn':'Classic');},
+  /* Dòng mô tả phòng ở màn hình chờ: chế độ do SERVER quyết định (vào bằng mã thì lấy theo phòng, không theo lựa chọn của người vào) */
+  modeText(mode,biome){return mode==='chaos'?'Hỗn Loạn · '+(this.biomeNames[biome]||this.biomeNames.random):'Classic';},
   showOnline(){const c=Online.lastRoom(),b=$('onResume');b.hidden=!c;if(c)b.textContent='Vào lại '+c;this.show('scOnline');},
   err(t){const e=$('onErr');e.textContent=t||'';e.hidden=!t;},
   async createRoom(){
     this.err('');
     const btn=$('onCreate');btn.disabled=true;
     try{
-      const r=await Online.createRoom({mode:'classic',visibility:$('onVis').value});
+      const r=await Online.createRoom({...this.onlineOpts(),visibility:$('onVis').value});
       this.joinRoom(r.code);
     }catch(e){this.err(/429/.test(e.message)?'Bạn thao tác quá nhanh, đợi vài giây rồi thử lại.':'Không tạo được phòng. Kiểm tra mạng rồi thử lại.');}
     finally{btn.disabled=false;}
@@ -82,14 +92,14 @@ const Menu={
     if(!retry){this.err('');this.tries=0;}
     const btn=$('onQuick');btn.disabled=true;
     try{
-      const r=await Online.quick('classic');
+      const o=this.onlineOpts(),r=await Online.quick(o.mode,o.biome);
       this.joinRoom(r.code,true);
     }catch(e){this.show('scOnline');this.err(/429/.test(e.message)?'Bạn thao tác quá nhanh, đợi vài giây rồi thử lại.':'Không tìm được phòng. Kiểm tra mạng rồi thử lại.');}
     finally{btn.disabled=false;}
   },
   joinRoom(code,quick){
     this.leaveRoom();this.quick=!!quick;
-    const conn=Online.join(code);this.conn=conn;this.started=false;
+    const conn=Online.join(code);this.conn=conn;this.started=false;this.mode='classic';this.biome=null;$('waitMode').textContent='';
     for(const t of['welcome','started','applied','state','rejected','over','opponentStatus','full','replaced','error','close'])
       conn.on(t,m=>{if(this.conn===conn)this.onNet(t,m);});   /* tin của kết nối cũ (đã rời) thì bỏ */
     $('waitCode').textContent=code;$('waitMsg').textContent='Đang kết nối…';
@@ -101,13 +111,14 @@ const Menu={
   /* Tin từ server: trước khi ván bắt đầu thì lo màn hình chờ, sau đó chuyển hết cho App */
   onNet(t,m){
     if(t==='welcome'&&!this.started){
+      this.mode=m.mode==='chaos'?'chaos':'classic';this.biome=m.biome||null;$('waitMode').textContent=this.modeText(this.mode,this.biome);
       $('waitMsg').textContent=m.started?'Đang vào…':m.players<2?(this.quick?'Đang tìm…':'Chờ đối thủ · gửi mã cho bạn'):'Đủ người · chia phe…';
       return;
     }
     if((t==='started'||t==='state')&&!this.started){           /* started: ván mới; state: vào lại ván đang chơi (tải lại trang / bấm "Vào lại phòng") */
       this.started=true;
       this.conn.autoReconnect(true);Online.setLastRoom(this.conn.code);
-      App.start({net:{conn:this.conn,you:m.you,snap:m.snapshot,turnLeft:m.turnLeft,state:t==='state'?m:null},delay:0,analysis:{on:false,lock:true}});   /* online: tắt và khóa đánh giá */
+      App.start({net:{conn:this.conn,you:m.you,snap:m.snapshot,turnLeft:m.turnLeft,state:t==='state'?m:null,mode:this.mode,map:m.map||null},delay:0,analysis:{on:false,lock:true}});   /* online: tắt và khóa đánh giá */
       return;
     }
     if(!this.started){

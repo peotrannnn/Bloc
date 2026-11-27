@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Địa hình Hỗn Loạn - xem 3D</title>
+<style>
+html,body{margin:0;height:100%;background:#15171c;color:#e6e6e6;font:13px system-ui,sans-serif;overflow:hidden}
+#host{position:absolute;inset:0}
+#host canvas{display:block;width:100%;height:100%}
+#bar{position:absolute;left:10px;top:10px;display:flex;flex-direction:column;gap:8px;max-width:280px;background:rgba(20,22,28,.82);border:1px solid #333845;border-radius:10px;padding:10px 12px}
+#bar label{display:flex;align-items:center;justify-content:space-between;gap:8px}
+#bar select,#bar input{background:#222630;color:#e6e6e6;border:1px solid #3a3f4d;border-radius:6px;padding:4px 6px;font:inherit}
+#bar input[type=number]{width:84px}
+.row{display:flex;flex-wrap:wrap;gap:6px}
+button{background:#2c3140;color:#e6e6e6;border:1px solid #444a5b;border-radius:6px;padding:5px 9px;font:inherit;cursor:pointer}
+button:hover{background:#383e52}
+button.on{background:#3f6fd1;border-color:#5b8cf0}
+small{color:#9aa0ac;line-height:1.45}
+#msg{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;padding:20px}
+</style></head><body>
+<div id="host"></div>
+<div id="msg">Không tải được three.js từ cdnjs.cloudflare.com (cần mạng).</div>
+<div id="bar">
+  <label>Map <select id="biome">
+    <option value="showcase">Bản mẫu (đủ mọi loại ô)</option>
+    <option value="any">Ngẫu nhiên theo seed</option>
+    <option value="forest">Rừng</option><option value="mountain">Núi</option><option value="snow">Tuyết</option>
+    <option value="river">Sông</option><option value="desert">Sa mạc</option><option value="balanced">Cân bằng</option>
+  </select></label>
+  <label>Phong cách cỏ <select id="skin">
+    <option value="auto">Theo map</option>
+    <option value="forest">Rừng (cỏ cao, tre)</option>
+    <option value="river">Sông (lau sậy trong nước)</option>
+    <option value="meadow">Đồng cỏ (nhiều hoa)</option>
+    <option value="autumn">Mùa thu</option>
+    <option value="desert">Sa mạc (cỏ gai, xương rồng)</option>
+    <option value="snow">Tuyết (cỏ mảnh)</option>
+    <option value="mountain">Núi (cỏ thẳng)</option>
+  </select></label>
+  <label>Seed <span><input id="seed" type="number" value="1"> <button id="rnd" title="Seed ngẫu nhiên">🎲</button></span></label>
+  <div class="row"><span>Bẫy:</span><button data-trap="0" class="on">Bình thường</button><button data-trap="2">Bật</button></div>
+  <div class="row"><button id="hints">Gợi ý nước đi</button><button id="low">Góc thấp</button><button id="top">Nhìn từ trên</button><button id="pawns" class="on">Quân cờ</button></div>
+  <small>Kéo chuột: xoay · lăn: zoom · bấm vào ô: dời quân Trắng tới đó để so độ cao với đá.<br><span id="info"></span></small>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" onerror="document.getElementById('msg').style.display='flex'"></script>
+<script src="../js/config.js"></script>
+<script src="../js/util.js"></script>
+<script src="../js/mapgen.js"></script>
+<script src="../js/view/pawns.js"></script>
+<script src="../js/view/stage.js"></script>
+<script src="../js/view/terrain.js"></script>
+<script>
+const goalRow=p=>p===0?0:N-1;   /* rules.js cung cấp trong game; ở đây tự định nghĩa */
+const SHOW=['000000000','101101101','000000000','222030778','222030778','220000788','000000008','456000600','000000000'].join('');
+const el=id=>document.getElementById(id);
+Stage.init(el('host'));
+Pawns.build(Stage.scene);
+
+/* Camera quỹ đạo tối giản */
+const cam={yaw:.5,pitch:.95,dist:14.1,tx:0,ty:0,tz:0};
+function place(){
+  const c=Math.cos(cam.pitch)*cam.dist;
+  Stage.cam.position.set(cam.tx+Math.sin(cam.yaw)*c,cam.ty+Math.sin(cam.pitch)*cam.dist,cam.tz+Math.cos(cam.yaw)*c);
+  Stage.cam.lookAt(cam.tx,cam.ty,cam.tz);
+}
+function resize(){const h=el('host');Stage.ren.setSize(h.clientWidth,h.clientHeight);Stage.cam.aspect=h.clientWidth/h.clientHeight;Stage.cam.updateProjectionMatrix();}
+addEventListener('resize',resize);resize();place();
+let drag=null;
+const cv=Stage.ren.domElement;
+cv.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY,moved:0};cv.setPointerCapture(e.pointerId);});
+cv.addEventListener('pointermove',e=>{
+  if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.x=e.clientX;drag.y=e.clientY;drag.moved+=Math.abs(dx)+Math.abs(dy);
+  cam.yaw-=dx*.006;cam.pitch=Math.max(.15,Math.min(1.5,cam.pitch+dy*.006));place();
+});
+cv.addEventListener('pointerup',e=>{
+  if(drag&&drag.moved<5){   /* bấm: dời quân Trắng */
+    const r=cv.getBoundingClientRect(),ray=new THREE.Raycaster();
+    ray.setFromCamera(new THREE.Vector2((e.clientX-r.left)/r.width*2-1,-((e.clientY-r.top)/r.height*2-1)),Stage.cam);
+    const hit=new THREE.Vector3();
+    if(ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0,1,0),-TOP),hit)){
+      const c=Math.round(hit.x/CFG.PITCH+HALF),rr=Math.round(hit.z/CFG.PITCH+HALF);
+      if(c>=0&&c<N&&rr>=0&&rr<N)Pawns.list[0].g.position.set(cellX(c),TOP,cellZ(rr));
+    }
+  }
+  drag=null;
+});
+cv.addEventListener('wheel',e=>{e.preventDefault();cam.dist=Math.max(4,Math.min(26,cam.dist*(e.deltaY>0?1.08:.92)));place();},{passive:false});
+
+/* biome của mapgen (forest/river/balanced/...) → biome của Terrain (forest/meadow/autumn/desert/snow/mountain): quyết định bảng màu + hình dạng cỏ.
+   forest → 'forest' (cỏ cao gấp đôi + tre lẻ). Bản mẫu ('mẫu') và biome lạ rơi vào 'meadow'. */
+const TBIOME={forest:'forest',river:'river',balanced:'meadow',mountain:'mountain',snow:'snow',desert:'desert'};
+
+/* Nạp map */
+let cur=null;
+function load(){
+  const b=el('biome').value,seed=+el('seed').value||1;
+  const m=b==='showcase'?{terr:Uint8Array.from(SHOW,ch=>+ch),spawn:[4,4],biome:'mẫu'}:MapGen.generate(seed,b==='any'?{}:{biome:b});
+  cur=m;
+  const skin=el('skin').value,tb=skin==='auto'?(TBIOME[m.biome]||'meadow'):skin;
+  Terrain.setBiome(tb);   /* đặt biome TRƯỚC khi dựng địa hình để cỏ đúng hình dạng ngay từ đầu */
+  Stage.setTerrain(m.terr,seed);
+  Pawns.list[0].g.position.set(cellX(m.spawn[0]),TOP,cellZ(N-1));
+  Pawns.list[1].g.position.set(cellX(m.spawn[1]),TOP,cellZ(0));
+  const cnt={};for(const v of m.terr)cnt[v]=(cnt[v]||0)+1;
+  el('info').textContent='biome: '+m.biome+' → cỏ '+tb+(m.fallback?' (map trống do fallback)':'')+' · đá '+(cnt[1]||0)+' · cỏ '+(cnt[2]||0)+' · băng '+(cnt[3]||0)+' · nước '+(cnt[7]||0)+' · cát '+(cnt[8]||0);
+  showHints(hintsOn);
+}
+let hintsOn=false;
+function showHints(on){
+  hintsOn=on;el('hints').classList.toggle('on',on);
+  if(!on||!cur){Stage.setHints([]);return;}
+  const p=Pawns.list[0].g.position,c=Math.round(p.x/CFG.PITCH+HALF),r=Math.round(p.z/CFG.PITCH+HALF),out=[];
+  for(const[dr,dc]of D4){const rr=r+dr,cc=c+dc;if(rr>=0&&rr<N&&cc>=0&&cc<N&&cur.terr[rr*N+cc]!==1)out.push([rr,cc]);}
+  Stage.setHints(out,{r,c});
+}
+const D4=[[-1,0],[1,0],[0,-1],[0,1]];
+el('biome').onchange=load;el('seed').onchange=load;el('skin').onchange=load;
+el('rnd').onclick=()=>{el('seed').value=Math.floor(Math.random()*99999)+1;if(el('biome').value==='showcase')el('biome').value='any';load();};
+document.querySelectorAll('[data-trap]').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('[data-trap]').forEach(x=>x.classList.toggle('on',x===b));Terrain.setTraps(+b.dataset.trap);
+});
+el('hints').onclick=()=>showHints(!hintsOn);
+el('low').onclick=()=>{cam.pitch=.2;cam.dist=12;place();};
+el('top').onclick=()=>{cam.pitch=1.5;cam.dist=14;place();};
+el('pawns').onclick=()=>{const on=!el('pawns').classList.contains('on');el('pawns').classList.toggle('on',on);Pawns.list.forEach(p=>p.g.visible=on);};
+load();
+
+let last=performance.now();
+(function loop(now){
+  requestAnimationFrame(loop);
+  const dt=Math.min(.05,(now-last)/1000||.016);last=now;
+  Terrain.update(dt);Stage.updateHints(dt);
+  Stage.render();
+})(last);
+</script></body></html>

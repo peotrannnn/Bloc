@@ -6,5 +6,5 @@
 .err{color:var(--red);text-align:center;font-size:12px;text-shadow:0 0 6px rgba(255,92,92,.4)}
 .err::before{content:"! "}
 .code{background:#000;border:1px dashed var(--g);padding:6px 14px;font:700 1.7rem/1.2 var(--font);letter-spacing:.25em;
-  text-align:center;user-select:all;color:var(--g);text-shadow:var(--glow);box-shadow:inset 0 0 14px rgba(44,255,107,.12)}
+  text-align:center;user-select:all;color:var(--g);text-shadow:var(--glow);box-shadow:inset 0 0 14px rgba(var(--gr),.12)}
 #waitMsg{text-align:center}

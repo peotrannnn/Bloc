@@ -46,6 +46,8 @@ Server → client
 
 Đã có: kiểm luật phía server, hai ghế theo token, nối lại đúng ghế, thay kết nối cũ, phòng sống sót khi Durable Object "ngủ", đầu hàng, kiểm tra Origin, dọn phòng bằng alarm (trống 1 giờ · đang chơi 6 giờ · đã xong 30 phút).
 
+Người chặn đường (CHỈ chế độ Hỗn Loạn): server tự chạy lịch và gửi `fx:{t:'blocker',cell:[r,c]}` / `{t:'blocker',leave:true}` trong `applied`, kèm `blocker` trong snapshot; xem `blockerStep` trong `src/room-logic.js` và `test/blocker-room.mjs`. **Classic là Quoridor truyền thống: không địa hình, không vật phẩm, không người chặn.**
+
 Chưa có (các giai đoạn sau): server cấp mã phòng và phòng công khai/riêng tư (GĐ3), lobby và vào tự động (GĐ4), khoảng chờ nối lại rồi xử thua, đồng hồ lượt, đấu lại (GĐ5), giao diện online trong game.
 
 ## Lưu ý chi phí (gói Free) — cần đo thật

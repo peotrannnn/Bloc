@@ -12,6 +12,22 @@ const Input={
     return p?{r:wallIdx(Math.floor(p.w)),c:wallIdx(Math.floor(p.u))}:null;
   },
 
+  /* Tường của ĐỐI THỦ gần điểm p ({u:cột,w:hàng}, đơn vị ô) nhất — mục tiêu của búa / cuốc chim. Khoảng cách tính tới đoạn thẳng của tường (dài ~1,9 ô), null nếu xa hơn ~0,6 ô */
+  targetNear(p){
+    let best=null,bd=.62;
+    for(const w of R.oppWalls(S,S.me)){
+      const cu=w.c+.5,cw=w.r+.5,L=.93;
+      const du=w.o==='h'?Math.max(0,Math.abs(p.u-cu)-L):Math.abs(p.u-cu),dw=w.o==='v'?Math.max(0,Math.abs(p.w-cw)-L):Math.abs(p.w-cw);
+      const d=Math.hypot(du,dw);if(d<bd){bd=d;best=w;}
+    }
+    return best;
+  },
+  targetAtPointer(){
+    if(!this.last)return null;
+    const p=this.pick({clientX:this.last.x,clientY:this.last.y});
+    return p?this.targetNear(p):null;
+  },
+
   init(cv){
     this.ray=new THREE.Raycaster();this.ndc=new THREE.Vector2();this.hit=new THREE.Vector3();
     this.plane=new THREE.Plane(new THREE.Vector3(0,1,0),-TOP);
@@ -29,6 +45,11 @@ const Input={
           Camera.orbit(e.clientX-dn.lx,e.clientY-dn.ly,Math.max(.008,(e.timeStamp-dn.lt)/1000));
           dn.lx=e.clientX;dn.ly=e.clientY;dn.lt=e.timeStamp;return;
         }
+      }
+      if(humanTurn()&&S.mode==='item'){   /* búa / cuốc chim: tường đối thủ gần con trỏ nhất sáng lên */
+        const p=this.pick(e),t=p?this.targetNear(p):null,o=S.tgt;
+        if((t&&!o)||(!t&&o)||(t&&o&&(t.o!==o.o||t.r!==o.r||t.c!==o.c))){S.tgt=t;App.updateGhost();}
+        return;
       }
       if(!humanTurn()||S.mode!=='wall')return;
       const p=this.pick(e);if(!p)return;
@@ -56,6 +77,7 @@ const Input={
   pawnAt(){
     let best=-1,bd=Infinity;
     for(let i=0;i<2;i++){
+      if(S.hid&&S.hid[i])continue;   /* quân bị cỏ che: raycaster không bỏ qua mesh ẩn nên phải tự loại, kẻo bấm vào để lộ chỗ */
       const h=this.ray.intersectObject(Pawns.list[i].g,true);
       if(h.length&&h[0].distance<bd){bd=h[0].distance;best=i;}
     }
@@ -75,6 +97,12 @@ const Input={
     if(pi>=0){Camera.toggleFollow(pi);UI.render();return;}
     if(!humanTurn())return;
     const p=this.ground();if(!p)return;
+    if(S.mode==='item'){   /* bấm vào tường đang sáng thì dùng; bấm tường khác thì chuyển mục tiêu sang đó (cảm ứng: chạm lần 1 chọn, lần 2 xác nhận) */
+      const t=this.targetNear(p),o=S.tgt;
+      if(t&&o&&t.o===o.o&&t.r===o.r&&t.c===o.c)App.confirmItem();
+      else{S.tgt=t;App.updateGhost();}
+      return;
+    }
     if(S.mode==='move'){
       const r=Math.round(p.w),c=Math.round(p.u);
       if(moves(S.turn).some(m=>m[0]===r&&m[1]===c))App.commit({move:[r,c]});

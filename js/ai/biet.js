@@ -35,12 +35,15 @@
   /* ----- bàn cờ dạng mảng phẳng cho BFS nhanh: E[ô*4+hướng]=1 nếu bị tường chặn. Hướng: 0 lên, 1 xuống, 2 trái, 3 phải ----- */
   const E=new Uint8Array(NN*4),NB=new Int16Array(NN*4).fill(-1);
   for(let r=0;r<N;r++)for(let c=0;c<N;c++){const k=r*N+c;if(r>0)NB[k*4]=k-N;if(r<N-1)NB[k*4+1]=k+N;if(c>0)NB[k*4+2]=k-1;if(c<N-1)NB[k*4+3]=k+1;}
+  let BL=-1;   /* ô có người chặn đường (S.blocker, -1 = không): bịt kín cả 4 cạnh để không BFS/nước đi nào vào được (xem blockEdges) */
+  function blockEdges(){const b=BL;for(let i=0;i<4;i++){E[b*4+i]=1;const n=NB[b*4+i];if(n>=0)E[n*4+(i^1)]=1;}}   /* i^1: hướng ngược (0 lên↔1 xuống, 2 trái↔3 phải) */
   function edges(o,r,c,v){
     const a=r*N+c;
     if(o==='h'){E[a*4+1]=E[(a+1)*4+1]=E[(a+N)*4]=E[(a+N+1)*4]=v;}          /* tường ngang chặn đi xuống từ 2 ô trên, đi lên từ 2 ô dưới */
     else{E[a*4+3]=E[(a+N)*4+3]=E[(a+1)*4+2]=E[(a+N+1)*4+2]=v;}              /* tường dọc chặn đi phải từ 2 ô trái, đi trái từ 2 ô phải */
+    if(v===0&&BL>=0)blockEdges();   /* gỡ tường thử có thể xóa cạnh đang bị người chặn bịt: bịt lại */
   }
-  function syncEdges(){E.fill(0);for(let r=0;r<WN;r++)for(let c=0;c<WN;c++){if(W('h',r,c))edges('h',r,c,1);if(W('v',r,c))edges('v',r,c,1);}}
+  function syncEdges(){E.fill(0);for(let r=0;r<WN;r++)for(let c=0;c<WN;c++){if(W('h',r,c))edges('h',r,c,1);if(W('v',r,c))edges('v',r,c,1);}if(BL>=0)blockEdges();}
   /* Bản đồ "còn bao nhiêu bước tới đích" cho người q: BFS ngược từ cả hàng đích (99 = không tới được) */
   const F=[new Int8Array(NN),new Int8Array(NN)],BQ=new Int16Array(NN);
   const FS=new Int8Array(NN);   /* bản đồ tạm để chấm tường thử, không đè lên F */
@@ -215,6 +218,7 @@
       TEMPO=M.tempo;setVal(p,M.a,C.wallR);
       setVal(op,M.a*clamp(effOp(M)/C.effPrior,C.effLo,C.effHi),C.wallR);
       TOPR=C.topRoot;TOP=C.top;TOP2=C.top2;
+      BL=S.blocker>=0?S.blocker:-1;   /* worker chép S.blocker từ luồng chính (xem ai/worker.js) */
       syncEdges();ttK.fill(0);hashAll(p);
       nodes=0;maxNodes=C.nodes;aborted=false;
       /* Trên luồng chính của trình duyệt (worker không dùng được) thì nghĩ ngắn hơn để đỡ giật; ở worker/Node dùng đủ C.ms */

@@ -2,6 +2,8 @@
 /* [ONLINE] Kết nối chế độ online, không đụng tới giao diện: chỉ lo token, tạo phòng, vào phòng bằng mã và chuyển tin nhắn.
    Là script thường (như các file khác), tạo biến toàn cục Online. Menu (menu.js) và App (app.js) dùng nó.
      const {code}=await Online.createRoom({mode:'classic',visibility:'private'});   // hoặc: await Online.quick('classic') → vào tự động
+     Hỗn Loạn: Online.createRoom({mode:'chaos',biome:'forest',visibility:'private'}) · Online.quick('chaos','forest')
+       biome: 'random' | 'balanced' | 'forest' | 'mountain' | 'snow' | 'river' | 'desert' (bỏ trống = 'random'; Classic bỏ qua biome)
      const conn=Online.join(code);
      conn.on('welcome'|'started'|'applied'|'over'|'opponentStatus'|'full'|'error'|'close', m=>...);   // close: m.code 4004 = mã không tồn tại, 4001 = đầy
      conn.autoReconnect(true)  → rớt mạng thì tự nối lại (phát 'reconnecting'), server trả 'welcome' rồi 'state'
@@ -36,14 +38,14 @@ const Online=(()=>{
 
   async function createRoom(opts){
     const o=opts||{};
-    const r=await fetch(SERVER+'/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:o.mode||'classic',visibility:o.visibility||'private'})});
+    const r=await fetch(SERVER+'/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:o.mode||'classic',visibility:o.visibility||'private',biome:o.biome})});   /* biome undefined thì JSON bỏ qua */
     if(!r.ok)throw new Error('create_failed_'+r.status);
     return r.json();                                            /* {code,mode,visibility} */
   }
 
   /* Vào tự động: server ghép vào phòng công khai đang chờ lâu nhất, chưa có thì tạo phòng mới. Trả {code, created}. */
-  async function quick(mode){
-    const r=await fetch(SERVER+'/quick',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:mode||'classic'})});
+  async function quick(mode,biome){
+    const r=await fetch(SERVER+'/quick',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:mode||'classic',biome})});
     if(!r.ok)throw new Error('quick_failed_'+r.status);
     return r.json();
   }
