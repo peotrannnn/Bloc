@@ -79,7 +79,7 @@ const Terrain=(function(){
     h=Math.imul(h^(h>>>13),1274126177);h^=h>>>16;return(h>>>0)/4294967296;
   }
 
-  let root=null,cache=null,stage=null,traps=[],gates=[],animOn=false,grass=[],stones=[],geos=[],flowerMesh=null,flowerCols=[],biome=Object.assign({},BIOMES.meadow),hidden=[],time={value:0},trapPhase=0,hasWater=false,hasSand=false,waterTex=null,lastTerr=null,lastSeed,tumbles=[],tumbleMesh=null,tumbleAcc=0,tw=null,chests=[];
+  let root=null,cache=null,stage=null,traps=[],gates=[],animOn=false,grass=[],stones=[],geos=[],flowerMesh=null,flowerCols=[],biome=Object.assign({},BIOMES.meadow),hidden=[],time={value:0},trapPhase=0,hasWater=false,hasSand=false,waterTex=null,lastTerr=null,lastSeed,tumbles=[],tumbleMesh=null,tumbleAcc=0,tw=null,chests=[],baseSway=.34,gustK=0;
 
   /* ----- Texture vẽ bằng canvas ----- */
   function canvas(S){const cv=document.createElement('canvas');cv.width=cv.height=S;return[cv,cv.getContext('2d')];}
@@ -592,7 +592,7 @@ diffuseColor.rgb*=(.92+.13*sBl)*(1.+sTop*(.06*sRp+.16*(sGr-.5)));`)
     if(!cache)return;
     const K=cache,b=biome;
     K.U.gA.value.setHex(b.grass[0]);K.U.gB.value.setHex(b.grass[1]);K.U.cover.value.setHex(b.cover);K.U.coverAmt.value=b.coverAmt;
-    K.U.amp.value=Object.assign({},cfg(),b.shape).sway;
+    baseSway=Object.assign({},cfg(),b.shape).sway;K.U.amp.value=baseSway*(1+gustK*1.2);
     K.dirt.color.setHex(b.dirt);K.sand.color.setHex(b.sand);K.stone.color.setHex(b.stone);
     K.waterGlass.color.setHex(b.water);K.waterBase.color.setHex(b.water).multiplyScalar(.45);
     if(flowerMesh){
@@ -609,6 +609,11 @@ diffuseColor.rgb*=(.92+.13*sBl)*(1.+sTop*(.06*sRp+.16*(sGr-.5)));`)
     if(defer)return;
     if(stage&&lastTerr&&JSON.stringify(biome.shape)!==old)build(stage,lastTerr,lastSeed);   /* hình dạng cỏ đổi → dựng lại (build tự gọi applyBiome) */
     else applyBiome();
+  }
+  /* Gió giật (Weather): k = 0..~1.4 → biên độ lay của cỏ tăng thêm k·120%. Chỉ là uniform, không dựng lại gì. */
+  function setGust(k){
+    gustK=k||0;
+    if(cache){cache.U.amp.value=baseSway*(1+gustK*1.2);if(stage)stage.invalidate();}
   }
   function setPieces(list){
     if(!cache)return;
@@ -1113,5 +1118,5 @@ gl_Position=projectionMatrix*mvPosition;`);
     return busy;
   }
 
-  return Object.assign(api,{build,clear,update,setTraps,fireTrap,setGateBlocked,flashGate,setBiome,setPieces,openChest,syncChests,chestTime:CHEST_T,biomes:BIOMES,T});
+  return Object.assign(api,{build,clear,update,setTraps,fireTrap,setGateBlocked,flashGate,setBiome,setGust,setPieces,openChest,syncChests,chestTime:CHEST_T,biomes:BIOMES,T});
 })();

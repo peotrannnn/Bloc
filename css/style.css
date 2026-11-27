@@ -116,6 +116,20 @@ body[data-biome="snow"] :is(header,#board,footer,#cf){--bg:#e6f2f9;--pn:#d2e5f0;
 /* núi: xám đá xanh, chữ trắng */
 body[data-biome="mountain"] :is(header,#board,footer,#cf){--bg:#5d6778;--pn:#464e5c;--g:#fff;--g2:#eaf1ff;--gd:#aab6c8;--mut:#dde4ef;--dis:#97a2b4;--gr:255,255,255;--on:#242a35;--red:#ff9a92}
 
+/* ===== Phong cách hình ảnh theo BIOME (chỉ Hỗn Loạn; khi data-biome không có thì không có gì xảy ra) =====
+   (1) Bộ lọc màu nhẹ trên canvas 3D: --fx. Chỉ dùng saturate/contrast/brightness/sepia (KHÔNG hue-rotate) để ô xanh gợi ý, quân trắng/đen vẫn đúng màu.
+   (2) Lớp phủ #board::after: vignette tối/ấm ở mép + dải sắc trên đỉnh (--vg, --wash). pointer-events:none, nằm dưới thanh khả năng thắng (z-index 2).
+   Đèn theo biome ở CFG.GRADE (config.js), hạt thời tiết ở js/view/weather.js. Muốn tắt: xoá các khối này hoặc đặt --fx:none. */
+body[data-biome] #host canvas{filter:var(--fx,none)}
+body[data-biome] #board::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:radial-gradient(ellipse 72% 68% at 50% 52%,transparent 38%,var(--vg,transparent) 100%),linear-gradient(180deg,var(--wash,transparent),transparent 42%),linear-gradient(0deg,var(--dim,transparent),var(--dim,transparent))}
+body[data-biome="meadow"]   #board{--fx:saturate(1.05) contrast(1.06) brightness(1.02);  --vg:rgba(18,28,6,.32);   --wash:rgba(255,200,130,.08); --dim:transparent}    /* nắng chiều */
+body[data-biome="forest"]   #board{--fx:saturate(1.08) contrast(1.08) brightness(1);       --vg:rgba(2,14,4,.4);     --wash:rgba(160,230,150,.05); --dim:transparent}   /* tán lá */
+body[data-biome="river"]    #board{--fx:saturate(1.02) contrast(1.06) brightness(1);       --vg:rgba(2,18,36,.36);   --wash:rgba(110,170,220,.07); --dim:transparent}  /* ẩm, lạnh */
+body[data-biome="desert"]   #board{--fx:sepia(.1) saturate(1.08) contrast(1.06) brightness(1); --vg:rgba(80,36,4,.3); --wash:rgba(255,180,90,.12); --dim:transparent} /* nóng gắt */
+body[data-biome="snow"]     #board{--fx:saturate(.95) contrast(1.04) brightness(1);        --vg:rgba(30,56,100,.3);  --wash:rgba(150,190,240,.08); --dim:transparent}  /* lạnh */
+body[data-biome="mountain"] #board{--fx:saturate(.88) contrast(1.08) brightness(1);        --vg:rgba(6,10,20,.4);    --wash:rgba(150,170,200,.07); --dim:transparent}   /* âm u */
+
 /* ===== Nút nguy hiểm (Đầu hàng) + cửa sổ xác nhận ===== */
 button.dn{color:var(--red);border-color:var(--red)}
 button.dn:hover:not(:disabled){background:#d62b2b;border-color:#d62b2b;color:#fff;box-shadow:0 0 10px rgba(255,60,60,.5)}

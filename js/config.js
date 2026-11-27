@@ -100,6 +100,21 @@ const CFG={
     shadowSize:2048
   },
 
+  /* Thời tiết + tông ánh sáng theo biome (view/weather.js; chỉ Hỗn Loạn, thuần hình ảnh). Bộ lọc màu + vignette nằm ở css/style.css (body[data-biome]). */
+  WEATHER:{
+    on:true,                   /* false: tắt toàn bộ hạt thời tiết (mưa, tuyết, sương, cát, lá, đom đóm, bướm) */
+    amount:1,                  /* nhân mật độ hạt (0.5 cho máy yếu) */
+    grade:true                 /* false: giữ ánh sáng mặc định ở mọi biome */
+  },
+  GRADE:{                      /* tông đèn mỗi biome (điện ảnh: ít ánh sáng nền, đèn chính có hướng → bóng sâu hơn). hemi [màu trời, màu đất, cường độ] · sun [màu, cường độ] · fill [màu, cường độ] */
+    meadow:  {hemi:[0xffeccc,0x6a5a3a,.34],sun:[0xffd9a0,.86], fill:[0xcfdcff,.14]},   /* nắng chiều ấm */
+    forest:  {hemi:[0xc4e0b0,0x2c3a20,.27],sun:[0xe8e2a0,.7],  fill:[0x9cc8b4,.15]},   /* ánh sáng lọc qua tán lá: xanh vàng, tối dịu */
+    river:   {hemi:[0xc8dff0,0x38505e,.3], sun:[0xdbe8f6,.68], fill:[0x90b8d8,.2]},    /* mát, ẩm, xám xanh */
+    desert:  {hemi:[0xffe2b0,0x6a4a28,.3], sun:[0xffc880,.95], fill:[0xffd8a8,.1]},    /* nắng gắt vàng cam, bóng đậm */
+    snow:    {hemi:[0xd4e6fa,0x6a82a0,.42],sun:[0xd2e2ff,.66], fill:[0xb4cef4,.2]},    /* lạnh, bóng xanh */
+    mountain:{hemi:[0xc4cee0,0x3c4352,.32],sun:[0xd0d8e8,.58], fill:[0xa4b4d0,.18]}    /* âm u xám lạnh */
+  },
+
   PAWN:{
     R:.4,H:.5,scale:.55,pivot:.44,          /* kích thước thân Lathe, tỉ lệ quân, độ cao trục xoay (tâm thân) */
     roughness:.8,                           /* quân nhám */

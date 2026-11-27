@@ -44,17 +44,19 @@ const Stage={
     host.appendChild(ren.domElement);
     this.addLights();
     this.addBoard();
+    if(typeof Weather!=='undefined')Weather.init(this);   /* tạo sẵn các lớp hạt thời tiết (ẩn) để prewarm biên dịch shader của chúng luôn */
   },
 
   addLights(){
     const L=CFG.LIGHT,sc=this.scene;
-    sc.add(new THREE.HemisphereLight(L.hemi[0],L.hemi[1],L.hemi[2]));
+    const hemi=new THREE.HemisphereLight(L.hemi[0],L.hemi[1],L.hemi[2]);sc.add(hemi);
     const sun=new THREE.DirectionalLight(L.sun[0],L.sun[1]);sun.position.set(...L.sunPos);
     sun.castShadow=true;sun.shadow.mapSize.set(L.shadowSize,L.shadowSize);
     const c=sun.shadow.camera;c.left=c.bottom=-8;c.right=c.top=8;c.near=1;c.far=30;c.updateProjectionMatrix();
     sun.shadow.bias=-.0004;sun.shadow.normalBias=.03;
     sc.add(sun);
     const fill=new THREE.DirectionalLight(L.fill[0],L.fill[1]);fill.position.set(...L.fillPos);sc.add(fill);
+    this.L={hemi,sun,fill};   /* Weather đổi màu/cường độ đèn theo biome (CFG.GRADE) */
     /* Mặt đất vô hình chỉ để hứng bóng của bàn cờ */
     const gp=new THREE.Mesh(new THREE.PlaneGeometry(60,60),new THREE.ShadowMaterial({opacity:CFG.BOARD.shadowOpacity}));
     gp.rotation.x=-Math.PI/2;gp.position.y=-.401;gp.receiveShadow=true;sc.add(gp);

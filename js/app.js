@@ -143,7 +143,8 @@ const App={
       S.mapInfo=map;
       if(typeof Terrain!=='undefined')Terrain.setBiome(map.biome==='balanced'?'meadow':map.biome,true);   /* defer: ngay dưới có Stage.setTerrain dựng bản đồ mới, khỏi dựng lại bản cũ */
       Stage.setTerrain(S.terr,map.seed);UI.theme(map.biome);
-    }else{Stage.setTerrain(null);UI.theme(null);}
+      if(typeof Weather!=='undefined')Weather.set(map.biome,S.terr);   /* thời tiết + tông ánh sáng theo biome (thuần hình ảnh) */
+    }else{Stage.setTerrain(null);UI.theme(null);if(typeof Weather!=='undefined')Weather.set(null);}
     this.syncTerrain();
   },
   /* Cỏ rạp quanh quân nhìn thấy (quân bị che thì KHÔNG rạp, kẻo lộ chỗ). Cổng/bẫy: instant=true thì cập nhật dấu hiệu ngay (đầu ván, dựng lại ván);
@@ -557,7 +558,7 @@ const App={
       if(!S.over&&!S.net.lost)S.net.conn.resign();
       Menu.leaveRoom();Online.setLastRoom(null);S.net=null;
     }
-    UI.closeAsk();clearTimeout(this.timer);clearInterval(this.tick);this.aiTok++;S.event=null;UI.theme(null);Menu.show('scHome');
+    UI.closeAsk();clearTimeout(this.timer);clearInterval(this.tick);this.aiTok++;S.event=null;UI.theme(null);if(typeof Weather!=='undefined')Weather.set(null);Menu.show('scHome');
   },
 
   /* ----- Phím tắt (dùng ev.code nên đúng cả khi bật bộ gõ tiếng Việt) -----
@@ -700,12 +701,12 @@ const App={
       const dt=sdt;
       if((S.animLock||S.event)&&!Stage.need)Stage.need=1;   /* sự kiện đặc biệt cũng cần vòng lặp chạy tiếp (đợi quân đứng yên rồi mới vào) */   /* đang khóa lượt chờ hoạt ảnh: vòng lặp phải chạy tiếp để gỡ khóa */
       if(!App.ready||App.busy||!Stage.need||!UI.el.menu.hidden)return;
-      const cb=Camera.update(dt),pb=Pawns.update(dt),wb=Walls.update(dt),hb=Stage.updateHints(dt),fb=Fireworks.update(dt),bb=Badges.update(dt),gb=Walls.pulse(dt),tb=Terrain.update(dt),nb=Blocker.update(dt);
+      const cb=Camera.update(dt),pb=Pawns.update(dt),wb=Walls.update(dt),hb=Stage.updateHints(dt),fb=Fireworks.update(dt),bb=Badges.update(dt),gb=Walls.pulse(dt),tb=Terrain.update(dt),nb=Blocker.update(dt),wx=typeof Weather!=='undefined'&&Weather.update(dt);
       App.eventTick();
       if(S.animLock&&(S.over||Pawns.quiet()||now>App.animDeadline)){S.animLock=false;App.refresh();}   /* hai quân đã đứng yên: mở lượt (hiện ô đi được, cho bấm) */
       if(App.markWait){Stage.need=3;if(Pawns.quiet()){App.markWait=false;App.syncMarks(false);}}   /* hai quân đã diễn xong: giờ mới đổi dấu cổng/bẫy */
       const mb=Marks.update(dt);
-      if(cb||pb||wb||hb||fb||bb||gb||tb||mb||nb)Stage.need=3;
+      if(cb||pb||wb||hb||fb||bb||gb||tb||mb||nb||wx)Stage.need=3;
       if(cb&&App.sig!==App.arrowDir('ArrowUp')+'|'+App.arrowDir('ArrowRight'))App.updateLabels();   /* camera xoay sang hướng khác: đổi tên phím trên nhãn */
       if(pb||wb||Terrain.shadowBusy)Stage.shadowDirty=true;   /* tấm bẫy nhún cũng đổi bóng (trước đây không dựng lại → bóng cũ còn mãi) */
       Stage.need--;Stage.render();Perf.tick(now,performance.now()-now);   /* CPU của cả khung: từ lúc trình duyệt gọi tới khi lệnh vẽ đã gửi xong */
