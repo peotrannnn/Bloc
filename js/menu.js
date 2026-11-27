@@ -138,7 +138,7 @@ const Menu={
     $('winTitle').textContent=this.titles[name]||'Bloc';
     $('winX').hidden=name==='scHome';
     const w=document.querySelector('#menu .win');w.classList.remove('pop');void w.offsetWidth;w.classList.add('pop');
-    UI.el.ld.hidden=true;UI.el.menu.hidden=false;
+    UI.el.ld.hidden=true;UI.el.menu.hidden=false;Sfx.play('ui:open',{v:.6});
   }
 };
 

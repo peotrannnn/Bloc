@@ -22,6 +22,8 @@ const Pawns={
   hasWater:false,wt:null,
 
   /* Máy đấu máy chạy nhanh thì quân cũng đi nhanh theo */
+  /* Âm thanh: chỉ phát cho quân đang HIỆN (quân đối thủ nấp trong cỏ không được lộ chỗ qua tiếng động) */
+  aud(s){return s.shown!==false;},
   moveDur(){return allAI()?Math.min(.8,S.delay*.0009):.8;},
 
   bodyGeo(){
@@ -117,7 +119,7 @@ const Pawns={
     s.sway=cfg.sway*rand(.8,1.2);
     s.roll=rand(-.35,.35);s.air=rand(.85,1.25);                         /* chỉ dùng khi nhảy */
     s.fyaw=Math.atan2(dx,dz)+rand(-cfg.yawJitter,cfg.yawJitter);        /* hướng mặt lúc đáp không vuông góc */
-    s.flips=1;
+    s.flips=1;s.sj=0;s.sk2=0;s.lm=mode==='launch';   /* cờ âm thanh: giai đoạn nhảy, số bước chân đã phát, có phải bị bẫy hất */
     if(mode==='launch'){   /* bị bẫy hất: nén người, bay rất cao theo cung lớn, lộn nhiều vòng, rồi đáp (cùng khung với cú nhảy, chỉ khác thông số) */
       const Lc=cfg.launch;
       s.jump=true;s.air=Lc.air*rand(.9,1.1);s.dur=Lc.dur+.1*Math.min(len,8);s.flips=Lc.flips;
@@ -132,6 +134,16 @@ const Pawns={
     const g=s.g,fl=s.fl,PI=Math.PI,cfg=CFG.PAWN;
     s.t=Math.min(1,s.t+dt/s.dur);
     if(s.fire&&s.t>=.14){if(typeof Terrain!=='undefined')Terrain.fireTrap(s.fire[0],s.fire[1]);s.fire=null;}   /* bị hất: tấm bẫy bật ngay trước lúc quân rời đất */
+    if(Sfx.ok()&&this.aud(s)){
+      const px=g.position.x,pz=g.position.z,code=Sfx.codeAt(px,pz);
+      if(s.jump){
+        if(s.sj<1&&s.t>=.2){s.sj=1;Sfx.play(s.lm?'whoosh':'jump',{x:px,z:pz,v:s.lm?1:.8});}
+        if(s.sj<2&&s.t>=JUMP_L){s.sj=2;Sfx.play('land',{x:px,z:pz,v:clamp(.5+s.air*.35,.5,1.2)*(s.lm?1.25:1),mat:Sfx.matName[Sfx.matOf(code)]});}
+      }else{
+        const k=Math.floor(s.t*s.cyc*2);
+        if(k>s.sk2&&s.t<1){s.sk2=k;Sfx.step(code,px,pz,allAI()?.4:.8,1+rand(-.04,.04));}
+      }
+    }
     const u=s.jump?clamp((s.t-.2)/JUMP_F,0,1):s.t;                      /* nhảy: 20% đầu nén người lấy lực, cuối cùng đáp + nhún */
     const e=u+(smooth(u)-u)*s.ez,sn=Math.sin(PI*e);
     g.position.x=s.fx+s.dx*e+s.px*s.lat*sn;                             /* đường đi cong nhẹ thay vì thẳng tắp */
@@ -160,7 +172,7 @@ const Pawns={
   /* ----- Ăn mừng khi chạm ô đích. Bốc thăm một trong 4 kiểu (CFG.CELEB). Không đụng tới g.rotation.y / s.yaw
      (camera lia theo s.yaw nên đổi nó sẽ làm camera xoay theo): mọi xoay nằm ở nhánh con fl. Cuối mỗi kiểu
      đều trả về đúng tư thế đứng yên, và không cấp phát bộ nhớ trong lúc chạy. ----- */
-  win(i){this.list[i].win=true;},   /* gọi khi quân i về đích; ăn mừng bắt đầu khi nó đáp xuống xong */
+  win(i){this.list[i].win=true;Sfx.play(S.me<0||i===S.me?'cheer':'lose',{delay:.9,v:1});},   /* gọi khi quân i về đích; ăn mừng bắt đầu khi nó đáp xuống xong */
 
   celStart(s){
     const C=CFG.CELEB,p=s.g.position,dx=p.x-cellX(s.c),dz=p.z-cellZ(s.r),kind=C.force||pick1(C.kinds),dir=rsign(),a0=Math.atan2(dz,dx);
@@ -189,6 +201,7 @@ const Pawns={
         a=Math.sin(t*H.swing)*H.legAmp*e;L0.rotation.x=a;L1.rotation.x=-a;break;}
       case 'bounce':{   /* nảy cà tưng: bẹp xuống lúc chạm đất, vươn dài lúc lên cao, hơi nghiêng qua lại */
         const B=C.bounce,ph=u*B.hops,f=ph-Math.floor(ph),env=smooth(clamp(t/.2,0,1))*smooth(clamp((c.dur-t)/.4,0,1));
+        const hp=Math.floor(ph);if(hp!==c.hp){c.hp=hp;Sfx.play('bounce',{x:g.position.x,z:g.position.z,v:.7*env+.1});}
         g.position.y=TOP+4*f*(1-f)*B.h*env;
         const q=1-B.squash*(1-clamp(Math.min(f,1-f)/.12,0,1))*env+.1*Math.sin(PI*f)*env;
         g.scale.set(1+(1-q)*.4,q,1+(1-q)*.4);
@@ -248,7 +261,7 @@ const Pawns={
   },
   chestStep(s,dt){
     const a=s.an,cf=CFG.CHEST;a.t+=dt;
-    if(!a.shown&&a.t>=cf.reveal){a.shown=true;if(typeof Marks!=='undefined')Marks.pop(cellX(a.c),cellZ(a.r),a.gift,cf.popHold);}   /* quà lộ ra */
+    if(!a.shown&&a.t>=cf.reveal){a.shown=true;Sfx.gift(a.gift,cellX(a.c),cellZ(a.r));if(typeof Marks!=='undefined')Marks.pop(cellX(a.c),cellZ(a.r),a.gift,cf.popHold);}   /* quà lộ ra */
     const u=a.shown?clamp((a.t-cf.reveal)/.35,0,1):0;
     s.g.position.y=TOP+.14*Math.sin(Math.PI*u);   /* nhún mừng một cái khi thấy quà */
     if(a.t>=a.dur){s.g.position.y=TOP;s.an=null;}
@@ -310,7 +323,15 @@ const Pawns={
     const a=s.an,g=s.g,fl=s.fl,PI=Math.PI,pv=CFG.PAWN.pivot,pts=a.pts,n=a.n,last=pts[n];
     a.t+=dt;const t=a.t,tF=a.tF,tG=a.tG,tR=a.tR,tE=a.tE;
     let k=1,y=a.ly,la=0,q=1,yaw=a.yLie,ph=0,ry=0;
-    if(n>0){const x=clamp(t/tG,0,1);ph=(1-Math.pow(1-x,a.pw))*smooth(Math.min(1,t/tF));}   /* quãng đường đã trượt (0→1): tăng tốc nhẹ trong lúc ngã, rồi chậm dần như có ma sát; tốc độ liền mạch, về 0 ở cuối */
+    if(n>0){const x=clamp(t/tG,0,1);ph=(1-Math.pow(1-x,a.pw))*smooth(Math.min(1,t/tF));}
+    if(Sfx.ok()&&this.aud(s)){
+      const X=g.position.x,Z=g.position.z;
+      if(!a.q0){a.q0=1;Sfx.play('slipFall',{x:X,z:Z,v:a.land?.6:1});}
+      if(!a.q1&&t>=tF){a.q1=1;Sfx.play('body',{x:X,z:Z,v:a.land?.9:.7});}
+      if(n>0&&t>=tF&&t<tG)Sfx.slide(.15+.85*Math.pow(1-ph,.6));
+      else if(!a.q5&&t>=tG){a.q5=1;if(n>0){Sfx.slide(0);Sfx.play('iceTing',{x:X,z:Z});}}
+      if(!a.q2&&t>=tR){a.q2=1;Sfx.play('stand',{x:X,z:Z,v:.9});}
+    }   /* quãng đường đã trượt (0→1): tăng tốc nhẹ trong lúc ngã, rồi chậm dần như có ma sát; tốc độ liền mạch, về 0 ở cuối */
     if(t<tG){   /* ngã + trượt: vị trí đi dọc đường gấp khúc qua từng ô, lệch ngang nhẹ */
       if(n>0){
       const C=a.sp,d=ph*C.len;
@@ -363,12 +384,16 @@ const Pawns={
     const B=CFG.PAWN.blink;
     s.an={k:'blink',t:0,B,to:seg.to,moved:false,y0:s.yaw,dir:rsign(),sq:CFG.PAWN.land.max*.8};
     if(typeof Marks!=='undefined')Marks.beam(cellX(seg.from[1]),cellZ(seg.from[0]),cellX(seg.to[1]),cellZ(seg.to[0]),B.out+B.gap+B.in);
+    Sfx.play('gateOut',{x:cellX(seg.from[1]),z:cellZ(seg.from[0])});
     if(typeof Terrain!=='undefined'){Terrain.flashGate(seg.from[0],seg.from[1]);Terrain.flashGate(seg.to[0],seg.to[1]);}
   },
   blinkStep(s,dt){
     const a=s.an,B=a.B,g=s.g,PI=Math.PI,tG=B.out,tI=B.out+B.gap,tE=tI+B.in,turn=a.dir*TAU*B.turns,F=.72,H=B.rise*.45;   /* F: phần đầu của pha hiện ra là đang rơi, phần cuối là đáp + nhún · H: độ cao nhấc lên (thấp hơn trước, quân không bay vút) */
     const c1=1.4,c3=c1+1,back=x=>1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2);   /* easeOutBack: phồng quá cỡ một chút rồi về đúng cỡ */
     a.t+=dt;const t=a.t;
+    if(!a.q1&&t>=tG){a.q1=1;Sfx.play('beam',{x:(cellX(a.to[1])+g.position.x)/2,z:(cellZ(a.to[0])+g.position.z)/2,v:1});}
+    if(!a.q2&&t>=tI){a.q2=1;Sfx.play('gateIn',{x:cellX(a.to[1]),z:cellZ(a.to[0])});}
+    if(!a.q3&&t>=tI+F*B.in){a.q3=1;Sfx.play('land',{x:cellX(a.to[1]),z:cellZ(a.to[0]),v:.7});}
     let yaw=a.y0,sxz=1,sy=1,y=TOP,la=0,hide=false;
     if(t<tG){
       const u=t/B.out,c=.2;
@@ -402,11 +427,11 @@ const Pawns={
      giữa không trung mà lún lúc đáp, bị hất khỏi nước thì nhô lên. ----- */
   syncWater(){if(this.wt!==S.terr){this.wt=S.terr;this.hasWater=!!S.terr&&(S.terr.indexOf(WATER_CODE)>=0||S.terr.indexOf(SAND_CODE)>=0);}},   /* hasWater = bàn có nước HOẶC cát (cát lún dùng chung lò xo lún này) */   /* đổi bàn thì xét lại có nước không */
   wadeTarget(s){
-    s.wp=CFG.PAWN.wade;
+    s.wp=CFG.PAWN.wade;s.wk=0;
     if(!this.hasWater||!S.terr)return 0;
     const p=s.g.position,c=Math.round(p.x/CFG.PITCH+HALF),r=Math.round(p.z/CFG.PITCH+HALF);
     if(c<0||c>=N||r<0||r>=N)return 0;
-    const code=S.terr[r*N+c];
+    const code=S.terr[r*N+c];s.wk=code;
     /* Bị lún cát (S.sunk của quân này, đang đứng trên ô cát): chìm SÂU hơn nước nhiều, lò xo mềm (CFG.PAWN.sink). Không lún thì cát không làm gì. */
     let W=null;
     if(code===SAND_CODE){s.wp=CFG.PAWN.sink;if(S.sunk&&S.sunk[this.list.indexOf(s)])W=s.wp;}   /* trên cát dùng lò xo mềm cả lúc trồi lên khi hết lún */
@@ -415,10 +440,11 @@ const Pawns={
     const air=p.y-TOP;   /* bước đi nhún tối đa .035 < airFull nên không làm lún chớp theo nhịp chân */
     return W.depth*(air<=W.airFull?1:air>=W.airNone?0:1-(air-W.airFull)/(W.airNone-W.airFull));
   },
-  snapSink(s){this.syncWater();s.sink=this.wadeTarget(s);s.sv=0;if(s.sk)s.sk.position.y=-s.sink;},   /* đặt ngay, không lò xo (ván mới, dựng lại ván) */
+  snapSink(s){this.syncWater();s.sink=this.wadeTarget(s);s.sv=0;s.wsd=s.sink>.01;if(s.sk)s.sk.position.y=-s.sink;},   /* đặt ngay, không lò xo (ván mới, dựng lại ván) */
   wade(s,dt){
     if(!this.hasWater&&s.sink===0&&s.sv===0)return false;   /* bàn không có nước: không tốn gì */
-    const tg=this.wadeTarget(s),W=s.wp,m=Math.max(1,Math.ceil(dt/.008)),h=dt/m;   /* W: bộ tham số của loại lún đang áp dụng (nước / cát) */
+    const tg=this.wadeTarget(s),W=s.wp,m=Math.max(1,Math.ceil(dt/.008)),h=dt/m;
+    if(tg>.01){if(!s.wsd){s.wsd=true;if(this.aud(s))Sfx.play(s.wk===SAND_CODE?'sink':'splash',{x:s.g.position.x,z:s.g.position.z});}}else if(tg===0)s.wsd=false;   /* W: bộ tham số của loại lún đang áp dụng (nước / cát) */
     let x=s.sink,v=s.sv;
     for(let i=0;i<m;i++){v+=((tg-x)*W.k-v*W.damp)*h;x+=v*h;}
     if(x<0){x=0;if(v<0)v=0;}   /* không bao giờ nổi lên khỏi mặt ô */

@@ -48,13 +48,18 @@ const Input={
       }
       if(humanTurn()&&S.mode==='item'){   /* búa / cuốc chim: tường đối thủ gần con trỏ nhất sáng lên */
         const p=this.pick(e),t=p?this.targetNear(p):null,o=S.tgt;
-        if((t&&!o)||(!t&&o)||(t&&o&&(t.o!==o.o||t.r!==o.r||t.c!==o.c))){S.tgt=t;App.updateGhost();}
+        if((t&&!o)||(!t&&o)||(t&&o&&(t.o!==o.o||t.r!==o.r||t.c!==o.c))){S.tgt=t;if(t)Sfx.play('ui:tickTarget');App.updateGhost();}
         return;
+      }
+      if(humanTurn()&&S.mode==='move'){   /* rê qua ô đi được: tick rất nhẹ */
+        const q=this.pick(e);
+        if(q){const r=Math.round(q.w),c=Math.round(q.u),k=r*N+c;
+          if(k!==this.hc){this.hc=k;if(moves(S.turn).some(m=>m[0]===r&&m[1]===c))Sfx.play('ui:tickWall',{r:1.5,v:.8});}}
       }
       if(!humanTurn()||S.mode!=='wall')return;
       const p=this.pick(e);if(!p)return;
       const h={r:wallIdx(Math.floor(p.w)),c:wallIdx(Math.floor(p.u))};
-      if(!S.hov||S.hov.r!==h.r||S.hov.c!==h.c){S.hov=h;App.updateGhost();}
+      if(!S.hov||S.hov.r!==h.r||S.hov.c!==h.c){S.hov=h;Sfx.play(canWall(S.orient,h.r,h.c)?'ui:tickWall':'ui:tickBad');App.updateGhost();}
     });
     const up=e=>{
       if(!dn)return;
@@ -94,7 +99,7 @@ const Input={
   act(e){
     this.aim(e);
     const pi=this.pawnAt();   /* bấm trúng quân: bật/tắt camera bám theo, ưu tiên hơn đi quân/đặt tường (dùng được cả khi máy đang chơi) */
-    if(pi>=0){Camera.toggleFollow(pi);UI.render();return;}
+    if(pi>=0){Sfx.play('ui:cam');Camera.toggleFollow(pi);UI.render();return;}
     if(!humanTurn())return;
     const p=this.ground();if(!p)return;
     if(S.mode==='item'){   /* bấm vào tường đang sáng thì dùng; bấm tường khác thì chuyển mục tiêu sang đó (cảm ứng: chạm lần 1 chọn, lần 2 xác nhận) */
@@ -105,11 +110,11 @@ const Input={
     }
     if(S.mode==='move'){
       const r=Math.round(p.w),c=Math.round(p.u);
-      if(moves(S.turn).some(m=>m[0]===r&&m[1]===c))App.commit({move:[r,c]});
+      if(moves(S.turn).some(m=>m[0]===r&&m[1]===c)){Sfx.play('ui:click');App.commit({move:[r,c]});}else Sfx.play('ui:nope');
     }else{
       S.hov={r:wallIdx(Math.floor(p.w)),c:wallIdx(Math.floor(p.u))};
       if(canWall(S.orient,S.hov.r,S.hov.c)){const w={o:S.orient,r:S.hov.r,c:S.hov.c};S.hov=null;App.commit({wall:w});}
-      else App.updateGhost();
+      else{Sfx.play('ui:nope');App.updateGhost();}
     }
   }
 };

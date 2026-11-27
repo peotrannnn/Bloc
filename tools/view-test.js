@@ -18,6 +18,7 @@ const ctx=vm.createContext({
   console,Math,JSON,Date,setTimeout,clearTimeout,setInterval,clearInterval,performance:{now:()=>Date.now()},
   requestAnimationFrame(){},addEventListener(){},ResizeObserver:class{observe(){}},document:{getElementById:()=>({})},
   localStorage:{getItem:()=>null,setItem(){}},__log:log,
+  Sfx:new Proxy({},{get:(t,k)=>k==='ok'?()=>false:k==='on'?false:()=>{}}),   /* js/sfx.js không nạp trong test: stub im lặng */
   /* các module 3D/giao diện không thuộc phần kiểm thử: giả lập tối thiểu, có ghi lại lời gọi */
   Stage:{need:0,invalidate(){},setHints(){},setLabels(){},setTerrain(){},updateHints:()=>false,render(){},ren:null},
   Walls:{add(){},clear(){},showGhost(){},hideGhost(){},update:()=>false,pulse:()=>false,remove(...a){log.wrem.push(a);},rubble(...a){log.rubble.push(a);},showTarget(){}},

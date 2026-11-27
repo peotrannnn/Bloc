@@ -1,0 +1,17 @@
+/* Hộp thoại Cài đặt dùng chung cho menu và trong ván. */
+#st{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;background:rgba(0,0,0,.62);color:var(--g);font-family:var(--font);font-size:13px}
+#st .win{background:var(--pn);width:min(410px,92vw);border:1px solid var(--g);box-shadow:0 0 22px rgba(var(--gr),.2)}
+#st .wb{display:flex;flex-direction:column;gap:15px}
+#st .sub{color:var(--mut);font-size:12px}
+#st .sub::before{content:'// '}
+#st .srow{display:grid;grid-template-columns:1fr 3.5em;grid-template-areas:'l o' 's s';gap:7px 8px;align-items:center}
+#st .srow span{grid-area:l}
+#st .srow output{grid-area:o;text-align:right;color:var(--mut);font-variant-numeric:tabular-nums}
+#st .srow input{grid-area:s;width:100%;margin:0;accent-color:var(--g);cursor:pointer;min-height:22px}
+#st .schk{display:flex;align-items:center;gap:9px;cursor:pointer;color:var(--mut)}
+#st .schk input{accent-color:var(--g);width:16px;height:16px;margin:0;cursor:pointer}
+#st.mt .srow{opacity:.45}
+#st .cfb{justify-content:flex-end;gap:8px}
+#st .cfb button{min-width:84px}
+#st input:focus-visible{outline:1px solid var(--g);outline-offset:3px}
+@media(prefers-reduced-motion:reduce){#st .srow{transition:none}}

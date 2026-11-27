@@ -74,6 +74,7 @@ const Fireworks={
     for(let b=0;b<F.bursts;b++){
       const start=F.wait+(b+rand(0,.6))/F.bursts*F.span;                       /* các đợt nổ rải đều, hơi lệch nhịp */
       const ox=cx+rand(-F.spread,F.spread),oy=TOP+rand(F.height[0],F.height[1]),oz=cz+rand(-F.spread,F.spread);
+      Sfx.burst(start,ox,oz);
       const base=rand(F.speed[0],F.speed[1]),main=Math.floor(rand(0,6));        /* mỗi đợt có một hình chủ đạo + vài hình lẫn */
       const cols=[pick1(F.palette),pick1(F.palette),pick1(F.palette)];
       for(let k=0;k<F.per;k++,i++){

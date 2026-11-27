@@ -32,7 +32,7 @@ const UI={
   ask(o,yes){
     $('cfT').textContent=o.title;$('cfM').textContent=o.msg;
     const y=$('cfYes');y.textContent=o.yes||'Đồng ý';y.classList.toggle('dn',!!o.danger);$('cfNo').textContent=o.no||'Hủy';
-    this.cfYes=yes;this.cfCheck=o.check||null;this.cfOpen=true;$('cf').hidden=false;
+    this.cfYes=yes;this.cfCheck=o.check||null;this.cfOpen=true;$('cf').hidden=false;Sfx.play('ui:open');
     const w=$('cf').querySelector('.win');w.classList.remove('pop');void w.offsetWidth;w.classList.add('pop');
     $('cfNo').focus();
   },
@@ -86,6 +86,7 @@ const UI={
       if(n.offline)return[tg('blink','Mất kết nối'),'đang nối lại…'];
       const tl=n.deadline?Math.max(0,Math.ceil((n.deadline-Date.now())/1000)):0;
       const clock=tl?tg(tl<=5?'blink':tl<=10?'warn':'dim','⏱ '+tl+'s'):null;   /* đồng hồ lượt: ≤10s vàng, ≤5s đỏ nhấp nháy */
+      if(tl&&tl<=10&&S.turn===S.me&&n.lastTick!==tl){n.lastTick=tl;Sfx.play('ui:tick',{v:tl<=5?1.4:.8});}   /* đồng hồ lượt: tick êm, dày dần */
       const off=n.oppOnline===false?tg('bad','đối thủ rớt mạng'):null;
       const hid=S.chaos&&S.hid[1-S.me]?tg('info','🌿 ẩn trong cỏ'):null;
       if(S.turn!==S.me){

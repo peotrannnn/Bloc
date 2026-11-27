@@ -612,7 +612,7 @@ diffuseColor.rgb*=(.92+.13*sBl)*(1.+sTop*(.06*sRp+.16*(sGr-.5)));`)
   }
   /* Gió giật (Weather): k = 0..~1.4 → biên độ lay của cỏ tăng thêm k·120%. Chỉ là uniform, không dựng lại gì. */
   function setGust(k){
-    gustK=k||0;
+    gustK=k||0;Sfx.gust(gustK);
     if(cache){cache.U.amp.value=baseSway*(1+gustK*1.2);if(stage)stage.invalidate();}
   }
   function setPieces(list){
@@ -947,7 +947,8 @@ gl_Position=projectionMatrix*mvPosition;`);
   const TRAP_KICK=8;                        /* vận tốc búng lên của tấm gỗ khi fireTrap (lò xo tự nhún về) */
   const api={shadowBusy:false};
   function setTraps(phase,instant){
-    phase=phase>=2?2:0;trapPhase=phase;
+    const was=trapPhase;phase=phase>=2?2:0;trapPhase=phase;
+    if(!instant&&traps.length&&was!==phase)Sfx.play(phase?'trapArm':'trapClose',{x:traps[0].x,z:traps[0].z,v:.9});
     for(const t of traps){
       t.phase=phase;t.padMat.emissiveIntensity=TRAP_GLOW[phase];
       if(instant){t.L=TRAP_L[phase];t.v=0;layoutTrap(t,0);}
@@ -957,6 +958,7 @@ gl_Position=projectionMatrix*mvPosition;`);
   /* Tấm gỗ của bẫy ở ô (r,c) (toạ độ ô) bật tung lên: gọi lúc quân đạp phải bẫy bị hất đi */
   function fireTrap(r,c){
     const x=cellX(c),z=cellZ(r);
+    Sfx.play('trapFire',{x,z});
     for(const t of traps)if(Math.abs(t.x-x)<.01&&Math.abs(t.z-z)<.01){t.v=Math.max(t.v,TRAP_KICK);}
     if(stage)stage.invalidate(true);
   }
@@ -1001,7 +1003,7 @@ gl_Position=projectionMatrix*mvPosition;`);
   /* ----- Mở rương: nắp bật lên (easeOutBack) → giữ mở, miệng rương sáng vàng → thu nhỏ biến mất. Quân đứng chờ tới CHEST_T.hold giây rồi mới bước vào ô ----- */
   const CHEST_T={open:.45,hold:1.35,vanish:.35,angle:1.95};
   function openChest(r,c){
-    for(const e of chests)if(e.r===r&&e.c===c&&!e.gone&&e.t<0){e.t=0;if(stage)stage.invalidate(true);return true;}
+    for(const e of chests)if(e.r===r&&e.c===c&&!e.gone&&e.t<0){e.t=0;Sfx.play('chestOpen',{x:cellX(c),z:cellZ(r)});if(stage)stage.invalidate(true);return true;}
     return false;
   }
   function dropChest(e){
@@ -1022,7 +1024,7 @@ gl_Position=projectionMatrix*mvPosition;`);
       e.lid.rotation.x=-C.angle*ob;
       const v=Math.min(1,Math.max(0,(e.t-C.hold)/C.vanish));
       e.glow.material.opacity=.9*Math.min(1,e.t/(C.open*1.2))*(1-v);
-      if(v>0){const k=1-v*v;e.g.scale.set(k,k,k);}
+      if(v>0){if(!e.vs){e.vs=1;Sfx.play('vanish',{x:e.g.position.x,z:e.g.position.z});}const k=1-v*v;e.g.scale.set(k,k,k);}
       if(v>=1)dropChest(e);
     }
     return busy;

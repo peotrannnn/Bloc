@@ -16,6 +16,7 @@ Game cờ 3D chạy trên trình duyệt (biến thể Quoridor), giao diện ti
 | `js/rules.js` | Lớp mỏng nối lõi luật với trạng thái `S` của client (giữ tên hàm cũ cho AI/giao diện) |
 | `js/ai/` | Các AI (mỗi file một AI, đăng ký qua `registry.js`), worker chạy AI nặng |
 | `js/view/` | Phần 3D: bàn cờ, quân, tường, camera, pháo bông |
+| `js/sfx.js` | **Âm thanh** (WebAudio, tổng hợp, không cần file): hover/click, bước chân theo mặt đất, trượt băng, bẫy lò xo, cổng, rương, tường, người chặn đường, pháo bông, môi trường theo biome |
 | `js/app.js`, `ui.js`, `menu.js`, `input.js` | Điều phối ván, giao diện, menu, chuột/phím |
 | `server/` | Server online (Cloudflare Worker + Durable Object), xem `server/README.md` |
 | `tools/` | Công cụ chạy bằng Node (xem dưới) |
@@ -61,6 +62,16 @@ Nhân vật vàng "Crash Test Dummy" (`js/view/blocker.js`, cấu hình `CFG.BLO
 - Chỉ chạy khi `S.chaos`. Ván offline là Classic nên **không bao giờ** có người chặn; `CFG.BLOCKER.auto` và phím `B` chỉ có tác dụng khi `S.chaos` (dùng để thử trong test).
 - Trong code: `App.blockerEvent(idx?)`, `App.blockerLeave()`.
 - **Online: server đã nối.** Server là trọng tài nên tự chạy lịch (`BlockerPlan`, tham số ở ruleset chaos: `blockerPlan` trong `js/core.js`), chọn ô bằng `js/blocker-pick.js` (thuần logic, cùng thuật toán `Blocker.pick`) rồi gửi `fx:{t:'blocker',cell:[r,c]}` (vào) / `{t:'blocker',leave:true}` (rời) trong tin `applied` **cho cả hai bên** (kể cả khi quân bị cỏ che) và đặt `st.blocker` (có trong snapshot, nên nối lại giữa chừng vẫn đúng). Lịch lưu trong bản ghi phòng (`g.bplan`), đặt lại mỗi ván / đấu lại. Mỗi lần vào/rời, đồng hồ lượt được cộng bù 10 giây vì hai bên đứng chờ hoạt ảnh. Client nhận qua `netApplyChaos` / `resync`.
+
+## Âm thanh
+
+`js/sfx.js` (nạp ngay sau `util.js`). Phím `M` hoặc nút **Âm** ở thanh dưới để tắt/bật; thanh **Âm lượng** / **Môi trường** nằm ở màn hình chính của menu (lưu `localStorage` khóa `bloc.snd`). Trình duyệt chỉ cho phát sau lần chạm/bấm đầu tiên nên engine tự mở khóa ở đó.
+
+- Phát theo **sự kiện hoạt ảnh phía client** (`Pawns`, `Walls`, `Terrain`, `Blocker`, `Input`), không theo tin mạng, nên offline/online dùng chung một đường.
+- Gọi: `Sfx.play('tên',{v,x,z,r,mat})` (tên bắt đầu `ui:` vào bus giao diện; `x,z` là toạ độ thế giới để pan theo camera), `Sfx.step(mã_ô,x,z)`, `Sfx.jet(v)` / `Sfx.slide(v)` (vòng lặp liên tục, tự tắt nếu ngừng gọi), `Sfx.setBiome(b)`.
+- **Không lộ thông tin**: quân đối thủ nấp trong cỏ KHÔNG phát tiếng (`Pawns.aud(s)` kiểm `s.shown`; mọi chỗ phát tiếng của quân đều phải qua đó).
+- Thêm/chỉnh một tiếng: sửa bảng `LIB` trong `sfx.js` (mỗi tiếng là một hàm dựng từ `osc`/`nz`/`chime`). Muốn dùng sample thật cho một tiếng nào đó, thay thân hàm của nó bằng phát `AudioBuffer`.
+- Các test `tools/view-test.js`, `tools/blocker-test.js` dùng stub `Sfx` im lặng.
 
 ## Triển khai GitHub Pages
 

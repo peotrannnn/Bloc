@@ -229,3 +229,8 @@ footer button.rm2:not(:disabled){animation-duration:1s}
 
 @media (prefers-reduced-motion:reduce){.ldspin,.ldspin i{animation:none}#loading,.ldbar b{transition:none}}
 @media (prefers-reduced-motion:reduce){#status::after,.win.pop,.tg.blink{animation:none}#evW,#bar b{transition:none}}
+/* Thanh âm lượng trong menu (js/sfx.js) */
+#menu input[type=range]{-webkit-appearance:none;appearance:none;width:130px;height:4px;background:var(--gd);border-radius:0;outline:none;cursor:pointer}
+#menu input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:14px;background:var(--g);border:0;border-radius:0}
+#menu input[type=range]::-moz-range-thumb{width:10px;height:14px;background:var(--g);border:0;border-radius:0}
+#menu input[type=range]:focus-visible{outline:1px solid var(--g);outline-offset:3px}

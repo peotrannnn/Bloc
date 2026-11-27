@@ -58,6 +58,7 @@ const Walls={
   remove(o,r,c,how){
     const i=this.objs.findIndex(m=>m.userData&&m.userData.o===o&&m.userData.r===r&&m.userData.c===c);
     const bx=wallX(c),bz=wallZ(r);
+    Sfx.play(how==='pick'?'pick':'hammer',{x:bx,z:bz});
     if(i>=0){
       const m=this.objs[i];this.objs.splice(i,1);
       const di=this.drops.findIndex(d=>d.m===m);if(di>=0)this.drops.splice(di,1);
@@ -146,6 +147,7 @@ const Walls={
         d.vy-=W2.gravity*dt;d.y+=d.vy*dt;
         if(d.y<=0){   /* chạm đất: nảy lại nhỏ hơn; va mạnh thì nghiêng/xoay/lệch nhiều hơn */
           const vi=-d.vy,k=Math.min(1,vi/12)*.1;
+          if(vi>.5)Sfx.play('wall',{x:d.bx,z:d.bz,v:clamp(vi/8,.12,1)});
           d.y=0;d.vy=vi*d.e;
           d.pt+=rand(-1,1)*k*.6;d.rl+=rand(-1,1)*k;d.yaw+=rand(-1,1)*k*1.5;d.ox+=rand(-1,1)*k;d.oz+=rand(-1,1)*k;
           if(d.vy<W2.stopSpeed){d.vy=0;d.land=true;}

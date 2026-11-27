@@ -78,7 +78,7 @@ const App={
   /* Bước 2: dựng địa hình 3D + dọn cảnh (nặng nhất) */
   newGameBuild(){
     const net=this.cfg.net;
-    this.buildTerrain(net&&net.map);
+    Sfx.stopAll();this.buildTerrain(net&&net.map);
     Walls.clear();Badges.clear();Marks.clear();Review.reset();Fireworks.stop();Pawns.reset();if(typeof Blocker!=='undefined')Blocker.clear();Camera.snapHome();Stage.invalidate(true);
     this.syncTerrain(true);   /* sau khi quân về chỗ: dấu cổng/bẫy và tấm bẫy về trạng thái đầu ván NGAY (không nhún, không bóng cũ) */
   },
@@ -90,6 +90,7 @@ const App={
     clearInterval(this.tick);
     if(net)this.tick=setInterval(()=>{if(S.net&&!S.over&&S.net.deadline)UI.renderStatus();},1000);   /* đếm ngược đồng hồ lượt trên thanh trạng thái */
     if(net&&S.net)S.net.deadline=!S.over&&net.turnLeft?Date.now()+net.turnLeft:0;   /* đồng hồ lượt tính lại từ lúc dựng xong, không trừ thời gian tải */
+    if(typeof BgAudio!=='undefined')BgAudio.start();   /* nhạc nền: ngắt quãng, tự chờ vài giây cho game dựng xong */
   },
 
   putWall(o,r,c){setW(o,r,c,1);S.left[S.turn]--;Walls.add(o,r,c,S.turn);},
@@ -143,8 +144,9 @@ const App={
       S.mapInfo=map;
       if(typeof Terrain!=='undefined')Terrain.setBiome(map.biome==='balanced'?'meadow':map.biome,true);   /* defer: ngay dưới có Stage.setTerrain dựng bản đồ mới, khỏi dựng lại bản cũ */
       Stage.setTerrain(S.terr,map.seed);UI.theme(map.biome);
+      Sfx.setBiome(map.biome==='balanced'?'meadow':map.biome);
       if(typeof Weather!=='undefined')Weather.set(map.biome,S.terr);   /* thời tiết + tông ánh sáng theo biome (thuần hình ảnh) */
-    }else{Stage.setTerrain(null);UI.theme(null);if(typeof Weather!=='undefined')Weather.set(null);}
+    }else{Stage.setTerrain(null);UI.theme(null);Sfx.setBiome(null);if(typeof Weather!=='undefined')Weather.set(null);}
     this.syncTerrain();
   },
   /* Cỏ rạp quanh quân nhìn thấy (quân bị che thì KHÔNG rạp, kẻo lộ chỗ). Cổng/bẫy: instant=true thì cập nhật dấu hiệu ngay (đầu ván, dựng lại ván);
@@ -377,7 +379,7 @@ const App={
   },
   startEvent(e){
     clearTimeout(this.timer);this.aiTok++;   /* máy đang nghĩ: bỏ kết quả (aiStep thấy aiTok đổi) */
-    e.t0=performance.now()+CFG.BLOCKER.delay*1000;
+    e.t0=performance.now()+CFG.BLOCKER.delay*1000;Sfx.play('warn');
     S.event=e;S.mode='move';S.hov=null;S.tgt=null;S.use=null;
     this.refresh();Stage.need=3;
   },
@@ -433,7 +435,7 @@ const App={
       if(it.use==='pick'&&S.dead)S.dead[it.o][idx]=1;
       Walls.remove(it.o,it.r,it.c,it.use);
       Marks.pop(wallX(it.c),wallZ(it.r),it.use,.7);
-    }else if(!S.hid[by]&&S.pl[by])Marks.pop(cellX(S.pl[by].c),cellZ(S.pl[by].r),it.use,.8);
+    }else if(!S.hid[by]&&S.pl[by]){Sfx.play(it.use==='boots'?'zip':'swipe',{x:cellX(S.pl[by].c),z:cellZ(S.pl[by].r)});Marks.pop(cellX(S.pl[by].c),cellZ(S.pl[by].r),it.use,.8);}
   },
 
   setMode(m){
@@ -445,7 +447,7 @@ const App={
     if(m==='wall')S.hov=Input.slotAtPointer()||S.hov||{r:(WN-1)>>1,c:(WN-1)>>1};
     this.refresh();
   },
-  rotateWall(){if(S.mode==='wall'&&humanTurn()){S.orient=S.orient==='h'?'v':'h';this.refresh();}},
+  rotateWall(){if(S.mode==='wall'&&humanTurn()){Sfx.play('ui:rot');S.orient=S.orient==='h'?'v':'h';this.refresh();}},
 
   /* ----- Máy đi ----- */
   /* aiTok tăng mỗi lần schedule()/rời ván: kết quả AI trả về muộn (ván mới, tạm dừng, về menu) thì bị bỏ */
@@ -470,6 +472,7 @@ const App={
   /* ----- Đồng bộ giao diện và cảnh 3D với trạng thái ----- */
   refresh(){
     this.pend=null;
+    const ht=humanTurn();if(ht&&!this._ht&&!allAI())Sfx.play('ui:turn');this._ht=ht;   /* tới lượt bạn: chuông 2 nốt rất nhẹ */
     /* Chế độ chọn mục tiêu của búa/cuốc chim chỉ có nghĩa khi đang là lượt mình và còn món đó; lượt thêm của giày thì chỉ được đi quân */
     if(S.mode==='item'&&(!humanTurn()||!S.inv||S.inv[S.me].indexOf(S.use)<0||S.bonus[S.me]===2)){S.mode='move';S.use=null;S.tgt=null;}
     if(S.chaos&&S.bonus&&!S.over&&S.turn===S.me&&S.bonus[S.me]===2&&S.mode==='wall'){S.mode='move';S.hov=null;}
@@ -558,11 +561,12 @@ const App={
       if(!S.over&&!S.net.lost)S.net.conn.resign();
       Menu.leaveRoom();Online.setLastRoom(null);S.net=null;
     }
-    UI.closeAsk();clearTimeout(this.timer);clearInterval(this.tick);this.aiTok++;S.event=null;UI.theme(null);if(typeof Weather!=='undefined')Weather.set(null);Menu.show('scHome');
+    if(typeof BgAudio!=='undefined')BgAudio.stop();
+    Sfx.stopAll();Sfx.setBiome(null);UI.closeAsk();clearTimeout(this.timer);clearInterval(this.tick);this.aiTok++;S.event=null;UI.theme(null);if(typeof Weather!=='undefined')Weather.set(null);Menu.show('scHome');
   },
 
   /* ----- Phím tắt (dùng ev.code nên đúng cả khi bật bộ gõ tiếng Việt) -----
-     Q đi quân · W đặt tường · R xoay tường · E đổi góc nhìn · T bật/tắt đánh giá · P ván mới · Space tạm dừng (máy đấu máy) · Esc về menu */
+     Q đi quân · W đặt tường · R xoay tường · E đổi góc nhìn · T bật/tắt đánh giá · O cài đặt · P ván mới · Space tạm dừng (máy đấu máy) · Esc về menu */
   onKey(ev){
     if(ev.repeat||ev.ctrlKey||ev.metaKey||ev.altKey||this.busy)return;
     const k=ev.code;

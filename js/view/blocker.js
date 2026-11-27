@@ -102,6 +102,7 @@ const Blocker={
   /* Phát một hạt tại (x,y,z) với vận tốc (vx,vy,vz) */
   spark(x,y,z,vx,vy,vz){
     const F=this.fx;if(!F)return;
+    Sfx.crackle(x,z);
     const J=CFG.BLOCKER.jet,i=F.head;F.head=(i+1)%F.n;
     F.pos[i*3]=x;F.pos[i*3+1]=y;F.pos[i*3+2]=z;F.vel[i*3]=vx;F.vel[i*3+1]=vy;F.vel[i*3+2]=vz;
     F.life[i]=F.max[i]=J.life[0]+Math.random()*(J.life[1]-J.life[0]);F.dirty=true;
@@ -137,6 +138,7 @@ const Blocker={
   /* Áp mức lửa jv lên hai ngọn và phát tia lửa theo mức đó */
   applyJet(dt){
     const J=CFG.BLOCKER.jet,v=this.jv,s=this.s,g=s.g,sc=CFG.PAWN.scale;
+    Sfx.jet(v);
     for(const f of s.flames){
       f.visible=v>.03;
       if(f.visible){const k=1+J.flick*(Math.sin(this.bt*47+f.userData.ph)*.6+Math.random()*.5-.25);f.scale.set(.6+.4*v,J.len*v*k,.6+.4*v);}
@@ -272,6 +274,7 @@ const Blocker={
     this.cb=cbs||{};this.settle();this.resetFx();
     s.g.visible=true;s.yaw=s.tyaw=yaw0;s.g.rotation.y=yaw0;s.g.position.set(p0[0],p0[1],p0[2]);
     this.jv=1;   /* lửa phun ngay từ khung đầu */
+    Sfx.play('flyby',{x:p1[0],z:p1[2]});
     const T1=clamp(len/F.speed,F.min,F.max);   /* chặng 1: bay (phanh dần) tới điểm treo trên ô · chặng 2: hạ thẳng xuống thật chậm */
     this.an={k:'fly',t:0,idx,fp,T1,T2:F.descend,T:T1+F.descend};
     Stage.invalidate(true);
@@ -286,7 +289,7 @@ const Blocker={
       pts.push([e[0]+out[0]*h,e[1]+out[1]*h]);   /* thêm điểm ngay mép ngoài ô cuối để đường chạy kết thúc theo hướng nhảy */
       const cur=Pawns.slipCurve(pts);cur.i=cur.i||0;
       this.an={k:'xrun',t:0,cur,T:cur.len/B.speed,out,went:false,spin:rsign()};
-    }else this.an={k:'charge',t:0,went:false,spin:rsign()};
+    }else{this.an={k:'charge',t:0,went:false,spin:rsign()};Sfx.play('charge',{x:s.g.position.x,z:s.g.position.z});}
     Stage.invalidate(true);
   },
   /* Đặt đứng yên theo S.blocker (ván mới, dựng lại ván, nối lại): có thì hiện ở ô đó, không thì ẩn. Bỏ mọi hoạt ảnh đang dở. */
@@ -318,6 +321,7 @@ const Blocker={
     const tx=C.tx[i]+(C.tx[i+1]-C.tx[i])*f,tz=C.tz[i]+(C.tz[i+1]-C.tz[i])*f;
     s.tyaw=s.yaw+angDiff(Math.atan2(tx,tz),s.yaw);   /* quay theo tiếp tuyến đường chạy */
     const ph=d/B.stride*TAU,th=.12*amp*Math.sin(ph),la=Math.sin(ph)*PI/3.2*amp;
+    const sk=Math.floor(d/B.stride*2);if(sk!==a.sk){a.sk=sk;Sfx.play('bstep',{x:g.position.x,z:g.position.z,v:.5+.5*amp});}
     fl.rotation.z=th;fl.position.x=-this.feet*Math.sin(th)*CFG.PAWN.plant;fl.rotation.x=B.lean*amp;   /* lắc nghiêng, chân bám đất, chúi tới */
     g.position.y=TOP+Math.abs(Math.sin(ph))*.08*amp;L0.rotation.x=la;L1.rotation.x=-la;
     return u;
@@ -340,7 +344,7 @@ const Blocker={
       fl.rotation.x=F.lean*q;fl.rotation.z=.05*Math.sin(a.t*3.5)*(.4+q);fl.position.x=0;   /* chúi tới lúc lao, đứng thẳng dần lúc hạ, lắc rất nhẹ */
       const sw=Math.sin(a.t*4.5)*.08;L0.rotation.x=-.3*q+sw;L1.rotation.x=-.3*q-sw;   /* chân xuôi ra sau, đung đưa nhẹ */
       this.jt=1;
-      if(u>=1){this.an={k:'land',t:0,idx:a.idx};g.position.set(fp.p2[0],TOP,fp.p2[2]);this.burst(fp.p2[0],TOP,fp.p2[2],18);}
+      if(u>=1){this.an={k:'land',t:0,idx:a.idx};g.position.set(fp.p2[0],TOP,fp.p2[2]);this.burst(fp.p2[0],TOP,fp.p2[2],18);Sfx.play('clang',{x:fp.p2[0],z:fp.p2[2]});}
     }else if(a.k==='land'){
       const w=clamp(a.t/B.fly.land,0,1),q=landSq(w,.3,1);   /* ép xuống rồi bật lại; lửa đã tắt (jt=0) */
       g.position.y=TOP;fl.rotation.set(0,0,0);fl.position.x=0;L0.rotation.x*=.6;L1.rotation.x*=.6;g.scale.set(1+(1-q)*.4,q,1+(1-q)*.4);
@@ -361,6 +365,7 @@ const Blocker={
         const J=B.exit.jump,v=B.speed*J.vx;
         s.tyaw=s.yaw+angDiff(Math.atan2(a.out[0],a.out[1]),s.yaw);fl.rotation.z=0;fl.position.x=0;
         this.an={k:'jump',t:0,vx:a.out[0]*v,vz:a.out[1]*v,vy:J.vy,flip:a.spin};
+        Sfx.play('whoosh',{x:g.position.x,z:g.position.z,v:.8});Sfx.play('fall',{x:g.position.x,z:g.position.z,delay:.3});
       }
     }else if(a.k==='jump'){   /* nhảy khỏi bàn: bay theo đường parabol, lộn người, rơi xuống dưới bàn */
       const J=B.exit.jump;
@@ -372,7 +377,7 @@ const Blocker={
       const R=B.exit.rise,u=Math.min(1,a.t/R.charge),q=1-.3*smooth(u);
       g.scale.set(1+(1-q)*.4,q,1+(1-q)*.4);this.jt=smooth(u);
       const sh=Math.sin(a.t*60)*.03*u;g.position.x+=0;fl.position.x=sh;   /* rung nhẹ trước khi phóng */
-      if(u>=1){this.went(a);this.an={k:'rise',t:0,spin:a.spin};}
+      if(u>=1){this.went(a);this.an={k:'rise',t:0,spin:a.spin};Sfx.play('whoosh',{x:g.position.x,z:g.position.z,v:1.1});}
     }else if(a.k==='rise'){   /* bay vút lên, lửa phản lực */
       const R=B.exit.rise,w=Math.min(1,a.t/.2),q=.7+.3*smooth(w);
       g.scale.set(1+(1-q)*.4,q,1+(1-q)*.4);fl.position.x=0;
@@ -385,7 +390,7 @@ const Blocker={
   /* Khựng lại sau khi vào ô; l0 = độ chúi người lúc bắt đầu (0 nếu vừa đáp xuống) */
   arrive(idx,l0){
     const s=this.s;
-    s.tyaw=this.faceYaw(idx);this.flash=1;
+    s.tyaw=this.faceYaw(idx);this.flash=1;Sfx.play('sym');
     this.an={k:'arrive',t:0,l0:l0||0};
     const f=this.cb&&this.cb.onArrive;if(f)f();
   },
