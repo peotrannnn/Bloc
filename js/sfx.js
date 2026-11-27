@@ -350,7 +350,7 @@ const Sfx=(function(){
   }
 
   return{
-    st,onChange:f=>subs.push(f),play,step,codeAt,matOf,matName,burst,setBiome,stopAll,unlock,setOn,syncBtn,prepare(){if(!ctx)build();},
+    st,onChange:f=>subs.push(f),play,step,codeAt,matOf,matName,burst,setBiome,stopAll,unlock,setOn,set,syncBtn,prepare(){if(!ctx)build();},
     jet:v=>setLoop('jet',v),slide:v=>setLoop('slide',v),gust:k=>setLoop('gust',k),
     get on(){return st.on;},
     gift:(g,x,z)=>play('gift_'+g,{x,z,v:1}),

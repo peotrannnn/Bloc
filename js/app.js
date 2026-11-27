@@ -219,11 +219,11 @@ const App={
     S.net.deadline=!S.over&&m.turnLeft?Date.now()+m.turnLeft:0;S.net.rematch=m.rematch||{me:false,opp:false};
     Walls.clear();Badges.clear();Marks.clear();Review.reset();Fireworks.stop();Pawns.reset();Camera.snapHome();Stage.invalidate(true);
     if(S.chaos){   /* Hỗn Loạn: tường có thể bị búa/cuốc chim gỡ nên không dựng theo nhật ký; snapshot có sẵn chủ tường (p) và các khe bị phá (dead) */
-      for(const w of m.snapshot.walls)Walls.add(w.o,w.r,w.c,w.p||0);
+      for(const w of m.snapshot.walls)Walls.add(w.o,w.r,w.c,w.p||0,true);
       for(const d of m.snapshot.dead||[])Walls.rubble(d.o,d.r,d.c);
     }
-    else if(m.log&&m.log.length){for(const e of m.log)if(e.a.wall)Walls.add(e.a.wall.o,e.a.wall.r,e.a.wall.c,e.p);}
-    else for(const w of m.snapshot.walls)Walls.add(w.o,w.r,w.c,0);
+    else if(m.log&&m.log.length){for(const e of m.log)if(e.a.wall)Walls.add(e.a.wall.o,e.a.wall.r,e.a.wall.c,e.p,true);}
+    else for(const w of m.snapshot.walls)Walls.add(w.o,w.r,w.c,0,true);
     if(S.over&&S.winner>=0){Fireworks.play(S.pl[S.winner]);Pawns.win(S.winner);Camera.follow(S.winner,true);}
     this.syncTerrain(true);this.refresh();
   },

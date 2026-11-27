@@ -38,8 +38,15 @@ const Walls={
   },
 
   /* Thả một tường của người p xuống ô (r,c) */
-  add(o,r,c,p){
-    const W2=CFG.WALL,mat=this.mats[p].clone();   /* vật liệu riêng để fade độc lập */
+  add(o,r,c,p,instant){
+    const W2=CFG.WALL;
+    if(instant){   /* dựng lại bàn (resync): đặt thẳng vào khe, không rơi/mờ dần */
+      const q=new THREE.Mesh(this.geo[o],this.mats[p]);
+      q.userData={o,r,c,p};q.castShadow=q.receiveShadow=true;
+      q.position.set(wallX(c),W2.restY,wallZ(r));
+      this.scene.add(q);this.objs.push(q);Stage.invalidate(true);return;
+    }
+    const mat=this.mats[p].clone();   /* vật liệu riêng để fade độc lập */
     mat.transparent=true;mat.depthWrite=false;mat.opacity=0;
     const m=new THREE.Mesh(this.geo[o],mat);
     m.userData={o,r,c,p};   /* để Walls.remove tìm lại tường theo khe */

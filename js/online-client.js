@@ -87,6 +87,7 @@ const Online=(()=>{
       me.onerror=()=>{};                                        /* lỗi luôn kéo theo onclose, xử lý ở đó */
     }
     open();
+    const hb=setInterval(()=>{if(done)clearInterval(hb);else send({t:'ping'});},25000);   /* heartbeat: tránh kết nối im lặng bị mạng ngắt */
 
     return{
       code,
