@@ -194,7 +194,7 @@ const Menu={
   joinRoom(code,quick,from){
     this.leaveRoom();this.quick=!!quick;this.from=from||null;
     const conn=Online.join(code);this.conn=conn;this.started=false;this.mode='classic';this.biome=null;$('waitMode').textContent='';
-    for(const t of['welcome','started','applied','state','rejected','over','opponentStatus','full','replaced','error','close'])
+    for(const t of['welcome','started','applied','state','rejected','over','opponentStatus','rematchStatus','chat','chatRejected','full','replaced','error','close'])
       conn.on(t,m=>{if(this.conn===conn)this.onNet(t,m);});   /* tin của kết nối cũ (đã rời) thì bỏ */
     $('waitCode').textContent=code;$('waitMsg').textContent='Đang kết nối…';
     this.show('scWait');
