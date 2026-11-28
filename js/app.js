@@ -569,16 +569,19 @@ const App={
       Menu.leaveRoom();Online.setLastRoom(null);S.net=null;
     }
     if(typeof BgAudio!=='undefined')BgAudio.stop();
-    Sfx.stopAll();Sfx.setBiome(null);UI.closeAsk();clearTimeout(this.timer);clearInterval(this.tick);this.aiTok++;S.event=null;UI.theme(null);if(typeof Weather!=='undefined')Weather.set(null);Menu.show('scHome');
+    Sfx.stopAll();Sfx.setBiome(null);UI.closeAsk();if(typeof Guide!=='undefined')Guide.close(true);clearTimeout(this.timer);clearInterval(this.tick);this.aiTok++;S.event=null;UI.theme(null);if(typeof Weather!=='undefined')Weather.set(null);Menu.show('scHome');
   },
 
   /* ----- Phím tắt (dùng ev.code nên đúng cả khi bật bộ gõ tiếng Việt) -----
-     Q đi quân · W đặt tường · R xoay tường · E đổi góc nhìn · T bật/tắt đánh giá · O cài đặt · P ván mới · Space tạm dừng (máy đấu máy) · Esc về menu */
+     Q đi quân · W đặt tường · R xoay tường · E đổi góc nhìn · T bật/tắt đánh giá · I hướng dẫn · O cài đặt · P ván mới · Space tạm dừng (máy đấu máy) · Esc về menu */
   onKey(ev){
     if(ev.repeat||ev.ctrlKey||ev.metaKey||ev.altKey||this.busy)return;
     const k=ev.code;
     if(UI.cfOpen){if(k==='Escape'){UI.closeAsk();ev.preventDefault();}return;}   /* đang hỏi xác nhận: chỉ Esc (hủy); Enter/Space bấm nút đang focus như thường */
     if(!UI.el.menu.hidden){if(k==='Escape')Menu.back();return;}   /* đang ở menu: chỉ Esc có tác dụng */
+    if(typeof Settings!=='undefined'&&Settings.isOpen())return;   /* đang mở Cài đặt: không mở / điều khiển Hướng dẫn phía sau */
+    if(Guide.isOpen){Guide.onKey(ev);return;}   /* đang đọc Hướng dẫn: I / Esc đóng, ↑↓ ← → đổi mục, game không nhận phím nào */
+    if(k==='KeyI'){Guide.open();ev.preventDefault();return;}
     if(k==='KeyQ')this.setMode('move');
     else if(k==='KeyW')this.setMode('wall');
     else if(k==='KeyR')this.rotateWall();
@@ -697,6 +700,7 @@ const App={
     e.bEval.onclick=()=>this.toggleAnalysis();
     e.bMenu.onclick=()=>this.toMenu();
     addEventListener('keydown',ev=>this.onKey(ev));
+    addEventListener('keydown',ev=>{if(ev.code==='F7')ev.preventDefault();},true);   /* F7 = "duyệt bằng con trỏ" của trình duyệt: hiện con trỏ nhấp nháy, mũi tên bị nó lấy mất */
     addEventListener('keyup',ev=>{if(ev.code==='Space'&&UI.el.menu.hidden&&allAI())ev.preventDefault();});   /* nút đang focus không tự "click" lần nữa khi nhả Space */
     addEventListener('resize',()=>this.onResize());
     new ResizeObserver(()=>this.onResize()).observe(e.host);

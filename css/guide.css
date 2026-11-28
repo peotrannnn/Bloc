@@ -3,7 +3,9 @@
    Thanh nút dưới (footer, z-index 9) nằm TRÊN cửa sổ này (z-index 8) để bấm lại nút Hướng dẫn mà đóng; các nút khác bị khóa trong lúc đang mở. */
 #gd{position:fixed;inset:0;z-index:8;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;
   background:rgba(0,0,0,.5);color:var(--g);font-family:var(--font);font-size:13px}
-#gd .win{width:min(980px,100%);height:min(660px,100%);display:flex;flex-direction:column;background:var(--bg);overflow:hidden}
+#gd .win{width:min(980px,100%);height:min(660px,100%);display:flex;flex-direction:column;background:var(--bg);overflow:hidden;
+  box-shadow:0 0 0 1px var(--gd),0 0 26px rgba(var(--gr),.25),inset 0 0 34px rgba(var(--gr),.05)}
+footer{position:relative;z-index:9}   /* thanh nút dưới nằm trên cửa sổ để bấm lại nút Hướng dẫn mà đóng */
 #gd .tb{flex:none;background:var(--pn)}
 .gdw{flex:1;min-height:0;display:grid;grid-template-columns:200px 1fr}
 

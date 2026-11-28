@@ -1,6 +1,6 @@
 'use strict';
-/* [GUIDE] Cửa sổ Hướng dẫn của chế độ Hỗn Loạn: giải thích từng loại ô và vật phẩm kèm ảnh.
-   Mở/đóng: phím I, nút "Hướng dẫn" ở thanh dưới (bấm lại để đóng), nút X, hoặc Esc. Chỉ có khi đang chơi Hỗn Loạn (S.chaos); Classic không có.
+/* [GUIDE] Cửa sổ Hướng dẫn: cách chơi (cả Classic lẫn Hỗn Loạn); riêng Hỗn Loạn có thêm từng loại ô, vật phẩm, sự kiện kèm ảnh.
+   Mở/đóng: phím I (bấm lần nữa để đóng), nút "Hướng dẫn" ở thanh dưới, nút X, hoặc Esc. Classic chỉ hiện nhóm GUIDE.basicGroups.
    Màu nền + chữ đúng màu biome đang chơi (css/guide.css dùng cùng biến màu --bg/--pn/--g của body[data-biome]).
    Nội dung: js/guide-data.js (dữ liệu thuần). Ảnh: dựng THẬT bằng đồ họa của game trong iframe ẩn guide-shots.html (xem js/guide-shots.js),
    lần đầu mở mới dựng, mỗi ảnh chỉ dựng một lần rồi nhớ lại. Vật phẩm dùng đúng biểu tượng CFG.ITEMS của game. */
@@ -8,9 +8,12 @@ const Guide=(function(){
   const E=GUIDE.entries;
   const cache=new Map();        /* khóa 'idMục:số biến thể' → data URL đã dựng; 'x' = dựng lỗi */
   const waiting=[];             /* hàng chờ dựng: [{key,spec}], mục đang xem được đẩy lên đầu */
-  let frame=null,ready=false,busy=null,deadFrame=false,timer=0,cur=0,vi=0,isOpen=false,built=false;
+  let frame=null,ready=false,busy=null,deadFrame=false,timer=0,cur=0,vi=0,isOpen=false,builtFor=null;
 
   const keyOf=(e,i)=>e.id+':'+i;
+  /* Mục đang hiện: Hỗn Loạn thấy tất cả, Classic chỉ thấy nhóm cơ bản (chỉ số trong E) */
+  const chaos=()=>typeof S!=='undefined'&&!!S.chaos;
+  const shown=()=>{const l=[];E.forEach((e,i)=>{if(chaos()||GUIDE.basicGroups.includes(e.grp))l.push(i);});return l;};
   const el=(tag,cls,txt)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(txt!==undefined)n.textContent=txt;return n;};
 
   /* ----- Dựng ảnh bằng iframe ẩn ----- */
@@ -49,7 +52,7 @@ const Guide=(function(){
   });
   /* Xếp toàn bộ ảnh còn thiếu vào hàng chờ, ảnh của mục đang xem lên đầu */
   function queueAll(){
-    const order=[E[cur],...E.filter((_,i)=>i!==cur)],list=[];
+    const vis=shown(),order=[E[cur],...vis.filter(i=>i!==cur).map(i=>E[i])],list=[];
     for(const e of order)(e.vars||[]).forEach((v,i)=>{const k=keyOf(e,i);if(!cache.has(k)&&!list.some(x=>x.key===k))list.push({key:k,spec:v.shot});});
     waiting.length=0;waiting.push(...list);
     if(list.length||busy){ensureFrame();pump();}
@@ -58,10 +61,12 @@ const Guide=(function(){
   /* ----- Giao diện ----- */
   function nav(){
     const n=$('gdNav');n.textContent='';
+    const vis=shown();
     for(const g of GUIDE.groups){
+      if(!vis.some(i=>E[i].grp===g))continue;
       n.appendChild(el('div','gdg',g));
       E.forEach((e,i)=>{
-        if(e.grp!==g)return;
+        if(e.grp!==g||!vis.includes(i))return;
         const b=el('button','gdi');b.type='button';b.dataset.i=i;
         if(e.item&&CFG.ITEMS[e.item])b.appendChild(el('span','gde',CFG.ITEMS[e.item].icon));
         b.appendChild(document.createTextNode(e.name));
@@ -76,7 +81,7 @@ const Guide=(function(){
     const i=(e.vars||[]).findIndex(v=>v.shot.biome===b);return i<0?0:i;
   }
   function select(i,v){
-    cur=Math.max(0,Math.min(E.length-1,i));vi=v==null?defaultVar(E[cur]):v;
+    const vis=shown();cur=vis.includes(i)?i:vis[0];vi=v==null?defaultVar(E[cur]):v;
     for(const b of $('gdNav').querySelectorAll('.gdi'))b.setAttribute('aria-pressed',+b.dataset.i===cur);
     render();queueAll();
     const on=$('gdNav').querySelector('.gdi[aria-pressed="true"]');if(on&&on.scrollIntoView)on.scrollIntoView({block:'nearest',inline:'nearest'});
@@ -118,8 +123,8 @@ const Guide=(function(){
 
   /* ----- Mở / đóng ----- */
   function open(){
-    if(isOpen||typeof S==='undefined'||!S.chaos)return;
-    if(!built){nav();built=true;}
+    if(isOpen||typeof S==='undefined')return;
+    if(builtFor!==chaos()){nav();builtFor=chaos();if(!shown().includes(cur))cur=shown()[0];}   /* đổi Classic ↔ Hỗn Loạn thì dựng lại danh mục */
     isOpen=true;Tip.hide();
     const g=$('gd'),ft=document.querySelector('footer');
     g.style.paddingBottom=(ft?ft.offsetHeight:0)+14+'px';   /* thanh nút dưới vẫn nằm trên cửa sổ để bấm lại nút Hướng dẫn mà đóng */
@@ -144,7 +149,7 @@ const Guide=(function(){
   function onKey(ev){
     const k=ev.code;
     if(k==='KeyI'||k==='Escape'){close();ev.preventDefault();}
-    else if(k==='ArrowDown'||k==='ArrowUp'){select(cur+(k==='ArrowDown'?1:-1));const b=$('gdNav').querySelector('.gdi[aria-pressed="true"]');if(b)b.focus({preventScroll:true});ev.preventDefault();}
+    else if(k==='ArrowDown'||k==='ArrowUp'){const vis=shown(),at=vis.indexOf(cur);select(vis[Math.max(0,Math.min(vis.length-1,at+(k==='ArrowDown'?1:-1)))]);const b=$('gdNav').querySelector('.gdi[aria-pressed="true"]');if(b)b.focus({preventScroll:true});ev.preventDefault();}
     else if(k==='ArrowRight'||k==='ArrowLeft'){
       const n=(E[cur].vars||[]).length;if(n>1){vi=(vi+(k==='ArrowRight'?1:n-1))%n;render();}
       ev.preventDefault();

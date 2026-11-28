@@ -8,12 +8,12 @@
      data-tk="Q"           phím tắt, hiện thành ô phím (tùy chọn)
      title="..."           thuộc tính cũ vẫn dùng được: được chuyển thành data-tip ngay khi rê chuột tới (nên khung mặc định không bao giờ hiện).
                            Đuôi "(Esc)" / "[1]" trong title được tách ra làm ô phím nếu không có data-tk.
-   Màu khung lấy theo biến màu của chính phần tử đang trỏ tới (--pn, --g, --g2, --gd, --mut, --gr), nên ván Hỗn Loạn theo biome nào thì khung theo màu biome đó. */
+   Màu khung lấy theo biến màu của chính phần tử đang trỏ tới (--pn, --bg, --g, --g2, --gd, --mut, --gr, --on, --glow), nên ván Hỗn Loạn theo biome nào thì khung theo màu biome đó. */
 const Tip=(function(){
   const DELAY=300;          /* rê chuột bao lâu thì hiện (ms); đang có khung hiện sẵn mà chuyển sang phần tử khác thì hiện ngay */
   const GAP=10;             /* khoảng cách khung - phần tử */
   const EDGE=8;             /* lề tối thiểu với mép cửa sổ */
-  const VARS=['--pn','--g','--g2','--gd','--mut','--gr','--on'];
+  const VARS=['--pn','--bg','--g','--g2','--gd','--mut','--gr','--on','--glow'];
   let el=null,anchor=null,timer=0,watch=0,touch=false,shown=false;
 
   /* Phần tử có mô tả gần nhất tính từ t (và gom title → data-tip) */

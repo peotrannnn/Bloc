@@ -15,6 +15,9 @@
   --font:"JetBrains Mono","Fira Code","Cascadia Mono",ui-monospace,Menlo,Consolas,"Courier New",monospace;
   box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 [hidden]{display:none!important}
+/* Không có con trỏ nhấp nháy "|" và không bôi chọn chữ trên giao diện game; chỉ ô nhập (mã phòng) mới cần. */
+body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;caret-color:transparent}
+input,textarea,[contenteditable="true"]{-webkit-user-select:text;user-select:text;caret-color:auto}
 ::selection{background:var(--g);color:var(--on)}
 
 /* ===== Khung trang: nền đen có lưới mờ ===== */
@@ -92,16 +95,16 @@ select:hover,select:focus{border-color:var(--g);box-shadow:var(--halo);outline:n
 option{background:#000;color:var(--g)}
 
 /* ===== Giao diện theo BIOME ===== */
-body[data-biome] :is(header,#board,footer,#cf){--glow:0 0 0 transparent;--halo:0 0 8px rgba(var(--gr),.22)}
+body[data-biome] :is(header,#board,footer,#cf,#gd){--glow:0 0 0 transparent;--halo:0 0 8px rgba(var(--gr),.22)}
 body[data-biome] #board{background:radial-gradient(55% 60% at 50% 52%,rgba(var(--gr),.10),transparent 72%),
   linear-gradient(rgba(var(--gr),.06) 1px,transparent 1px) 0 0/36px 36px,linear-gradient(90deg,rgba(var(--gr),.06) 1px,transparent 1px) 0 0/36px 36px,var(--bg)}
-body[data-biome="meadow"] :is(header,#board,footer,#cf){--bg:#4f8f2a;--pn:#376b1b;--g:#fff;--g2:#f2ffd0;--gd:#a9d982;--mut:#e0f3c8;--dis:#8fb870;--gr:255,255,255;--on:#1f4210;--red:#ff9a92}
-body[data-biome="forest"] :is(header,#board,footer,#cf){--bg:#2f6a22;--pn:#204d17;--g:#fff;--g2:#e6ffc4;--gd:#93cc74;--mut:#d3edbd;--dis:#7fa968;--gr:255,255,255;--on:#173a0d;--red:#ff9a92}
-body[data-biome="river"] :is(header,#board,footer,#cf){--bg:#2c7a99;--pn:#1d5a75;--g:#fff;--g2:#d6f4ff;--gd:#8fcde4;--mut:#d8eef7;--dis:#7fb0c4;--gr:255,255,255;--on:#0f3a4f;--red:#ff9a92}
-body[data-biome="autumn"] :is(header,#board,footer,#cf){--bg:#a0561f;--pn:#7a3f14;--g:#fff;--g2:#ffe3b8;--gd:#e8ac72;--mut:#f6dcc0;--dis:#c79a74;--gr:255,255,255;--on:#4a2208;--red:#ffb199}
-body[data-biome="desert"] :is(header,#board,footer,#cf){--bg:#ecd093;--pn:#dcb970;--g:#2b1d0b;--g2:#000;--gd:#8d6c35;--mut:#4d3817;--dis:#9a8458;--gr:43,29,11;--on:#f6e6c4;--red:#a3211b}
-body[data-biome="snow"] :is(header,#board,footer,#cf){--bg:#e6f2f9;--pn:#d2e5f0;--g:#0a0e13;--g2:#000;--gd:#5f7a8c;--mut:#34495a;--dis:#8da1af;--gr:10,14,19;--on:#e6f2f9;--red:#b3202a}
-body[data-biome="mountain"] :is(header,#board,footer,#cf){--bg:#5d6778;--pn:#464e5c;--g:#fff;--g2:#eaf1ff;--gd:#aab6c8;--mut:#dde4ef;--dis:#97a2b4;--gr:255,255,255;--on:#242a35;--red:#ff9a92}
+body[data-biome="meadow"] :is(header,#board,footer,#cf,#gd){--bg:#4f8f2a;--pn:#376b1b;--g:#fff;--g2:#f2ffd0;--gd:#a9d982;--mut:#e0f3c8;--dis:#8fb870;--gr:255,255,255;--on:#1f4210;--red:#ff9a92}
+body[data-biome="forest"] :is(header,#board,footer,#cf,#gd){--bg:#2f6a22;--pn:#204d17;--g:#fff;--g2:#e6ffc4;--gd:#93cc74;--mut:#d3edbd;--dis:#7fa968;--gr:255,255,255;--on:#173a0d;--red:#ff9a92}
+body[data-biome="river"] :is(header,#board,footer,#cf,#gd){--bg:#2c7a99;--pn:#1d5a75;--g:#fff;--g2:#d6f4ff;--gd:#8fcde4;--mut:#d8eef7;--dis:#7fb0c4;--gr:255,255,255;--on:#0f3a4f;--red:#ff9a92}
+body[data-biome="autumn"] :is(header,#board,footer,#cf,#gd){--bg:#a0561f;--pn:#7a3f14;--g:#fff;--g2:#ffe3b8;--gd:#e8ac72;--mut:#f6dcc0;--dis:#c79a74;--gr:255,255,255;--on:#4a2208;--red:#ffb199}
+body[data-biome="desert"] :is(header,#board,footer,#cf,#gd){--bg:#ecd093;--pn:#dcb970;--g:#2b1d0b;--g2:#000;--gd:#8d6c35;--mut:#4d3817;--dis:#9a8458;--gr:43,29,11;--on:#f6e6c4;--red:#a3211b}
+body[data-biome="snow"] :is(header,#board,footer,#cf,#gd){--bg:#e6f2f9;--pn:#d2e5f0;--g:#0a0e13;--g2:#000;--gd:#5f7a8c;--mut:#34495a;--dis:#8da1af;--gr:10,14,19;--on:#e6f2f9;--red:#b3202a}
+body[data-biome="mountain"] :is(header,#board,footer,#cf,#gd){--bg:#5d6778;--pn:#464e5c;--g:#fff;--g2:#eaf1ff;--gd:#aab6c8;--mut:#dde4ef;--dis:#97a2b4;--gr:255,255,255;--on:#242a35;--red:#ff9a92}
 
 /* ===== Phong cách hình ảnh theo BIOME ===== */
 body[data-biome] #host canvas{filter:var(--fx,none)}
@@ -231,13 +234,14 @@ footer button.rm2:not(:disabled){animation-duration:1s}
   visibility:hidden;
   transform:translateY(3px);
   transform-origin:var(--ax,50%) 0;
-  background:rgba(0,10,4,.96);
+  background:var(--pn);
+  background:color-mix(in srgb,var(--pn) 97%,transparent);   /* nền theo màu biome (--pn do Tip chép từ phần tử đang trỏ) */
   border:1px solid var(--g);
   border-radius:0;
   color:var(--g);
   font:12px/1.5 var(--font);
   text-align:left;
-  box-shadow:0 0 0 1px #003d17,0 6px 18px rgba(0,0,0,.65),0 0 14px rgba(var(--gr),.18);
+  box-shadow:0 0 0 1px var(--gd),0 6px 18px rgba(0,0,0,.45),0 0 14px rgba(var(--gr),.18);
   transition:opacity .12s ease,transform .12s ease,visibility 0s linear .12s;
 }
 
@@ -284,7 +288,7 @@ footer button.rm2:not(:disabled){animation-duration:1s}
   font:700 11px/1 var(--font);
   padding:3px 6px;
   color:var(--g2);
-  background:#000;
+  background:var(--on);
   border:1px solid var(--gd);
   border-bottom:2px solid var(--g);
   border-radius:0;
