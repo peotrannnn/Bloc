@@ -69,7 +69,7 @@ const App={
     S.ws={h:new Uint8Array(WN*WN),v:new Uint8Array(WN*WN)};
     S.left=[CFG.WALLS,CFG.WALLS];
     S.turn=0;S.mode='move';S.orient='h';S.over=false;S.draw=false;S.hov=null;S.ply=0;S.paused=false;
-    S.winner=-1;S.net=net?{conn:net.conn,wait:false,offline:false,oppOnline:true,lost:null,reason:null,deadline:net.turnLeft?Date.now()+net.turnLeft:0,rematch:{me:false,opp:false}}:null;
+    S.winner=-1;S.net=net?{conn:net.conn,oppName:net.oppName||'',wait:false,offline:false,oppOnline:true,lost:null,reason:null,deadline:net.turnLeft?Date.now()+net.turnLeft:0,rematch:{me:false,opp:false}}:null;
     /* Hỗn Loạn: reset mọi trường địa hình trước (PvE/EvE/Classic luôn về trạng thái trống), rồi nạp từ snapshot của server */
     S.animLock=false;S.event=null;S.bplan=BlockerPlan.init(CFG.BLOCKER.plan);S.chaos=!!net&&net.mode==='chaos';S.terr=null;S.spawn=null;S.stuck=null;S.sunk=null;S.blocker=-1;S.hid=[false,false];S.last=[null,null];S.mapInfo=null;
     S.inv=null;S.bonus=null;S.wo=null;S.dead=null;S.use=null;S.tgt=null;
@@ -254,10 +254,10 @@ const App={
         S.over=true;S.winner=m.winner;S.net.reason=m.reason;S.net.deadline=0;
         if(m.winner>=0){Fireworks.play(S.pl[m.winner]);Pawns.win(m.winner);Camera.follow(m.winner,true);}
         this.refresh();return;
-      case'state':this.resync(m);return;
+      case'state':if(typeof m.opp==='string')S.net.oppName=m.opp;this.resync(m);return;
       case'rematchStatus':S.net.rematch={me:m.me,opp:m.opp};UI.render();return;
       case'started':   /* đấu lại: server đã đổi phe và bắt đầu ván mới trong cùng phòng */
-        this.cfg.net.you=m.you;this.cfg.net.map=m.map||null;this.cfg.net.snap=m.snapshot;this.cfg.net.turnLeft=m.turnLeft;this.cfg.net.state=null;
+        this.cfg.net.you=m.you;this.cfg.net.oppName=m.opp||'';this.cfg.net.map=m.map||null;this.cfg.net.snap=m.snapshot;this.cfg.net.turnLeft=m.turnLeft;this.cfg.net.state=null;
         this.newGame(true);return;   /* có màn hình tải riêng; tin đến trong lúc đó xếp hàng (netReady=false) */
       case'reconnecting':S.net.offline=true;this.refresh();return;   /* rớt mạng: khóa thao tác, tự nối lại; nối được thì server gửi 'state' */
       case'opponentStatus':S.net.oppOnline=m.online;UI.render();return;
@@ -515,18 +515,31 @@ const App={
     if(this.ready&&UI.el.menu.hidden)Stage.render();
   },
 
+  /* Dựng sẵn phần nặng dùng chung cho mọi ván: tải three.js, sân khấu, quân cờ, người chặn đường, nhãn, dấu, đầu vào chuột. Không phụ thuộc ván nào nên màn khởi động
+     (menu.js, Menu.boot) gọi trước khi người chơi bấm gì cả; App.start gọi lại cho chắc (xong rồi thì trả về ngay). step(%,chữ) báo tiến độ, có thể trả Promise
+     (Loading.step) để trình duyệt kịp vẽ. Chạy được lúc menu đang hiện: Stage.init chỉ cần #host có kích thước, menu chỉ phủ lên trên. Lỗi (mất mạng) thì ném ra, lần gọi sau thử lại. */
+  prepP:null,
+  prepare(step){
+    if(this.ready)return Promise.resolve();
+    if(this.prepP)return this.prepP;
+    const st=step||(()=>{});
+    return this.prepP=(async()=>{
+      try{
+        await st(10,'Đang tải three.js…');await loadThree();
+        await st(30,'Dựng bàn cờ…');Stage.init(UI.el.host);Walls.init(Stage.scene);Fireworks.init(Stage.scene);
+        await st(48,'Tạo quân cờ…');Pawns.build(Stage.scene);Blocker.build(Stage.scene);Badges.init(Stage.scene);Marks.init(Stage.scene);Input.init(Stage.ren.domElement);
+        this.ready=true;
+      }finally{this.prepP=null;}
+    })();
+  },
+
   /* ----- Bắt đầu ván từ menu. cfg = {ai:[idTrắng|null, idĐen|null], delay:ms} (null = người chơi) ----- */
   async start(cfg){
     if(cfg.net){this.netReady=false;this.netQ=[];}
     this.busy=true;UI.lockMenu(true);
     Loading.show(cfg.net?'Vào phòng':'Vào ván',this.ready?'Chuẩn bị ván…':'Đang tải three.js…',4);await Loading.paint();
     try{
-      if(!this.ready){
-        await Loading.step(10,'Đang tải three.js…');await loadThree();
-        await Loading.step(30,'Dựng bàn cờ…');Stage.init(UI.el.host);Walls.init(Stage.scene);Fireworks.init(Stage.scene);
-        await Loading.step(48,'Tạo quân cờ…');Pawns.build(Stage.scene);Blocker.build(Stage.scene);Badges.init(Stage.scene);Marks.init(Stage.scene);Input.init(Stage.ren.domElement);
-        this.ready=true;
-      }
+      await this.prepare((p,t)=>Loading.step(p,t));   /* thường đã làm xong ở màn khởi động; chưa xong (hoặc lần trước lỗi) thì làm nốt ở đây */
     }catch(e){
       this.busy=false;Loading.hide();
       UI.el.ld.hidden=false;UI.progress(0,'Không tải được three.js. Kiểm tra mạng rồi thử lại.');   /* thông báo lỗi nằm trong menu */

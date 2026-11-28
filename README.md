@@ -82,6 +82,14 @@ Nhân vật vàng "Crash Test Dummy" (`js/view/blocker.js`, cấu hình `CFG.BLO
 - Trong code: `App.blockerEvent(idx?)`, `App.blockerLeave()`.
 - **Online: server đã nối.** Server là trọng tài nên tự chạy lịch (`BlockerPlan`, tham số ở ruleset chaos: `blockerPlan` trong `js/core.js`), chọn ô bằng `js/blocker-pick.js` (thuần logic, cùng thuật toán `Blocker.pick`) rồi gửi `fx:{t:'blocker',cell:[r,c]}` (vào) / `{t:'blocker',leave:true}` (rời) trong tin `applied` **cho cả hai bên** (kể cả khi quân bị cỏ che) và đặt `st.blocker` (có trong snapshot, nên nối lại giữa chừng vẫn đúng). Lịch lưu trong bản ghi phòng (`g.bplan`), đặt lại mỗi ván / đấu lại. Mỗi lần vào/rời, đồng hồ lượt được cộng bù 10 giây vì hai bên đứng chờ hoạt ảnh. Client nhận qua `netApplyChaos` / `resync`.
 
+## Màn khởi động, tên người chơi, số online, ghép nhanh
+
+- **Màn khởi động** (`Menu.boot`): mở trang là vào màn nhập tên. Trong lúc người chơi gõ, game tải sẵn three.js, dựng cảnh 3D (`App.prepare`) và chuẩn bị âm thanh (`Sfx.prepare`, `BgAudio.prepare`). Cử chỉ gõ phím / bấm chuột ở đây là lần tương tác đầu nên trình duyệt cho phát tiếng từ menu trở đi, không phải bấm thêm. Mất mạng thì vẫn vào được menu, ván sẽ thử tải lại.
+- **Tên**: không đăng nhập. Lưu ở `localStorage` (`Online.getName/setName`; nếu trình duyệt chặn thì giữ trong bộ nhớ trang), gửi trong `hello{name}`, **server làm sạch** (≤16 ký tự). Trong ván online thanh trạng thái hiện "Lượt của <tên đối thủ>". Nút "đổi tên" ở menu chính. Sau này có tài khoản thật chỉ cần thay chỗ lấy tên.
+- **Số người online**: ô ở góc thanh tiêu đề của cửa sổ Chơi online và Ghép nhanh. Mỗi tab giữ một WebSocket `/presence` tới Durable Object `Lobby`; tab bị ẩn thì ngắt, quay lại thì nối tiếp; server cũ chưa có `/presence` thì ô tự ẩn.
+- **Ghép nhanh**: mở cửa sổ danh sách phòng công khai đang chờ (tên chủ phòng, chế độ, bản đồ, đã chờ bao lâu), lọc theo chế độ / bản đồ, tự làm mới 3 giây. Bấm một phòng để vào; nút "Vô bừa" vẫn để server ghép tự động.
+- Test: `node server/test/names.mjs`, `node server/test/lobby-do.mjs` (Lobby với Cloudflare giả).
+
 ## Âm thanh
 
 `js/sfx.js` (nạp ngay sau `util.js`). Phím `M` hoặc nút **Âm** ở thanh dưới để tắt/bật; thanh **Âm lượng** / **Môi trường** nằm ở màn hình chính của menu (lưu `localStorage` khóa `bloc.snd`). Trình duyệt chỉ cho phát sau lần chạm/bấm đầu tiên nên engine tự mở khóa ở đó.

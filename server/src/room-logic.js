@@ -15,8 +15,8 @@
    Chaos thêm: started/state{map:{biome,seed}}
    (seed chỉ để dựng hình, không phải rng) · welcome{biome} · applied{pl,left,stuck,skipped?,fx?}.
    Giao thức (JSON):
-     client → server  hello{token,v} ·   (v = Core.PROTO; lệch → error{reason:'version',v} rồi đóng 4005)  · action{seq, move:[r,c] | wall:{o,r,c}} · resign · rematch · sync · ping
-     server → client  welcome{slot,started,players,mode,visibility} · started{ruleset,you,snapshot,turnLeft} · state{you,snapshot,over,winner,reason,log,turnLeft,rematch} ·
+     client → server  hello{token,v,name?} ·   (name = tên hiển thị, tối đa 16 ký tự, server làm sạch bằng names.js; opp = tên đối thủ, '' nếu họ chưa đặt)   (v = Core.PROTO; lệch → error{reason:'version',v} rồi đóng 4005)  · action{seq, move:[r,c] | wall:{o,r,c}} · resign · rematch · sync · ping
+     server → client  welcome{slot,started,players,mode,visibility,opp} · started{ruleset,you,opp,snapshot,turnLeft} · state{you,opp,snapshot,over,winner,reason,log,turnLeft,rematch} ·
                       applied{seq,by,action,ply,turn,over,winner,draw,turnLeft} · rematchStatus{me,opp} · rejected{seq,reason,ply} · over{winner,reason} ·
                       opponentStatus{online} · full · replaced · error{reason: badtoken|noroom} · pong
    Phòng chỉ tồn tại sau khi Worker gọi init() (POST /create). Vào mã chưa được tạo → error{noroom} rồi đóng (mã 4004).
@@ -29,6 +29,7 @@ import Core from '../../js/core.js';
 import MapGen from '../../js/mapgen.js';
 import BlockerPlan from '../../js/blocker-plan.js';
 import BlockerPick from '../../js/blocker-pick.js';
+import {cleanName} from './names.js';
 
 const RS_BY={classic:Core.ruleset('classic'),chaos:Core.ruleset('chaos')};
 const R_BY={classic:Core.make(RS_BY.classic),chaos:Core.make(RS_BY.chaos)};   /* bộ luật theo chế độ của phòng (g.mode) */
@@ -39,7 +40,7 @@ const GRACE_MS=45e3;   /* thời gian giữ ghế khi một người rớt mạn
 const TOKEN=/^[A-Za-z0-9_-]{16,64}$/;
 const BLOCKER_PAUSE_MS=10e3;   /* người chặn đường vào/ra thì cả hai bên đứng chờ vài giây: cộng bù cho bên đang tới lượt để không mất giờ oan */
 
-const fresh=()=>({created:false,mode:null,biome:null,map:null,bplan:null,visibility:null,code:null,slots:[null,null],side:[null,null],started:false,over:false,reason:null,snap:null,log:[],away:[0,0],expireAt:0,turnEnds:0,rematch:[false,false]});
+const fresh=()=>({created:false,mode:null,biome:null,map:null,bplan:null,visibility:null,code:null,slots:[null,null],names:['',''],side:[null,null],started:false,over:false,reason:null,snap:null,log:[],away:[0,0],expireAt:0,turnEnds:0,rematch:[false,false]});
 
 export class RoomLogic{
   constructor(io,opts){this.io=io;this.rand=(opts&&opts.rand)||Math.random;this.grace=(opts&&opts.grace)||GRACE_MS;this.turn=(opts&&opts.turn)||TURN_MS;this.g=null;this.st=null;}
@@ -71,7 +72,7 @@ export class RoomLogic{
   async ensure(){
     if(this.g)return;
     this.g=(await this.io.load())||fresh();
-    const g=this.g;if(!g.log)g.log=[];if(!g.away)g.away=[0,0];if(!g.expireAt)g.expireAt=0;if(!g.turnEnds)g.turnEnds=0;if(!g.rematch)g.rematch=[false,false];   /* bản ghi cũ (trước Giai đoạn 5) */
+    const g=this.g;if(!g.log)g.log=[];if(!g.away)g.away=[0,0];if(!g.expireAt)g.expireAt=0;if(!g.turnEnds)g.turnEnds=0;if(!g.rematch)g.rematch=[false,false];if(!g.names)g.names=['',''];   /* bản ghi cũ (trước Giai đoạn 5 / trước tên người chơi) */
     this.st=this.g.snap?this.rk().fromSnapshot(this.g.snap):null;
     if(g.mode==='chaos'&&this.st&&!g.bplan)g.bplan=BlockerPlan.init(this.rs().blockerPlan,this.rand,this.st.ply);   /* bản ghi cũ (trước khi có người chặn đường) */
   }
@@ -130,13 +131,16 @@ export class RoomLogic{
       if(slot<0||g.started){this.send(conn,{t:'full'});this.io.close(conn,4001,'full');return;}
       g.slots[slot]=m.token;joined=true;
     }
+    const nm=cleanName(m.name),named=!!nm&&g.names[slot]!==nm;   /* tên hiển thị: gửi trong hello, server làm sạch; nối lại với tên mới thì cập nhật */
+    if(named)g.names[slot]=nm;
     this.io.setSeat(conn,slot);
     for(const old of this.bySlot(slot,conn)){                  /* cùng token mở kết nối mới (tab khác/nối lại): kết nối cũ nhường chỗ */
       this.send(old,{t:'replaced'});this.io.close(old,4000,'replaced');
     }
     const players=g.slots.filter(Boolean).length;
-    this.send(conn,{t:'welcome',v:Core.PROTO,slot,started:g.started,players,mode:g.mode,visibility:g.visibility,...(g.mode==='chaos'?{biome:g.biome}:{})});
+    this.send(conn,{t:'welcome',v:Core.PROTO,slot,started:g.started,players,mode:g.mode,visibility:g.visibility,opp:g.names[1-slot]||'',...(g.mode==='chaos'?{biome:g.biome}:{})});
     if(joined){await this.persist();if(players===1)await this.expire(ALARM_WAITING);}
+    else if(named)await this.persist();
     if(g.away[slot]){g.away[slot]=0;await this.schedule();}      /* người rớt mạng đã nối lại kịp: hủy hạn xử thua */
     if(!g.started&&players===1)await this.lobby('add');          /* chủ phòng vào/nối lại: phòng công khai hiện trong danh sách chờ */
 
@@ -156,11 +160,11 @@ export class RoomLogic{
   /* Báo cho cả hai: ván bắt đầu (kèm phe của từng người) và ai đang online */
   announce(){
     const g=this.g,RS=this.rs(),turnLeft=this.turnLeft();
-    for(const c of this.io.conns()){const s=this.io.getSeat(c);if(s>=0)this.send(c,{t:'started',ruleset:{id:RS.id,N:RS.N,walls:RS.walls},you:g.side[s],snapshot:this.viewSnap(s),turnLeft,...(g.map?{map:g.map}:{})});}
+    for(const c of this.io.conns()){const s=this.io.getSeat(c);if(s>=0)this.send(c,{t:'started',ruleset:{id:RS.id,N:RS.N,walls:RS.walls},you:g.side[s],opp:g.names[1-s]||'',snapshot:this.viewSnap(s),turnLeft,...(g.map?{map:g.map}:{})});}
     for(const c of this.io.conns()){const s=this.io.getSeat(c);if(s>=0)this.send(c,{t:'opponentStatus',online:this.bySlot(1-s).length>0});}
   }
 
-  sendState(conn,slot){this.send(conn,{t:'state',you:this.g.side[slot],snapshot:this.viewSnap(slot),...(this.g.map?{map:this.g.map}:{}),over:this.st.over,winner:this.st.winner,reason:this.g.reason,log:this.logFor(),turnLeft:this.turnLeft(),rematch:{me:this.g.rematch[slot],opp:this.g.rematch[1-slot]}});}
+  sendState(conn,slot){this.send(conn,{t:'state',you:this.g.side[slot],opp:this.g.names[1-slot]||'',snapshot:this.viewSnap(slot),...(this.g.map?{map:this.g.map}:{}),over:this.st.over,winner:this.st.winner,reason:this.g.reason,log:this.logFor(),turnLeft:this.turnLeft(),rematch:{me:this.g.rematch[slot],opp:this.g.rematch[1-slot]}});}
   sync(conn){const s=this.io.getSeat(conn);if(s>=0&&this.g.started)this.sendState(conn,s);}
 
   async action(conn,m){

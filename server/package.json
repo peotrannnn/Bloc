@@ -6,6 +6,6 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "test": "node test/room-logic.mjs && node test/chaos-room.mjs && node test/items-room.mjs && node test/blocker-room.mjs && node test/lobby-logic.mjs && node test/limiter.mjs"
+    "test": "node test/room-logic.mjs && node test/chaos-room.mjs && node test/items-room.mjs && node test/blocker-room.mjs && node test/lobby-logic.mjs && node test/limiter.mjs && node test/names.mjs && node test/lobby-do.mjs"
   }
 }

@@ -5,6 +5,7 @@
      Hỗn Loạn: Online.createRoom({mode:'chaos',biome:'forest',visibility:'private'}) · Online.quick('chaos','forest')
        biome: 'random' | 'balanced' | 'forest' | 'mountain' | 'snow' | 'river' | 'desert' (bỏ trống = 'random'; Classic bỏ qua biome)
      const conn=Online.join(code);
+     Online.getName()/setName(s) · Online.rooms({mode,biome}) → danh sách phòng chờ · Online.presence(n=>...) → số người online (null = không biết)
      conn.on('welcome'|'started'|'applied'|'over'|'opponentStatus'|'full'|'error'|'close', m=>...);   // close: m.code 4004 = mã không tồn tại, 4001 = đầy, 4005 = lệch phiên bản giao thức (Core.PROTO)
      conn.autoReconnect(true)  → rớt mạng thì tự nối lại (phát 'reconnecting'), server trả 'welcome' rồi 'state'
      conn.action(seq,{move:[r,c]}) · conn.action(seq,{wall:{o,r,c}}) · conn.resign() · conn.sync() · conn.close() */
@@ -30,6 +31,15 @@ const Online=(()=>{
     return t;
   }
 
+  /* ----- Tên hiển thị (không đăng nhập): lưu ở localStorage để lần sau khỏi nhập lại. Server vẫn làm sạch lại (client không đáng tin).
+     Sau này có tài khoản thật thì chỉ cần thay chỗ lấy tên này. ----- */
+  const NAME_KEY='bloc.name',NAME_MAX=16;
+  const cleanName=s=>Array.from(String(s||'').replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e<>&"`]/g,'').replace(/\s+/g,' ').trim()).slice(0,NAME_MAX).join('').trim();
+  let memName='';   /* dự phòng khi localStorage bị chặn: tên vẫn được gửi cho server trong lần mở trang này */
+  function getName(){try{return cleanName(localStorage.getItem(NAME_KEY))||memName;}catch(e){return memName;}}
+  function setName(s){const n=cleanName(s);if(n)memName=n;try{if(n)localStorage.setItem(NAME_KEY,n);}catch(e){}return n;}
+  function randomName(){return 'Khách'+(1000+crypto.getRandomValues(new Uint16Array(1))[0]%9000);}
+
   /* "abc 23x" → "ABC23X"; null nếu không đúng định dạng mã của server (khỏi gọi mạng vô ích) */
   function normalizeCode(s){
     const c=String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
@@ -50,6 +60,33 @@ const Online=(()=>{
     return r.json();
   }
 
+  /* Danh sách phòng công khai đang chờ (cửa sổ "Ghép nhanh"). f = {mode?:'classic'|'chaos'|'all', biome?:'all'|...}. Trả mảng [{code,mode,biome,name,age}]. */
+  async function rooms(f){
+    const o=f||{};
+    const r=await fetch(SERVER+'/rooms',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:o.mode||'all',biome:o.biome||'all'})});
+    if(!r.ok)throw new Error('rooms_failed_'+r.status);
+    return (await r.json()).rooms||[];
+  }
+
+  /* "Có mặt": giữ một WebSocket tới server để được tính là đang online; server đẩy {t:'online',n}. cb(n) với n = số người online toàn server, hoặc cb(null)
+     khi mất kết nối / server chưa hỗ trợ (giao diện ẩn con số). Tự nối lại; tab bị ẩn lâu thì ngắt cho đỡ tốn, quay lại thì nối tiếp. */
+  function presence(cb){
+    let ws=null,timer=0,hb=0,fails=0,dead=false;
+    const url=SERVER.replace(/^http/,'ws')+'/presence';
+    const stop=()=>{clearInterval(hb);clearTimeout(timer);if(ws){const w=ws;ws=null;try{w.close();}catch(e){}}};
+    function open(){
+      if(dead||ws)return;
+      const me=new WebSocket(url);ws=me;let got=false;
+      me.onopen=()=>{hb=setInterval(()=>{try{if(me.readyState===1)me.send('ping');}catch(e){}},30000);};   /* chuỗi 'ping' trần: server tự trả 'pong' mà không đánh thức Durable Object */
+      me.onmessage=ev=>{let m;try{m=JSON.parse(ev.data);}catch(e){return;}if(m&&m.t==='online'&&Number.isInteger(m.n)){got=true;fails=0;cb(m.n);}};
+      me.onclose=()=>{if(me!==ws)return;ws=null;clearInterval(hb);cb(null);if(dead||document.hidden)return;fails=got?0:fails+1;if(fails>=5)return;timer=setTimeout(open,Math.min(30000,2000*(fails+1)));};   /* 5 lần liền không nối được (server cũ chưa có /presence) thì thôi */
+      me.onerror=()=>{};
+    }
+    document.addEventListener('visibilitychange',()=>{if(dead)return;if(document.hidden){clearTimeout(timer);fails=0;const w=ws;if(w){ws=null;clearInterval(hb);try{w.close();}catch(e){}}}else open();});
+    open();
+    return{close(){dead=true;stop();}};
+  }
+
   /* Phòng gần nhất đang chơi (mỗi tab một giá trị): tải lại trang vẫn vào lại được đúng ván. */
   function lastRoom(){try{return normalizeCode(sessionStorage.getItem('bloc.room'));}catch(e){return null;}}
   function setLastRoom(code){try{if(code)sessionStorage.setItem('bloc.room',code);else sessionStorage.removeItem('bloc.room');}catch(e){}}
@@ -68,7 +105,7 @@ const Online=(()=>{
 
     function open(){
       const me=new WebSocket(url);ws=me;                       /* me!==ws nghĩa là kết nối cũ đã bị thay: bỏ qua mọi sự kiện của nó */
-      me.onopen=()=>{if(me===ws)send({t:'hello',v:Core.PROTO,token:getToken()});};
+      me.onopen=()=>{if(me===ws)send({t:'hello',v:Core.PROTO,token:getToken(),name:getName()});};
       me.onmessage=ev=>{
         if(me!==ws)return;
         let m;try{m=JSON.parse(ev.data);}catch(e){return;}
@@ -103,5 +140,5 @@ const Online=(()=>{
     };
   }
 
-  return{createRoom,quick,join,normalizeCode,getToken,lastRoom,setLastRoom};
+  return{createRoom,quick,rooms,presence,join,normalizeCode,getToken,getName,setName,randomName,cleanName,lastRoom,setLastRoom};
 })();

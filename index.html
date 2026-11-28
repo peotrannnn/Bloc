@@ -52,15 +52,27 @@
 
 <div id="menu">
  <div class="win">
-  <div class="tb"><span id="winTitle">Bloc - menu</span><button id="winX" class="wx" aria-label="Đóng cửa sổ" data-tip="Đóng" data-tk="Esc" hidden>X</button></div>
+  <div class="tb"><span id="winTitle">Bloc - menu</span><span id="onCount" class="onc" hidden data-tn="Đang online" data-tip="Số người đang mở game trên toàn server."><i></i><span></span></span><button id="winX" class="wx" aria-label="Đóng cửa sổ" data-tip="Đóng" data-tk="Esc" hidden>X</button></div>
   <div class="wb">
 
+  <!-- Màn hình khởi động (js/menu.js, Menu.boot): tải sẵn three.js + dựng cảnh + chuẩn bị âm thanh trong lúc người chơi nhập tên.
+       Cử chỉ (gõ phím / bấm chuột) ở đây cũng là lần tương tác đầu tiên nên trình duyệt cho phép phát tiếng từ menu trở đi. -->
+  <section class="scr" id="scBoot">
+    <div class="sub">Tên của bạn</div>
+    <input id="bName" maxlength="16" autocomplete="off" spellcheck="false" placeholder="Nhập tên hiển thị" aria-label="Tên hiển thị">
+    <div class="pbar" id="bootBar" aria-hidden="true"><b></b></div>
+    <div id="bootMsg" class="bootmsg" role="status" aria-live="polite">Đang chuẩn bị…</div>
+    <button class="big p" id="bootGo" disabled>Vào game</button>
+  </section>
+
   <!-- Màn hình chính: 3 chế độ. Các màn hình con không có nút "Về": đóng cửa sổ bằng nút X trên thanh tiêu đề (hoặc Esc) -->
-  <section class="scr" id="scHome">
+  <section class="scr" id="scHome" hidden>
+    <div class="hello" id="homeName"></div>
     <button class="big" id="mOnline" data-tn="Chơi online" data-tip="Đấu với mấy khứa trên mạng.">Chơi online</button>
     <button class="big p" id="mPve" data-tn="Chơi với máy" data-tip="Đấu với máy.">Chơi với máy</button>
     <button class="big" id="mEve" data-tn="Cá độ" data-tip="AI vs AI: chọn mô hình cho Trắng & Đen rồi ngồi coi.">Cá cược</button>
     <button class="big" id="mSet" data-tn="Cài đặt" data-tip="Chỉnh âm lượng và âm thanh.">Cài đặt</button>
+    <button class="lnk" id="mRename" data-tn="Đổi tên" data-tip="Đổi tên hiển thị của bạn.">đổi tên</button>
   </section>
 
   <!-- Đấu với máy: chọn đối thủ -->
@@ -105,11 +117,26 @@ Hỗn Loạn: có địa hình, rương và vật phẩm (bựa lắm chơi đi)
     </label>
     <button class="big" id="onResume" hidden data-tn="Vô lại" data-tip="Quay lại ván đang dang dở của bạn.">Vào lại</button>
     <button class="big p" id="onCreate" data-tn="Tạo phòng" data-tip="Tạo phòng mới và nhận mã để gửi cho bạn bè.">Tạo phòng</button>
-    <button class="big" id="onQuick" data-tn="Ghép nhanh" data-tip="Tự ghép với mấy khứa khác đang tìm trận.">Ghép nhanh</button>
+    <button class="big" id="onQuick" data-tn="Ghép nhanh" data-tip="Xem các phòng công khai đang chờ rồi chọn phòng muốn vào.">Ghép nhanh</button>
     <div class="sub">hoặc nhập mã</div>
     <input id="onCode" maxlength="12" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Mã phòng" aria-label="Mã phòng">
     <button class="big" id="onJoin" data-tn="Vào phòng" data-tip="Vô phòng bằng mã.">Vào</button>
     <div id="onErr" class="err" role="alert" hidden></div>
+  </section>
+
+  <!-- Ghép nhanh: danh sách phòng công khai đang chờ (tự làm mới), bấm một phòng để vào -->
+  <section class="scr" id="scQuick" hidden>
+    <div class="sub">Phòng đang chờ</div>
+    <label class="row">Chế độ
+      <select id="qMode"><option value="all">Tất cả</option><option value="classic">Classic</option><option value="chaos">Hỗn Loạn</option></select>
+    </label>
+    <label class="row" id="qBiomeRow">Bản đồ
+      <select id="qBiome"></select>
+    </label>
+    <div class="opts rooms" id="qList" role="list" aria-live="polite"></div>
+    <div id="qEmpty" class="sub" hidden>chưa có phòng nào khớp</div>
+    <button class="big" id="qAuto" data-tn="Vô bừa" data-tip="Không chọn: server ghép vào phòng chờ lâu nhất (hoặc tạo phòng mới) theo chế độ và bản đồ ở màn trước.">Vô bừa</button>
+    <div id="qErr" class="err" role="alert" hidden></div>
   </section>
 
   <!-- Phòng chờ: hiện mã để gửi cho bạn bè -->

@@ -1,17 +1,20 @@
 /* [SERVER/INDEX] Cửa vào của Worker:
      POST /create  {mode,visibility[,biome]} → {code}      server cấp mã phòng 6 ký tự (bỏ 0/O/1/I) và tạo Durable Object tên = mã
      POST /quick   {mode[,biome]} → {code, created}        vào tự động: ghép vào phòng công khai đang chờ lâu nhất, chưa có thì tạo phòng mới
+     POST /rooms   {mode?,biome?} → {rooms:[{code,mode,biome,name,age}]}   danh sách phòng công khai đang chờ (cửa sổ "Ghép nhanh")
+     GET  /presence (WebSocket)                     "có mặt": giữ kết nối để được tính là đang online; server đẩy {t:'online',n} = số người online toàn server
      GET  /ws?room=CODE (WebSocket)                chuyển tiếp tới Durable Object của phòng; mã chưa tạo thì phòng tự báo lỗi
      GET  /health
    Mọi luật chơi và trạng thái ván nằm trong Room (room-logic.js); danh sách phòng chờ nằm trong Lobby. Worker này không giữ gì cả. */
 export {Room} from './room.js';
 export {Lobby} from './lobby.js';
-import {CODE,MODES,VISIBILITY,newCode,pickBiome} from './codes.js';
+import {CODE,MODES,BIOMES,VISIBILITY,newCode,pickBiome} from './codes.js';
 import {makeLimiter} from './limiter.js';
 
 /* Giới hạn theo IP (xem limiter.js). Rộng tay để người chơi thật không bao giờ chạm tới: tạo/ghép phòng tối đa 30 lượt dồn, nạp 1 lượt mỗi 2 giây;
    mở kết nối WebSocket 60 lượt dồn, nạp 1 lượt mỗi giây (nối lại khi rớt mạng cũng tính). Chặn kẻ chạy vòng lặp tạo phòng hoặc dò mã phòng. */
 const postLimit=makeLimiter({capacity:30,perSec:.5}),wsLimit=makeLimiter({capacity:60,perSec:1});
+const roomsLimit=makeLimiter({capacity:40,perSec:1});   /* cửa sổ danh sách phòng tự làm mới mỗi vài giây */
 const ipOf=req=>req.headers.get('CF-Connecting-IP')||'unknown';
 const roomOf=(env,code)=>env.ROOM.get(env.ROOM.idFromName(code));
 const lobbyOf=env=>env.LOBBY.get(env.LOBBY.idFromName('main'));
@@ -52,7 +55,18 @@ async function quick(req,env,origin){
   return json(await r.json(),200,origin);
 }
 
-const POSTS={'/create':create,'/quick':quick};
+async function rooms(req,env,origin){
+  let b={};try{b=await req.json();}catch(e){}
+  const mode=b.mode&&b.mode!=='all'?b.mode:'all';
+  if(mode!=='all'&&!MODES.includes(mode))return json({error:'badparams'},400,origin);
+  const biome=b.biome&&b.biome!=='all'?b.biome:'all';
+  if(biome!=='all'&&!BIOMES.includes(biome))return json({error:'badparams'},400,origin);
+  const r=await lobbyOf(env).fetch('https://lobby/list',{method:'POST',body:JSON.stringify({mode,biome})});
+  if(!r.ok)return json({error:'busy'},503,origin);
+  return json(await r.json(),200,origin);
+}
+
+const POSTS={'/create':create,'/quick':quick,'/rooms':rooms};
 
 export default{
   async fetch(req,env){
@@ -67,11 +81,17 @@ export default{
         return new Response(null,{status:204,headers:{'Access-Control-Allow-Origin':origin||'*','Access-Control-Allow-Methods':'POST','Access-Control-Allow-Headers':'Content-Type','Access-Control-Max-Age':'86400','Vary':'Origin'}});
       }
       if(req.method!=='POST')return new Response('Method not allowed',{status:405});
-      if(!postLimit.take(ipOf(req)))return json({error:'ratelimit'},429,origin);
+      if(!(handler===rooms?roomsLimit:postLimit).take(ipOf(req)))return json({error:'ratelimit'},429,origin);
       try{return await handler(req,env,origin);}
       catch(e){return json({error:'internal',detail:String(e&&e.message||e)},500,origin);}   /* lỗi bất ngờ (vd Durable Object ném lỗi): trả JSON có nội dung lỗi thay vì trang HTML của Cloudflare */
     }
 
+    if(url.pathname==='/presence'){
+      if(req.headers.get('Upgrade')!=='websocket')return new Response('Expected websocket',{status:426});
+      if(!ok)return new Response('Forbidden origin',{status:403});
+      if(!wsLimit.take(ipOf(req)))return new Response('Too many requests',{status:429});
+      return lobbyOf(env).fetch(req);
+    }
     if(url.pathname!=='/ws')return new Response('Not found',{status:404});
     if(req.headers.get('Upgrade')!=='websocket')return new Response('Expected websocket',{status:426});
     if(!ok)return new Response('Forbidden origin',{status:403});

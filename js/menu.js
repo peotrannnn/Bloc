@@ -2,8 +2,8 @@
 /* [MENU] Menu chính: mỗi màn hình là một "cửa sổ" riêng (tên ở thanh tiêu đề, nút X để quay về menu chính). Danh sách AI lấy từ AIs (ai/registry.js),
    nên thêm AI mới là menu tự cập nhật. Menu chỉ thu thập lựa chọn rồi gọi App.start(cfg). */
 const Menu={
-  screens:['scHome','scPve','scEve','scOnline','scWait'],
-  titles:{scHome:'Bloc - menu',scPve:'Bloc - Chơi với máy',scEve:'Bloc - Cá cược',scOnline:'Bloc - Chơi online',scWait:'Bloc - Phòng chờ'},   /* tên cửa sổ theo màn hình */
+  screens:['scBoot','scHome','scPve','scEve','scOnline','scQuick','scWait'],
+  titles:{scBoot:'Bloc',scHome:'Bloc - menu',scQuick:'Bloc - Ghép nhanh',scPve:'Bloc - Chơi với máy',scEve:'Bloc - Cá cược',scOnline:'Bloc - Chơi online',scWait:'Bloc - Phòng chờ'},   /* tên cửa sổ theo màn hình */
   pveId:null,   /* AI đang chọn làm đối thủ ở chế độ đấu với máy */
   /* Bản đồ của chế độ Hỗn Loạn (khóa trùng với server/src/codes.js BIOMES; 'random' = server bốc ngẫu nhiên mỗi ván) */
   biomeNames:{random:'Ngẫu nhiên',balanced:'Cân bằng',forest:'Rừng',mountain:'Núi',snow:'Tuyết',river:'Sông',desert:'Sa mạc'},
@@ -24,7 +24,14 @@ const Menu={
     $('winX').onclick=()=>this.back();   /* nút X: từ màn hình con về menu chính (đang ở phòng chờ thì rời phòng) */
     $('onCreate').onclick=()=>this.createRoom();
     $('onJoin').onclick=()=>this.joinByCode();
-    $('onQuick').onclick=()=>this.quickJoin();
+    $('onQuick').onclick=()=>this.showQuick();   /* mở cửa sổ danh sách phòng; muốn ghép bừa thì bấm "Vô bừa" trong đó */
+    $('qAuto').onclick=()=>this.quickJoin();
+    $('qMode').onchange=()=>{$('qBiomeRow').hidden=$('qMode').value==='classic';this.refreshRooms();};
+    $('qBiome').onchange=()=>this.refreshRooms();
+    for(const k in this.biomeNames)$('qBiome').add(new Option(k==='random'?'Ngẫu nhiên (server bốc)':this.biomeNames[k],k));
+    $('qBiome').add(new Option('Tất cả','all'),0);
+    $('mRename').onclick=()=>this.rename();
+    this.boot();
     $('onCode').onkeydown=e=>{if(e.key==='Enter')this.joinByCode();};
     $('waitCopy').onclick=()=>{
       const b=$('waitCopy'),code=$('waitCode').textContent;
@@ -60,7 +67,94 @@ const Menu={
   /* Nút X hoặc phím Esc: từ màn hình con quay về màn hình chính */
   back(){
     if(!$('scWait').hidden){this.cancelWait();return;}
+    if(!$('scQuick').hidden){this.showOnline();return;}
+    if(!$('scBoot').hidden){if(this.booted){$('bName').value=Online.getName();this.show('scHome');}return;}   /* chưa qua màn khởi động thì Esc không bỏ qua được */
     if($('scHome').hidden)this.show('scHome');
+  },
+
+  /* ----- Màn khởi động: tải sẵn (three.js, cảnh 3D, âm thanh) trong lúc người chơi nhập tên -----
+     Tên lưu ở localStorage (Online.getName/setName), gửi cho server trong hello; để trống thì tự đặt "Khách1234". Cử chỉ ở đây (gõ tên, bấm nút) là lần
+     tương tác đầu tiên nên sfx.js/audio.js tự mở khóa âm thanh (xem bindUI / gesture); từ menu trở đi có tiếng ngay mà không cần bấm thêm. */
+  booted:false,pendingGo:false,
+  boot(){
+    const inp=$('bName'),go=$('bootGo'),msg=$('bootMsg'),bar=$('bootBar').firstElementChild;
+    inp.value=Online.getName()||Online.randomName();
+    this.show('scBoot');
+    inp.onkeydown=e=>{if(e.key!=='Enter')return;if(go.disabled){this.pendingGo=true;msg.textContent='Sẽ vào ngay khi tải xong…';}else this.enter();};
+    go.onclick=()=>this.enter();
+    const prog=(p,t)=>{bar.style.width=p+'%';msg.className='bootmsg';msg.textContent=t;return Loading.paint();};
+    const ready=(ok,text)=>{
+      bar.style.width='100%';msg.textContent=text;msg.className='bootmsg'+(ok?'':' bad');
+      go.disabled=false;
+      if(this.pendingGo&&$('scBoot').hidden===false)this.enter();
+      else if(!inp.matches(':focus')&&!this.booted)go.focus();
+    };
+    (async()=>{
+      try{
+        await prog(4,'Chuẩn bị âm thanh…');
+        try{Sfx.prepare();}catch(e){}
+        try{if(typeof BgAudio!=='undefined')BgAudio.prepare();}catch(e){}
+        await App.prepare(prog);
+        ready(true,'Sẵn sàng');
+      }catch(e){
+        ready(false,'Không tải được thư viện 3D. Kiểm tra mạng, vẫn vào menu được (sẽ thử tải lại khi vào ván).');
+      }
+    })();
+  },
+  /* Qua màn khởi động (hoặc xong việc đổi tên): lưu tên, về menu chính, mở kết nối "có mặt" nếu chưa mở */
+  enter(){
+    const inp=$('bName');let n=Online.setName(inp.value);
+    if(!n){n=Online.randomName();Online.setName(n);}
+    inp.value=n;this.pendingGo=false;
+    const h=$('homeName');h.textContent='Xin chào, ';const b=document.createElement('b');b.textContent=n;h.appendChild(b);
+    if(!this.booted){this.booted=true;$('bootGo').textContent='Xong';this.presence=Online.presence(n=>{this.online=n;this.paintOnline();});}
+    this.show('scHome');
+  },
+  rename(){this.show('scBoot');const i=$('bName');i.focus();i.select();},
+  /* Số người online (null = chưa biết / server chưa hỗ trợ: ẩn ô) */
+  online:null,
+  paintOnline(){
+    const el=$('onCount'),n=this.online,here=!$('scOnline').hidden||!$('scQuick').hidden;   /* ô nằm ở góc thanh tiêu đề, chỉ hiện ở màn Online và Ghép nhanh */
+    el.hidden=n==null||!here;
+    if(n!=null)el.querySelector('span').textContent=n+' online';
+  },
+
+  /* ----- Ghép nhanh: cửa sổ danh sách phòng công khai đang chờ, tự làm mới mỗi 3 giây -----
+     Bộ lọc mặc định theo chế độ đang chọn ở màn Online (bản đồ: tất cả). Bấm một phòng = vào thẳng phòng đó. */
+  from:null,rq:0,rtimer:0,
+  qErr(t){const e=$('qErr');e.textContent=t||'';e.hidden=!t;},
+  showQuick(){
+    this.qErr('');this.from=null;
+    $('qMode').value=$('onMode').value;$('qBiome').value='all';$('qBiomeRow').hidden=$('qMode').value==='classic';
+    $('qList').textContent='';$('qEmpty').hidden=true;
+    this.show('scQuick');
+    this.refreshRooms();
+    clearInterval(this.rtimer);this.rtimer=setInterval(()=>{if(!document.hidden&&!$('scQuick').hidden)this.refreshRooms();},3000);
+  },
+  stopRooms(){clearInterval(this.rtimer);this.rtimer=0;this.rq++;},
+  async refreshRooms(){
+    const my=++this.rq;
+    try{
+      const mode=$('qMode').value,rs=await Online.rooms({mode,biome:mode==='classic'?'all':$('qBiome').value});
+      if(my!==this.rq||$('scQuick').hidden)return;
+      this.qErr('');this.paintRooms(rs);
+    }catch(e){
+      if(my!==this.rq||$('scQuick').hidden)return;
+      this.qErr(/429/.test(e.message)?'Làm mới quá nhanh, đợi vài giây…':'Không tải được danh sách phòng. Kiểm tra mạng rồi thử lại.');
+    }
+  },
+  ageText(ms){const s=Math.floor(ms/1000);return s<10?'vừa tạo':s<60?s+' giây':s<3600?Math.floor(s/60)+' phút':'hơn 1 giờ';},
+  paintRooms(rs){
+    const box=$('qList');box.textContent='';
+    for(const r of rs){
+      const b=document.createElement('button');b.type='button';b.setAttribute('role','listitem');b.dataset.code=r.code;
+      const n=document.createElement('span'),a=document.createElement('span'),t=document.createElement('span');
+      n.className='rn';n.textContent=r.name||'Người chơi ẩn danh';a.className='ra';a.textContent=this.ageText(r.age);t.className='rt';t.textContent=this.modeText(r.mode,r.biome);
+      b.append(n,a,t);
+      b.onclick=()=>{this.qErr('');this.joinRoom(r.code,false,'quick');};
+      box.appendChild(b);
+    }
+    $('qEmpty').hidden=rs.length>0;
   },
 
   /* ----- Đấu online (Classic / Hỗn Loạn): tạo phòng hoặc vào bằng mã ----- */
@@ -70,7 +164,7 @@ const Menu={
   syncMode(){const chaos=$('onMode').value==='chaos';$('onBiomeRow').hidden=!chaos;$('onSub').textContent='Online · '+(chaos?'Hỗn Loạn':'Classic');},
   /* Dòng mô tả phòng ở màn hình chờ: chế độ do SERVER quyết định (vào bằng mã thì lấy theo phòng, không theo lựa chọn của người vào) */
   modeText(mode,biome){return mode==='chaos'?'Hỗn Loạn · '+(this.biomeNames[biome]||this.biomeNames.random):'Classic';},
-  showOnline(){const c=Online.lastRoom(),b=$('onResume');b.hidden=!c;if(c)b.textContent='Vào lại '+c;this.show('scOnline');},
+  showOnline(){this.from=null;const c=Online.lastRoom(),b=$('onResume');b.hidden=!c;if(c)b.textContent='Vào lại '+c;this.show('scOnline');},
   err(t){const e=$('onErr');e.textContent=t||'';e.hidden=!t;},
   async createRoom(){
     this.err('');
@@ -97,8 +191,8 @@ const Menu={
     }catch(e){this.show('scOnline');this.err(/429/.test(e.message)?'Bạn thao tác quá nhanh, đợi vài giây rồi thử lại.':'Không tìm được phòng. Kiểm tra mạng rồi thử lại.');}
     finally{btn.disabled=false;}
   },
-  joinRoom(code,quick){
-    this.leaveRoom();this.quick=!!quick;
+  joinRoom(code,quick,from){
+    this.leaveRoom();this.quick=!!quick;this.from=from||null;
     const conn=Online.join(code);this.conn=conn;this.started=false;this.mode='classic';this.biome=null;$('waitMode').textContent='';
     for(const t of['welcome','started','applied','state','rejected','over','opponentStatus','full','replaced','error','close'])
       conn.on(t,m=>{if(this.conn===conn)this.onNet(t,m);});   /* tin của kết nối cũ (đã rời) thì bỏ */
@@ -106,8 +200,13 @@ const Menu={
     this.show('scWait');
   },
   leaveRoom(){if(this.conn){const c=this.conn;this.conn=null;c.close();}},
-  cancelWait(){this.leaveRoom();this.showOnline();},
-  fail(msg){if(/hết hạn|không tồn tại/.test(msg))Online.setLastRoom(null);this.leaveRoom();this.showOnline();this.err(msg);},
+  cancelWait(){const q=this.from==='quick';this.leaveRoom();if(q)this.showQuick();else this.showOnline();},
+  /* Lỗi lúc vào phòng: vào từ danh sách thì quay lại danh sách (phòng vừa đầy là chuyện thường), còn lại về màn Online */
+  fail(msg){
+    if(/hết hạn|không tồn tại/.test(msg))Online.setLastRoom(null);
+    const q=this.from==='quick';this.leaveRoom();
+    if(q){this.showQuick();this.qErr(msg);}else{this.showOnline();this.err(msg);}
+  },
   /* Tin từ server: trước khi ván bắt đầu thì lo màn hình chờ, sau đó chuyển hết cho App */
   onNet(t,m){
     if(t==='welcome'&&!this.started){
@@ -118,7 +217,7 @@ const Menu={
     if((t==='started'||t==='state')&&!this.started){           /* started: ván mới; state: vào lại ván đang chơi (tải lại trang / bấm "Vào lại phòng") */
       this.started=true;
       this.conn.autoReconnect(true);Online.setLastRoom(this.conn.code);
-      App.start({net:{conn:this.conn,you:m.you,snap:m.snapshot,turnLeft:m.turnLeft,state:t==='state'?m:null,mode:this.mode,map:m.map||null},delay:0,analysis:{on:false,lock:true}});   /* online: tắt và khóa đánh giá */
+      App.start({net:{conn:this.conn,you:m.you,oppName:m.opp||'',snap:m.snapshot,turnLeft:m.turnLeft,state:t==='state'?m:null,mode:this.mode,map:m.map||null},delay:0,analysis:{on:false,lock:true}});   /* online: tắt và khóa đánh giá */
       return;
     }
     if(!this.started){
@@ -136,7 +235,9 @@ const Menu={
   show(name){
     for(const s of this.screens)$(s).hidden=s!==name;
     $('winTitle').textContent=this.titles[name]||'Bloc';
-    $('winX').hidden=name==='scHome';
+    $('winX').hidden=name==='scHome'||name==='scBoot';
+    if(name!=='scQuick')this.stopRooms();
+    this.paintOnline();
     const w=document.querySelector('#menu .win');w.classList.remove('pop');void w.offsetWidth;w.classList.add('pop');
     UI.el.ld.hidden=true;UI.el.menu.hidden=false;Sfx.play('ui:open',{v:.6});
   }

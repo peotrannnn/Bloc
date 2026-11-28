@@ -69,11 +69,13 @@ ck(txt(byId.trap).includes(`đóng ${RS.trapClosed} lượt`)&&txt(byId.trap).in
 ck(txt(byId.ice).includes(RS.slideMax+' lần'),`băng: số lần trượt tối đa phải là ${RS.slideMax}`);
 ck(/tối đa 2 món/.test(txt(byId.chest))&&RS.bag===2,`túi đồ: hướng dẫn ghi tối đa 2 món, lõi bag=${RS.bag}`);
 const bp=RS.blockerPlan;
-ck(txt(byId.blocker).includes(`${bp.first[0]} đến ${bp.first[1]} nước`),'người chặn đường: lần đầu không khớp lịch');
-ck(txt(byId.blocker).includes(`${bp.gap[0]} đến ${bp.gap[1]} nước`),'người chặn đường: khoảng nghỉ không khớp lịch');
-ck(txt(byId.blocker).includes(`${bp.stay[0]} đến ${bp.stay[1]} nước`),'người chặn đường: thời gian đứng không khớp lịch');
-ck(/10 tường/.test(txt(byId.wall)),'đặt tường: số tường mỗi bên');
-ck(/ít nhất 2 tường/.test(txt(byId.glove)),'găng tay: điều kiện đối thủ còn ≥ 2 tường');
+/* Kiểm SỐ LIỆU, không kiểm từ ngữ: hướng dẫn được phép viết "lượt" hay "nước", "tường" hay "bức tường" (từng đỏ oan vì test đòi đúng "nước" / "10 tường"). */
+const num=(a,b)=>new RegExp(`${a} đến ${b} (nước|lượt)`);
+ck(num(bp.first[0],bp.first[1]).test(txt(byId.blocker)),`người chặn đường: lần đầu phải là ${bp.first[0]} đến ${bp.first[1]} lượt`);
+ck(num(bp.gap[0],bp.gap[1]).test(txt(byId.blocker)),`người chặn đường: khoảng nghỉ phải là ${bp.gap[0]} đến ${bp.gap[1]} lượt`);
+ck(num(bp.stay[0],bp.stay[1]).test(txt(byId.blocker)),`người chặn đường: thời gian đứng phải là ${bp.stay[0]} đến ${bp.stay[1]} lượt`);
+ck(new RegExp(`${RS.walls} (bức )?tường`).test(txt(byId.wall)),`đặt tường: mỗi bên phải ghi ${RS.walls} tường (lõi: walls=${RS.walls})`);
+ck(/ít nhất 2 (bức )?tường/.test(txt(byId.glove)),'găng tay: điều kiện đối thủ còn ≥ 2 tường (lõi: Core.canUse glove st.left[q]>=2)');
 ck(/cạnh/i.test(txt(byId.stone)),'đá cao: luật tường theo cạnh');
 
 

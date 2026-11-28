@@ -53,3 +53,10 @@ Chưa có (các giai đoạn sau): server cấp mã phòng và phòng công khai
 ## Lưu ý chi phí (gói Free) — cần đo thật
 
 Mỗi nước đi ghi một lần vào storage của phòng (khoảng vài chục lần ghi mỗi ván). Gói Free giới hạn số dòng SQLite ghi mỗi ngày, nên số ván/ngày thực tế phụ thuộc vào đây, không chỉ vào số request. Nếu cần, giảm bằng cách gộp ghi (ghi mỗi vài nước, hoặc chỉ ghi khi sắp "ngủ").
+
+## Tên người chơi, số người online, danh sách phòng chờ
+
+- `hello{token,v,name?}`: `name` là tên hiển thị (≤16 ký tự), server làm sạch bằng `src/names.js`. Đối thủ nhận tên qua trường `opp` của `welcome` / `started` / `state`. Không đổi luật nên không tăng `Core.PROTO`.
+- `GET /presence` (WebSocket): mỗi tab giữ một kết nối tới Durable Object `Lobby`; server đẩy `{t:'online',n}` khi số kết nối đổi. Client gửi chuỗi `ping` định kỳ, server tự trả `pong` (auto-response, không đánh thức DO).
+- `POST /rooms {mode?,biome?}` → `{rooms:[{code,mode,biome,name,age}]}`: phòng công khai đang chờ (cửa sổ "Ghép nhanh"), lọc theo chế độ/bản đồ, tối đa 30, giới hạn riêng theo IP.
+- Test: `node test/names.mjs`.

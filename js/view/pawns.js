@@ -83,9 +83,9 @@ const Pawns={
   },
 
   /* Độ cao đứng của quân ở ô (r,c): mặt ô thường (TOP) + độ cao đá (Terrain.heightAt: 0 / đá thấp / đá cao). Không có địa hình thì luôn TOP. */
-  floorY(r,c){
+  floorY(r,c,x,z){   /* x,z (tùy chọn) = chỗ quân THẬT SỰ đứng: quân đáp lệch tâm ô một chút (landJitter) mà mặt đá gồ ghề ±.1 nên độ cao ở đó khác độ cao ở tâm ô */
     if(typeof Terrain==='undefined')return TOP;
-    if(Terrain.surfaceAt)return this.groundY(cellX(c),cellZ(r));   /* quân đứng ở chỗ cao nhất dưới cả vòng chân, không chỉ ngay tâm ô */
+    if(Terrain.surfaceAt)return x===undefined?this.groundY(cellX(c),cellZ(r)):this.groundY(x,z);   /* quân đứng ở chỗ cao nhất dưới cả vòng chân, không chỉ ngay tâm ô */
     return TOP+(Terrain.heightAt?Terrain.heightAt(r,c):0);
   },
   /* Mặt đá thấp nhất mà quân được phép đứng tại (x,z): lấy chỗ CAO NHẤT dưới cả VÒNG chân/thân (tâm + 8 điểm quanh bán kính FOOT_R: thân Lathe rộng .4·scale, chân còn đung đưa
@@ -128,10 +128,11 @@ const Pawns={
     const g=s.g,cfg=CFG.PAWN;
     s.r=p.r;s.c=p.c;
     s.fx=g.position.x;s.fy=g.position.y;s.fz=g.position.z;
-    s.gy=undefined;s.ty=this.floorY(p.r,p.c);                                          /* độ cao đứng ở ô đích (đá thấp/đá cao cao hơn mặt ô thường) */
+    s.gy=undefined;
     const sm=p.m&&p.m.k!=='jump'?p.m:null;s.stp=sm?sm.k:'walk';s.dh=sm?sm.dh:0;s.sc=0;   /* kiểu bước (walk/climb/hop) và chênh bậc, do script/update phân loại */
     const dx=cellX(p.c)+rand(-cfg.landJitter,cfg.landJitter)-s.fx;   /* đáp lệch tâm ô một chút */
     const dz=cellZ(p.r)+rand(-cfg.landJitter,cfg.landJitter)-s.fz;
+    s.ty=this.floorY(p.r,p.c,s.fx+dx,s.fz+dz);   /* độ cao đứng ở CHỖ ĐÁP (đá thấp/đá cao cao hơn mặt ô thường). Lấy ở tâm ô thì khi đáp lệch tới chỗ đá thấp hơn, quân lơ lửng tới ~4 cm vì y=max(nội suy, mặt đá) */
     const dl=Math.hypot(dx,dz),len=dl/CFG.PITCH;
     s.dx=dx;s.dz=dz;s.px=-dz/dl;s.pz=dx/dl;                           /* vector vuông góc để uốn cong quỹ đạo */
     s.lat=rsign()*rand(.06,.18)*Math.min(len,2);                        /* độ cong: mỗi lần một hướng, một độ lớn */
@@ -271,7 +272,7 @@ const Pawns={
         g.position.y=gb+Math.abs(Math.sin(ph))*.05*inn*out;break;}
     }
     if(t>=c.dur){   /* xong: trả về tư thế đứng yên */
-      s.cel=null;g.position.y=this.floorY(s.r,s.c);s.gy=undefined;g.scale.set(1,1,1);fl.rotation.set(0,0,0);fl.position.set(0,pv,0);L0.rotation.set(0,0,0);L1.rotation.set(0,0,0);
+      s.cel=null;g.position.y=this.floorY(s.r,s.c,g.position.x,g.position.z);s.gy=undefined;g.scale.set(1,1,1);fl.rotation.set(0,0,0);fl.position.set(0,pv,0);L0.rotation.set(0,0,0);L1.rotation.set(0,0,0);
     }
   },
 

@@ -67,6 +67,10 @@ const UI={
 
   /* Tên hiển thị của bên p: "Trắng" */
   label(p){return CFG.PLAYERS[p].name;},
+  /* Tên người chơi (online): của mình lấy từ Online, của đối thủ do server gửi (S.net.oppName); chưa có thì hiện "Đối thủ" */
+  esc:t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])),
+  oppName(){return(S.net&&S.net.oppName)||'Đối thủ';},
+  myName(){return(typeof Online!=='undefined'&&Online.getName())||'Bạn';},
 
   /* ----- Dòng trạng thái: NGẮN, mỗi ý một "thẻ" có màu (css .tg). Mức: good xanh lá · info xanh lam · warn vàng cam · bad đỏ · blink = đỏ nhấp nháy (khẩn cấp) -----
      statusParts() trả mảng phần tử: chuỗi (chữ thường) hoặc [mức, chữ] (thẻ màu). Thêm thông báo mới chỉ cần push vào mảng. */
@@ -80,24 +84,24 @@ const UI={
       if(S.over){
         if(S.draw)return[tg('warn','Hòa'),S.ply+' nước'];
         if(S.winner<0)return['Ván kết thúc'];
-        const win=S.winner===S.me,why={timeout:win?'đối thủ rớt mạng':'bạn rớt mạng',resign:win?'đối thủ đầu hàng':'bạn đầu hàng',turn:win?'đối thủ hết giờ':'bạn hết giờ'}[n.reason];
+        const win=S.winner===S.me,on=n.oppName||'đối thủ',why={timeout:win?on+' rớt mạng':'bạn rớt mạng',resign:win?on+' đầu hàng':'bạn đầu hàng',turn:win?on+' hết giờ':'bạn hết giờ'}[n.reason];
         return[win?tg('good','Thắng!'):tg('bad','Thua')].concat(why?[why]:[]);
       }
       if(n.offline)return[tg('blink','Mất kết nối'),'đang nối lại…'];
       const tl=n.deadline?Math.max(0,Math.ceil((n.deadline-Date.now())/1000)):0;
       const clock=tl?tg(tl<=5?'blink':tl<=10?'warn':'dim','⏱ '+tl+'s'):null;   /* đồng hồ lượt: ≤10s vàng, ≤5s đỏ nhấp nháy */
       if(tl&&tl<=10&&S.turn===S.me&&n.lastTick!==tl){n.lastTick=tl;Sfx.play('ui:tick',{v:tl<=5?1.4:.8});}   /* đồng hồ lượt: tick êm, dày dần */
-      const off=n.oppOnline===false?tg('bad','đối thủ rớt mạng'):null;
+      const off=n.oppOnline===false?tg('bad',(n.oppName||'đối thủ')+' rớt mạng'):null;
       const hid=S.chaos&&S.hid[1-S.me]?tg('info','🌿 ẩn trong cỏ'):null;
       if(S.turn!==S.me){
-        P.push('Lượt đối thủ');if(clock)P.push(clock);if(off)P.push(off);if(hid)P.push(hid);
+        P.push('Lượt của '+this.oppName());if(clock)P.push(clock);if(off)P.push(off);if(hid)P.push(hid);
         if(S.chaos&&S.stuck&&S.stuck[1-S.me]&&!S.hid[1-S.me])P.push(tg('warn','đứng yên'));
         if(S.chaos&&S.sunk&&S.sunk[1-S.me]&&!S.hid[1-S.me])P.push(tg('warn','🚫 lún cát: mất lượt sau'));
         if(S.chaos&&S.bonus&&S.bonus[1-S.me]===2)P.push(tg('warn','👟 lượt thêm'));
         if(n.note&&/^Bạn bị lún/.test(n.note))P.push(tg('warn',n.note));   /* lượt của mình vừa bị bỏ qua: đối thủ đang đi tiếp */
         return P;
       }
-      if(S.animLock)return['Đối thủ đang đi…'].concat(off?[off]:[],hid?[hid]:[]);   /* tới lượt mình nhưng quân đối thủ chưa diễn xong (vd trượt băng): chưa cho đi */
+      if(S.animLock)return[this.oppName()+' đang đi…'].concat(off?[off]:[],hid?[hid]:[]);   /* tới lượt mình nhưng quân đối thủ chưa diễn xong (vd trượt băng): chưa cho đi */
       if(n.wait)return[tg('dim','Đang gửi…')].concat(off?[off]:[]);
       P.push(tg('good','Lượt bạn'));if(clock)P.push(clock);
       if(S.chaos&&S.bonus&&S.bonus[S.me]===2)P.push(tg('warn','👟 Lượt thêm'),'chỉ đi quân');
@@ -131,7 +135,7 @@ const UI={
     if(this.cfOpen&&this.cfCheck&&!this.cfCheck())this.closeAsk();
     this.renderStatus();
     e.info.innerHTML=P.map((p,i)=>'<b>'+p.sym+' '+this.label(i)+'</b>: '+
-      (S.net?(i===S.me?'Bạn':'Đối thủ'):isAI(i)?AIs.get(S.ai[i]).name:'Bạn')+' · '+S.left[i]+' tường'+this.bagHtml(i)).join('  |  ');
+      (S.net?this.esc(i===S.me?this.myName():this.oppName()):isAI(i)?AIs.get(S.ai[i]).name:'Bạn')+' · '+S.left[i]+' tường'+this.bagHtml(i)).join('  |  ');
     e.bMove.hidden=e.bWall.hidden=e.bRot.hidden=auto;
     e.bPause.hidden=!auto;e.bPause.textContent=(S.paused?'Tiếp':'Dừng')+' (Space)';e.bPause.disabled=S.over;e.bPause.dataset.tn=S.paused?'Tiếp tục':'Tạm dừng';
     e.bMove.setAttribute('aria-pressed',S.mode==='move');
