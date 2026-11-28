@@ -54,12 +54,11 @@ const Marks={
     else if(kind==='x')stroke(()=>{g.beginPath();g.moveTo(32,32);g.lineTo(96,96);g.moveTo(96,32);g.lineTo(32,96);},16);
     else if(kind==='ok')stroke(()=>{g.beginPath();g.moveTo(26,68);g.lineTo(54,95);g.lineTo(104,36);},17);
     else if(kind==='arrow')stroke(()=>{g.beginPath();g.moveTo(64,22);g.lineTo(64,96);g.moveTo(34,66);g.lineTo(64,98);g.lineTo(94,66);},16);   /* mũi tên chỉ xuống */
-    else if(kind.startsWith('g:')){   /* quà / vật phẩm: huy hiệu tròn tối viền vàng, biểu tượng emoji ở giữa (CFG.ITEMS) */
+    else if(kind.startsWith('g:')){   /* quà / vật phẩm: huy hiệu tròn tối viền vàng, biểu tượng SVG (Icons.draw) ở giữa (CFG.ITEMS) */
       g.shadowBlur=0;g.shadowOffsetY=0;
       g.beginPath();g.arc(64,64,54,0,TAU);g.fillStyle='rgba(18,18,26,.88)';g.fill();
       g.lineWidth=8;g.strokeStyle='#f0b429';g.stroke();
-      g.font='62px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif';
-      const it=CFG.ITEMS[kind.slice(2)];g.fillStyle='#fff';g.fillText(it?it.icon:'?',64,70);
+            const it=CFG.ITEMS[kind.slice(2)];if(it)Icons.draw(g,it.icon,64,64,66,'#fff');else{g.font='bold 62px sans-serif';g.fillStyle='#fff';g.fillText('?',64,70);}
     }
     else if(kind.startsWith('n:')){   /* số lượt (chữ viền tối + viền trắng) */
       const t=kind.slice(2);g.font='bold '+(t.length>1?84:108)+'px "Trebuchet MS",Arial,sans-serif';

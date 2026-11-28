@@ -5,7 +5,7 @@ Game cờ 3D chạy trên trình duyệt (biến thể Quoridor), giao diện ti
 ## Chạy thử
 
 - Mở thẳng `index.html` trong trình duyệt (cần mạng để tải three.js), hoặc chạy một server tĩnh: `python3 -m http.server 8000` rồi vào <http://localhost:8000>.
-- Phím tắt: `Q` đi quân · `W` đặt tường · `R` xoay tường · `E` đổi góc nhìn · `T` bật/tắt đánh giá · `P` ván mới · `Space` tạm dừng (máy đấu máy) · `Esc` về menu · mũi tên để đi quân / dời tường.
+- Phím tắt: `Q` đi quân · `W` đặt tường · `R` xoay tường · `E` đổi góc nhìn · `T` bật/tắt đánh giá · `C` chat (online) · `P` ván mới · `Space` tạm dừng (máy đấu máy) · `Esc` về menu · mũi tên để đi quân / dời tường.
 
 ## Cấu trúc
 
@@ -19,6 +19,7 @@ Game cờ 3D chạy trên trình duyệt (biến thể Quoridor), giao diện ti
 | `js/tooltip.js` | Khung mô tả khi rê chuột (thay `title` mặc định): đặt `data-tip` / `data-tn` / `data-tk` lên phần tử |
 | `js/sfx.js` | **Âm thanh** (WebAudio, tổng hợp, không cần file): hover/click, bước chân theo mặt đất, trượt băng, bẫy lò xo, cổng, rương, tường, người chặn đường, pháo bông, môi trường theo biome |
 | `js/app.js`, `ui.js`, `menu.js`, `input.js` | Điều phối ván, giao diện, menu, chuột/phím |
+| `js/chat.js`, `css/chat.css`, `server/src/chat.js` | Chat trong ván online (phím `C`) + chống spam phía server |
 | `server/` | Server online (Cloudflare Worker + Durable Object), xem `server/README.md` |
 | `tools/` | Công cụ chạy bằng Node (xem dưới) |
 

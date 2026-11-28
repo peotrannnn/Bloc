@@ -230,6 +230,7 @@ const App={
   netFlush(){const q=this.netQ;this.netQ=[];for(const [t,m] of q)this.netIn(t,m);},
   netLost(msg){if(!S.net||S.over)return;S.net.lost=msg;S.over=true;S.winner=-1;this.refresh();},
   netIn(t,m){
+    if(t==='chat'||t==='chatRejected'){Chat.recv(t,m);return;}   /* chat không phụ thuộc nhịp ván: không xếp hàng khi đang dựng ván / có sự kiện */
     if(!this.netReady||S.event){this.netQ.push([t,m]);return;}   /* đang dựng ván, hoặc đang có sự kiện đặc biệt (cả hai bên dừng): xếp hàng, xử lý khi xong (eventEnd) */
     if(!S.net)return;
     switch(t){
@@ -582,19 +583,22 @@ const App={
       Menu.leaveRoom();Online.setLastRoom(null);S.net=null;
     }
     if(typeof BgAudio!=='undefined')BgAudio.stop();
-    Sfx.stopAll();Sfx.setBiome(null);UI.closeAsk();if(typeof Guide!=='undefined')Guide.close(true);clearTimeout(this.timer);clearInterval(this.tick);this.aiTok++;S.event=null;UI.theme(null);if(typeof Weather!=='undefined')Weather.set(null);Menu.show('scHome');
+    Sfx.stopAll();Sfx.setBiome(null);UI.closeAsk();if(typeof Guide!=='undefined')Guide.close(true);Chat.reset();clearTimeout(this.timer);clearInterval(this.tick);this.aiTok++;S.event=null;UI.theme(null);if(typeof Weather!=='undefined')Weather.set(null);Menu.show('scHome');
   },
 
   /* ----- Phím tắt (dùng ev.code nên đúng cả khi bật bộ gõ tiếng Việt) -----
-     Q đi quân · W đặt tường · R xoay tường · E đổi góc nhìn · T bật/tắt đánh giá · I hướng dẫn · O cài đặt · P ván mới · Space tạm dừng (máy đấu máy) · Esc về menu */
+     Q đi quân · W đặt tường · R xoay tường · E đổi góc nhìn · T bật/tắt đánh giá · C chat (online) · I hướng dẫn · O cài đặt · P ván mới · Space tạm dừng (máy đấu máy) · Esc về menu */
   onKey(ev){
     if(ev.repeat||ev.ctrlKey||ev.metaKey||ev.altKey||this.busy)return;
     const k=ev.code;
     if(UI.cfOpen){if(k==='Escape'){UI.closeAsk();ev.preventDefault();}return;}   /* đang hỏi xác nhận: chỉ Esc (hủy); Enter/Space bấm nút đang focus như thường */
     if(!UI.el.menu.hidden){if(k==='Escape')Menu.back();return;}   /* đang ở menu: chỉ Esc có tác dụng */
     if(typeof Settings!=='undefined'&&Settings.isOpen())return;   /* đang mở Cài đặt: không mở / điều khiển Hướng dẫn phía sau */
+    if(Chat.typing)return;   /* đang gõ chat: phím thuộc về ô nhập (Chat tự xử lý Enter/Esc), game không nhận gì */
     if(Guide.isOpen){Guide.onKey(ev);return;}   /* đang đọc Hướng dẫn: I / Esc đóng, ↑↓ ← → đổi mục, game không nhận phím nào */
     if(k==='KeyI'){Guide.open();ev.preventDefault();return;}
+    if(k==='KeyC'){if(S.net)Chat.toggle();ev.preventDefault();return;}   /* chat (chỉ online) */
+    if(k==='Escape'&&Chat.isOpen){Chat.close();ev.preventDefault();return;}   /* Esc đóng ô chat trước, lần sau mới là thoát ván */
     if(k==='KeyQ')this.setMode('move');
     else if(k==='KeyW')this.setMode('wall');
     else if(k==='KeyR')this.rotateWall();

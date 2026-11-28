@@ -15,10 +15,10 @@
    Chaos thêm: started/state{map:{biome,seed}}
    (seed chỉ để dựng hình, không phải rng) · welcome{biome} · applied{pl,left,stuck,skipped?,fx?}.
    Giao thức (JSON):
-     client → server  hello{token,v,name?} ·   (name = tên hiển thị, tối đa 16 ký tự, server làm sạch bằng names.js; opp = tên đối thủ, '' nếu họ chưa đặt)   (v = Core.PROTO; lệch → error{reason:'version',v} rồi đóng 4005)  · action{seq, move:[r,c] | wall:{o,r,c}} · resign · rematch · sync · ping
+     client → server  hello{token,v,name?} ·   (name = tên hiển thị, tối đa 16 ký tự, server làm sạch bằng names.js; opp = tên đối thủ, '' nếu họ chưa đặt)   (v = Core.PROTO; lệch → error{reason:'version',v} rồi đóng 4005)  · action{seq, move:[r,c] | wall:{o,r,c}} · resign · rematch · sync · chat{text} · ping
      server → client  welcome{slot,started,players,mode,visibility,opp} · started{ruleset,you,opp,snapshot,turnLeft} · state{you,opp,snapshot,over,winner,reason,log,turnLeft,rematch} ·
                       applied{seq,by,action,ply,turn,over,winner,draw,turnLeft} · rematchStatus{me,opp} · rejected{seq,reason,ply} · over{winner,reason} ·
-                      opponentStatus{online} · full · replaced · error{reason: badtoken|noroom} · pong
+                      chat{by,name,text,id} · chatRejected{reason,wait?} · opponentStatus{online} · full · replaced · error{reason: badtoken|noroom} · pong
    Phòng chỉ tồn tại sau khi Worker gọi init() (POST /create). Vào mã chưa được tạo → error{noroom} rồi đóng (mã 4004).
    Nối lại: cùng token mở kết nối mới → welcome rồi state (kèm log = các nước đã đi {p,a}, để client dựng lại bàn cờ đúng màu tường).
    Rớt kết nối giữa ván: giữ ghế GRACE_MS (45 giây); quá hạn thì xử người rớt thua, over{reason:'timeout'}.
@@ -30,6 +30,7 @@ import MapGen from '../../js/mapgen.js';
 import BlockerPlan from '../../js/blocker-plan.js';
 import BlockerPick from '../../js/blocker-pick.js';
 import {cleanName} from './names.js';
+import {makeChatGuard,makeFlood} from './chat.js';
 
 const RS_BY={classic:Core.ruleset('classic'),chaos:Core.ruleset('chaos')};
 const R_BY={classic:Core.make(RS_BY.classic),chaos:Core.make(RS_BY.chaos)};   /* bộ luật theo chế độ của phòng (g.mode) */
@@ -43,7 +44,9 @@ const BLOCKER_PAUSE_MS=10e3;   /* người chặn đường vào/ra thì cả ha
 const fresh=()=>({created:false,mode:null,biome:null,map:null,bplan:null,visibility:null,code:null,slots:[null,null],names:['',''],side:[null,null],started:false,over:false,reason:null,snap:null,log:[],away:[0,0],expireAt:0,turnEnds:0,rematch:[false,false]});
 
 export class RoomLogic{
-  constructor(io,opts){this.io=io;this.rand=(opts&&opts.rand)||Math.random;this.grace=(opts&&opts.grace)||GRACE_MS;this.turn=(opts&&opts.turn)||TURN_MS;this.g=null;this.st=null;}
+  constructor(io,opts){this.io=io;this.rand=(opts&&opts.rand)||Math.random;this.grace=(opts&&opts.grace)||GRACE_MS;this.turn=(opts&&opts.turn)||TURN_MS;this.g=null;this.st=null;
+    this.guards=[null,null];this.floods=new WeakMap();this.chatId=0;   /* chat: người gác theo GHẾ + chống dồn dập theo KẾT NỐI, chỉ nằm trong bộ nhớ (không ghi storage; DO ngủ dậy thì làm lại từ đầu) */
+  }
 
   rk(){return R_BY[this.g&&this.g.mode]||R_BY.classic;}
   rs(){return RS_BY[this.g&&this.g.mode]||RS_BY.classic;}
@@ -106,6 +109,10 @@ export class RoomLogic{
 
   async onMessage(conn,raw){
     if(typeof raw!=='string'||raw.length>MAX_MSG)return;
+    let fl=this.floods.get(conn);if(!fl){fl=makeFlood();this.floods.set(conn,fl);}
+    const f=fl.take();                                          /* mọi loại tin của một kết nối đều qua đây, trước cả JSON.parse: kẻ dồn dập không bắt server làm việc */
+    if(f==='kick'){this.io.close(conn,4008,'flood');return;}
+    if(f==='drop')return;
     let m;try{m=JSON.parse(raw);}catch(e){return;}
     if(!m||typeof m.t!=='string')return;
     await this.ensure();
@@ -115,6 +122,7 @@ export class RoomLogic{
       case'resign':return this.resign(conn);
       case'rematch':return this.rematch(conn);
       case'sync':return this.sync(conn);
+      case'chat':return this.chat(conn,m);
       case'ping':return this.send(conn,{t:'pong'});
     }
   }
@@ -165,6 +173,17 @@ export class RoomLogic{
   }
 
   sendState(conn,slot){this.send(conn,{t:'state',you:this.g.side[slot],opp:this.g.names[1-slot]||'',snapshot:this.viewSnap(slot),...(this.g.map?{map:this.g.map}:{}),over:this.st.over,winner:this.st.winner,reason:this.g.reason,log:this.logFor(),turnLeft:this.turnLeft(),rematch:{me:this.g.rematch[slot],opp:this.g.rematch[1-slot]}});}
+  /* Chat trong ván (chỉ khi đã đủ hai người): làm sạch + chống spam (chat.js), rồi phát cho CẢ HAI (kể cả người gửi, để thứ tự giống nhau).
+     Không lưu gì. Tin: chat{by:phe 0/1, name, text, id}. Bị từ chối: chatRejected{reason:'rate'|'dup'|'muted', wait?(ms)}. */
+  chat(conn,m){
+    const slot=this.io.getSeat(conn),g=this.g;
+    if(slot<0||!g.started)return;
+    const gd=this.guards[slot]||(this.guards[slot]=makeChatGuard());
+    const r=gd.check(m.text);
+    if(!r.ok){if(!r.silent)this.send(conn,{t:'chatRejected',reason:r.reason,...(r.wait?{wait:r.wait}:{})});return;}
+    this.broadcast({t:'chat',by:g.side[slot],name:g.names[slot]||'',text:r.text,id:++this.chatId});
+  }
+
   sync(conn){const s=this.io.getSeat(conn);if(s>=0&&this.g.started)this.sendState(conn,s);}
 
   async action(conn,m){

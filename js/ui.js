@@ -4,7 +4,7 @@ const UI={
   el:{},
 
   init(){
-    for(const id of['evalbar','evW','evBt','evWt','status','info','host','menu','ld','bar','msg','bMove','bWall','bRot','bPause','bView','bEval','bReset','rmOpp','bMenu'])this.el[id]=$(id);
+    for(const id of['evalbar','evW','evBt','evWt','status','info','host','menu','ld','bar','msg','bMove','bWall','bRot','bPause','bView','bEval','bChat','bReset','rmOpp','bMenu'])this.el[id]=$(id);
     $('cfNo').onclick=$('cfX').onclick=()=>this.closeAsk();
     $('cf').addEventListener('mousedown',ev=>{if(ev.target===$('cf'))this.closeAsk();});   /* bấm ra ngoài = hủy */
     $('cfYes').onclick=()=>{const f=this.cfYes;this.closeAsk();if(f)f();};
@@ -18,11 +18,11 @@ const UI={
     let h='';
     S.inv[i].forEach((u,k)=>{
       const it=CFG.ITEMS[u],tg='data-tn="'+it.name+'"'+(mine?' data-tk="'+(k+1)+'"':'')+' data-tip="'+it.tip+'"';   /* mô tả hiện bằng Tip (js/tooltip.js); .itw bọc ngoài để nút bị khóa vẫn có tooltip */
-      h+=mine?' <span class="itw" '+tg+'><button type="button" class="it'+(S.mode==='item'&&S.use===u?' on':'')+'" data-use="'+u+'"'+(can?'':' disabled')+'>'+it.icon+'</button></span>'
-              :' <span class="it" '+tg+'>'+it.icon+'</span>';
+      h+=mine?' <span class="itw" '+tg+'><button type="button" class="it'+(S.mode==='item'&&S.use===u?' on':'')+'" data-use="'+u+'"'+(can?'':' disabled')+'>'+Icons.svg(it.icon)+'</button></span>'
+              :' <span class="it" '+tg+'>'+Icons.svg(it.icon)+'</span>';
     });
-    if(S.bonus[i]===1)h+=' <span class="itn" data-tn="Giày đang chờ" data-tip="Sau hành động kế tiếp, bạn được thêm một lượt chỉ để đi quân.">👟 +1 lượt</span>';
-    else if(S.bonus[i]===2)h+=' <span class="itn" data-tn="Lượt thêm của giày" data-tip="Lượt này chỉ được đi quân (không đặt tường, không dùng vật phẩm).">👟 chỉ đi quân</span>';
+    if(S.bonus[i]===1)h+=' <span class="itn" data-tn="Giày đang chờ" data-tip="Sau hành động kế tiếp, bạn được thêm một lượt chỉ để đi quân.">'+Icons.svg('boots')+' +1 lượt</span>';
+    else if(S.bonus[i]===2)h+=' <span class="itn" data-tn="Lượt thêm của giày" data-tip="Lượt này chỉ được đi quân (không đặt tường, không dùng vật phẩm).">'+Icons.svg('boots')+' chỉ đi quân</span>';
     return h;
   },
 
@@ -77,7 +77,7 @@ const UI={
   tg:(lv,t)=>[lv,t],
   statusParts(){
     const tg=this.tg,nm=this.label(S.turn),P=[];
-    if(S.event)return[tg('warn',S.event.k==='leave'?'🚧 Người chặn đường rời đi':'🚧 Người chặn đường xuất hiện!'),tg('dim','tạm dừng')];   /* sự kiện đặc biệt: cả hai bên dừng */
+    if(S.event)return[tg('warn',S.event.k==='leave'?'[[barrier]] Người chặn đường rời đi':'[[barrier]] Người chặn đường xuất hiện!'),tg('dim','tạm dừng')];   /* sự kiện đặc biệt: cả hai bên dừng */
     if(S.net){   /* đấu online */
       const n=S.net;
       if(n.lost)return[tg('bad',n.lost)];
@@ -89,24 +89,24 @@ const UI={
       }
       if(n.offline)return[tg('blink','Mất kết nối'),'đang nối lại…'];
       const tl=n.deadline?Math.max(0,Math.ceil((n.deadline-Date.now())/1000)):0;
-      const clock=tl?tg(tl<=5?'blink':tl<=10?'warn':'dim','⏱ '+tl+'s'):null;   /* đồng hồ lượt: ≤10s vàng, ≤5s đỏ nhấp nháy */
+      const clock=tl?tg(tl<=5?'blink':tl<=10?'warn':'dim','[[timer]] '+tl+'s'):null;   /* đồng hồ lượt: ≤10s vàng, ≤5s đỏ nhấp nháy */
       if(tl&&tl<=10&&S.turn===S.me&&n.lastTick!==tl){n.lastTick=tl;Sfx.play('ui:tick',{v:tl<=5?1.4:.8});}   /* đồng hồ lượt: tick êm, dày dần */
       const off=n.oppOnline===false?tg('bad',(n.oppName||'đối thủ')+' rớt mạng'):null;
-      const hid=S.chaos&&S.hid[1-S.me]?tg('info','🌿 ẩn trong cỏ'):null;
+      const hid=S.chaos&&S.hid[1-S.me]?tg('info','[[grass]] ẩn trong cỏ'):null;
       if(S.turn!==S.me){
         P.push('Lượt của '+this.oppName());if(clock)P.push(clock);if(off)P.push(off);if(hid)P.push(hid);
         if(S.chaos&&S.stuck&&S.stuck[1-S.me]&&!S.hid[1-S.me])P.push(tg('warn','đứng yên'));
         if(S.chaos&&S.sunk&&S.sunk[1-S.me]&&!S.hid[1-S.me])P.push(tg('warn','🚫 lún cát: mất lượt sau'));
-        if(S.chaos&&S.bonus&&S.bonus[1-S.me]===2)P.push(tg('warn','👟 lượt thêm'));
+        if(S.chaos&&S.bonus&&S.bonus[1-S.me]===2)P.push(tg('warn','[[boots]] lượt thêm'));
         if(n.note&&/^Bạn bị lún/.test(n.note))P.push(tg('warn',n.note));   /* lượt của mình vừa bị bỏ qua: đối thủ đang đi tiếp */
         return P;
       }
       if(S.animLock)return[this.oppName()+' đang đi…'].concat(off?[off]:[],hid?[hid]:[]);   /* tới lượt mình nhưng quân đối thủ chưa diễn xong (vd trượt băng): chưa cho đi */
       if(n.wait)return[tg('dim','Đang gửi…')].concat(off?[off]:[]);
       P.push(tg('good','Lượt bạn'));if(clock)P.push(clock);
-      if(S.chaos&&S.bonus&&S.bonus[S.me]===2)P.push(tg('warn','👟 Lượt thêm'),'chỉ đi quân');
-      else if(S.chaos&&S.mode==='item')P.push(tg('info','🔨 Chọn tường để '+(S.use==='pick'?'phá':'tháo')),'Esc: hủy');
-      else if(S.chaos&&S.stuck&&S.stuck[S.me])P.push(tg('warn','⚓ Đứng yên'),'đặt tường / dùng đồ'+(S.mode==='wall'?' · '+(S.orient==='h'?'ngang':'dọc'):''));
+      if(S.chaos&&S.bonus&&S.bonus[S.me]===2)P.push(tg('warn','[[boots]] Lượt thêm'),'chỉ đi quân');
+      else if(S.chaos&&S.mode==='item')P.push(tg('info','[['+(S.use==='pick'?'pickaxe':'hammer')+']] Chọn tường để '+(S.use==='pick'?'phá':'tháo')),'Esc: hủy');
+      else if(S.chaos&&S.stuck&&S.stuck[S.me])P.push(tg('warn','[[anchor]] Đứng yên'),'đặt tường / dùng đồ'+(S.mode==='wall'?' · '+(S.orient==='h'?'ngang':'dọc'):''));
       else P.push(S.mode==='wall'?'tường '+(S.orient==='h'?'ngang':'dọc'):'chọn ô');
       if(off)P.push(off);if(hid)P.push(hid);
       if(n.note)P.push(tg(/^(Túi đầy|Bạn bị lún|Đối thủ lún)/.test(n.note)?'warn':'bad',n.note));
@@ -124,9 +124,9 @@ const UI={
   /* Vẽ dòng trạng thái (gọi riêng mỗi giây để cập nhật đồng hồ mà không dựng lại các nút ở dòng dưới). Chỉ ghi DOM khi nội dung đổi. */
   renderStatus(){
     const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-    const P=this.statusParts(),html=P.map(x=>typeof x==='string'?esc(x):'<span class="tg '+x[0]+'">'+esc(x[1])+'</span>').join(' <i>·</i> ');
+    const P=this.statusParts(),html=P.map(x=>typeof x==='string'?Icons.text(x):'<span class="tg '+x[0]+'">'+Icons.text(x[1])+'</span>').join(' <i>·</i> ');
     if(html===this._sh)return;this._sh=html;
-    this.el.status.innerHTML=html;this.el.status.dataset.tip=P.map(x=>typeof x==='string'?x:x[1]).join(' · ');
+    this.el.status.innerHTML=html;this.el.status.dataset.tip=P.map(x=>Icons.plain(typeof x==='string'?x:x[1])).join(' · ');
   },
 
   /* Vẽ lại chữ và nút theo trạng thái S */
@@ -143,7 +143,7 @@ const UI={
     e.bMove.disabled=!mine||!!(S.chaos&&S.stuck&&S.stuck[S.turn]);   /* đứng yên: khóa nút Đi */
     e.bWall.disabled=!mine||S.left[S.turn]===0||!!(S.chaos&&S.bonus&&S.bonus[S.turn]===2);   /* lượt thêm của giày: không đặt tường */
     e.bRot.disabled=!mine||S.mode!=='wall';
-    e.bView.textContent=Camera.fol>=0?'Theo '+this.label(Camera.fol)+' (E)':'Góc (E)';
+    e.bView.dataset.tn=Camera.fol>=0?'Theo '+this.label(Camera.fol):'Góc nhìn';e.bView.setAttribute('aria-pressed',Camera.fol>=0);   /* nút icon ở thanh trên: tên + trạng thái nằm ở tooltip / sáng khi đang bám theo quân */
     e.evalbar.hidden=!S.analysis;                              /* thanh khả năng thắng chỉ hiện khi bật đánh giá */
     /* Nút P: đang chơi (người vs người online / người vs máy) = "Đầu hàng"; ván xong = "Đấu lại" (online) hoặc "Mới" (offline) */
     const rs=App.canResign();e.bReset.classList.toggle('dn',rs);
@@ -162,6 +162,7 @@ const UI={
         :['Ván mới','Bắt đầu một ván mới.'];
       e.bReset.dataset.tn=d[0];e.bReset.dataset.tip=d[1];
     }
+    if(typeof Chat!=='undefined')Chat.sync();
     e.bEval.hidden=S.analysisLock;e.bEval.setAttribute('aria-pressed',S.analysis);   /* chế độ khóa (online): ẩn luôn nút */
   }
 };

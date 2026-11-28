@@ -55,7 +55,7 @@ function makeRoom(rand){
     getSeat:c=>c.seat,setSeat:(c,s)=>{c.seat=s;},close:(c)=>{c.open=false;},alarm:()=>{},wipe:async()=>{room.store=undefined;},lobby:async()=>{}};
   room.logic=new RoomLogic(room.io,{grace:45e3,rand});
   room.connect=()=>{const c={open:true,seat:-1,inbox:[]};room.conns.push(c);return c;};
-  room.say=async(c,o)=>{await room.logic.onMessage(c,JSON.stringify(o));};
+  room.say=async(c,o)=>{now+=100;await room.logic.onMessage(c,JSON.stringify(o));};   /* đồng hồ giả nhích 0,1s mỗi tin (người thật không gửi cả ván trong 0 ms; bộ chống dồn dập của server dùng Date.now) */
   return room;
 }
 const tok=n=>n.padEnd(20,'x');

@@ -142,14 +142,14 @@ const CFG={
   },
 
   /* Dấu nổi trên ô đặc biệt (view/marks.js): X đỏ trên cổng bị chặn, ✓ xanh / ! đỏ trên bẫy; tia sáng nối hai cổng khi dịch chuyển */
-  /* Rương và vật phẩm (Hỗn Loạn; luật ở core.js). icon = biểu tượng trên ô/túi đồ; wait = thời gian quân đứng chờ lúc rương mở (rồi mới bước vào ô);
+  /* Rương và vật phẩm (Hỗn Loạn; luật ở core.js). icon = tên biểu tượng trong js/icons.js (Icons.svg), dùng ở túi đồ/Hướng dẫn/huy hiệu quà; wait = thời gian quân đứng chờ lúc rương mở (rồi mới bước vào ô);
      reveal = lúc món quà hiện ra (tính từ khi rương bắt đầu mở); popHold = quà lơ lửng bao lâu */
   ITEMS:{
-    brick:{icon:'🧱',name:'Cục gạch',tip:'+1 tường'},
-    boots:{icon:'👟',name:'Đôi giày',tip:'Thêm một lượt, chỉ để đi quân (miễn phí, không tốn lượt)'},
-    glove:{icon:'🧤',name:'Găng tay',tip:'Cướp 1 tường của đối thủ (khi họ còn ít nhất 2 tường). Tốn một lượt'},
-    hammer:{icon:'🔨',name:'Búa',tip:'Tháo một tường của đối thủ và trả lại cho họ. Miễn phí, không tốn lượt: dùng xong bạn vẫn được đi quân hoặc đặt tường'},
-    pick:{icon:'⛏️',name:'Cuốc chim',tip:'Phá hẳn một tường của đối thủ: khe đó không ai xây lại được. Tốn một lượt'}
+    brick:{icon:'brick',name:'Cục gạch',tip:'+1 tường'},
+    boots:{icon:'boots',name:'Đôi giày',tip:'Thêm một lượt, chỉ để đi quân (miễn phí, không tốn lượt)'},
+    glove:{icon:'glove',name:'Găng tay',tip:'Cướp 1 tường của đối thủ (khi họ còn ít nhất 2 tường). Tốn một lượt'},
+    hammer:{icon:'hammer',name:'Búa',tip:'Tháo một tường của đối thủ và trả lại cho họ. Miễn phí, không tốn lượt: dùng xong bạn vẫn được đi quân hoặc đặt tường'},
+    pick:{icon:'pickaxe',name:'Cuốc chim',tip:'Phá hẳn một tường của đối thủ: khe đó không ai xây lại được. Tốn một lượt'}
   },
   CHEST:{wait:1.55,reveal:.5,popHold:1.0},
   MARK:{

@@ -35,7 +35,7 @@ GUIDE.entries=[
    lines:[
      'Mỗi lượt chọn **một** việc: **đi quân** một ô (lên, xuống, trái, phải) hoặc **đặt một bức tường**.',
      'Đối thủ đứng ngay trước mặt thì **nhảy qua đầu họ**. Nếu phía sau họ có tường thì bước né qua một bên.'],
-   note:['Bấm phím I (hoặc nút Hướng dẫn) để bật / tắt cửa sổ này. Dùng ↑ ↓ để đổi mục. Phím tắt: Q đi quân · W đặt tường · R xoay tường · E đổi góc nhìn · T đánh giá · O cài đặt · P ván mới · Esc về menu. Dùng phím mũi tên để đi quân hoặc dời tường, Enter để đặt.']},
+   note:['Bấm phím I (hoặc nút Hướng dẫn) để bật / tắt cửa sổ này. Dùng ↑ ↓ để đổi mục. Phím tắt: Q đi quân · W đặt tường · R xoay tường · E đổi góc nhìn · T đánh giá · C chat (chỉ online) · O cài đặt · P ván mới · Esc về menu. Dùng phím mũi tên để đi quân hoặc dời tường, Enter để đặt.']},
 
   {id:'pawn',grp:'Cách chơi',name:'Quân cờ',
    sum:'Mỗi bên có một quân, hai quân đứng đối mặt nhau.',
@@ -138,7 +138,7 @@ GUIDE.entries=[
      'Game không cho đặt tường bịt kín đường tới đích của bất kỳ bên nào, kể cả quân đang đứng trên núi.'],
    vars:[one('low.png','Đá thấp',9,{biome:'mountain',vi:0})]},
 
-  /* Vật phẩm: hình là biểu tượng THẬT của game (CFG.ITEMS[item].icon, cùng biểu tượng trên túi đồ và lúc quà nổi lên khỏi rương) */
+  /* Vật phẩm: hình là biểu tượng THẬT của game (CFG.ITEMS[item].icon (tên trong js/icons.js), cùng biểu tượng trên túi đồ và lúc quà nổi lên khỏi rương) */
   {id:'brick',grp:'Vật phẩm',name:'Cục gạch',item:'brick',
    sum:'Được cộng ngay **1 bức tường**.',
    lines:[

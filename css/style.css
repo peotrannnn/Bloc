@@ -27,8 +27,9 @@ body{background:var(--bg);color:var(--g);font-family:var(--font);font-size:13px;
   background-size:36px 36px}
 
 /* Thanh trạng thái trên cùng */
-header{padding:5px 12px 6px;display:flex;flex-direction:column;gap:1px;background:var(--pn);border-bottom:1px solid var(--g);
+header{padding:5px 12px 6px;display:flex;align-items:flex-start;gap:8px;background:var(--pn);border-bottom:1px solid var(--g);
   box-shadow:0 1px 12px rgba(var(--gr),.18)}
+header .hd{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
 #status,#info{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-sizing:border-box}
 #status{height:19px;line-height:19px}
 #info{height:22px;line-height:22px}
@@ -51,6 +52,16 @@ header{padding:5px 12px 6px;display:flex;flex-direction:column;gap:1px;backgroun
 #info button.it.on{border-color:var(--g);background:rgba(var(--gr),.18);box-shadow:var(--halo)}
 #info .itn{color:var(--g2);font-size:11px}
 @keyframes blink{50%{opacity:0}}
+
+/* Nút phụ nhỏ ở góc trên phải (Góc nhìn, Đánh giá, Chat, Hướng dẫn, Cài đặt, Menu) */
+#tools{flex:none;display:flex;gap:3px;align-items:center;align-self:center}
+svg.ico{overflow:visible;display:inline-block;width:1em;height:1em;vertical-align:-.15em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:square;stroke-linejoin:miter;flex:none}
+button.ic{position:relative;width:28px;min-height:26px;height:26px;padding:0;font-size:14px;line-height:1;display:inline-flex;align-items:center;justify-content:center;border-color:var(--gd)}
+button.ic[aria-pressed="true"]{border-color:var(--g)}
+button.ic b{position:absolute;top:-5px;right:-5px;min-width:14px;height:14px;padding:0 3px;box-sizing:border-box;border-radius:7px;background:#d62b2b;color:#fff;font:700 10px/14px var(--font);text-align:center}
+button.ic.new{animation:rmPulse 1.2s ease-in-out infinite}
+@media (max-width:520px){button.ic{width:25px;font-size:13px}#tools{gap:2px}
+  footer{gap:2px;padding-left:4px;padding-right:4px}footer button::before,footer button::after{content:none}footer button{padding:3px 7px}}   /* màn hẹp: bỏ cặp [ ] để cả hàng nút nằm vừa một dòng */
 
 /* Sân cờ */
 #board{flex:1;min-height:0;position:relative;overflow:hidden;

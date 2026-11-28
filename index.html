@@ -9,9 +9,21 @@
 <link rel="stylesheet" href="css/online.css">
 <link rel="stylesheet" href="css/settings.css">
 <link rel="stylesheet" href="css/guide.css">
+<link rel="stylesheet" href="css/chat.css">
 </head>
 <body>
-<header><div id="status"></div><div id="info"></div></header>
+<header>
+  <div class="hd"><div id="status"></div><div id="info"></div></div>
+  <!-- Nút phụ gọn ở góc trên phải (trước đây nằm hết ở thanh dưới). Giữ nguyên id: JS cũ vẫn chạy. -->
+  <div id="tools" role="toolbar" aria-label="Công cụ">
+    <button id="bView" class="ic" data-tn="Góc nhìn" data-tk="E" data-tip="Đổi góc camera: tự do hoặc bám theo từng quân."><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 6h13v12h-13z"/><path d="M15.5 10l6-3v10l-6-3"/></svg></button>
+    <button id="bEval" class="ic" aria-pressed="true" data-tn="Đánh giá" data-tk="T" data-tip="Bật/tắt thanh khả năng thắng bên trái bàn cờ."><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h4v8h-4z"/><path d="M10 4h4v16h-4z"/><path d="M16 9h4v11h-4z"/></svg></button>
+    <button id="bChat" class="ic" hidden data-tn="Chat" data-tk="C" data-tip="Nhắn tin với đối thủ (chỉ khi chơi online)."><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18v13h-10l-5 4v-4H3z"/><path d="M7 9h10M7 12.5h6"/></svg><b id="chBadge" hidden></b></button>
+    <button id="bGuide" class="ic" aria-pressed="false" data-tn="Hướng dẫn" data-tk="I" data-tip="Cách chơi, các loại ô, vật phẩm và sự kiện. Bấm lần nữa để đóng."><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6L8 4H2v15h6l4 2 4-2h6V4h-6z"/><path d="M12 6v15"/></svg></button>
+    <button id="bSet" class="ic" data-tn="Cài đặt" data-tk="O" data-tip="Chỉnh âm lượng và âm thanh."><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h3M12 6h9M3 12h9M18 12h3M3 18h5M14 18h7"/><path d="M6 4h6v4h-6z"/><path d="M12 10h6v4h-6z"/><path d="M8 16h6v4h-6z"/></svg></button>
+    <button id="bMenu" class="ic" data-tn="Về menu" data-tk="Esc" data-tip="Rời ván đang chơi và quay lại menu chính."><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 11l10-8 10 8"/><path d="M5 9v12h14V9"/><path d="M10 21v-6h4v6"/></svg></button>
+  </div>
+</header>
 <main id="board">
   <!-- Thanh khả năng thắng: Trắng ở dưới, Đen ở trên; vạch giữa là điểm chia, dịch theo từng nước đi -->
   <div id="evalbar" role="img" aria-label="Khả năng thắng">
@@ -19,18 +31,23 @@
     <span id="evBt"></span><span id="evWt"></span>
   </div>
   <div id="host"></div>
+  <!-- Chat trong ván (js/chat.js, chỉ online): phím C mở/đóng. Không chặn bàn cờ; màu theo biome (nằm trong #board nên dùng chung biến màu). -->
+  <div id="chFeed" aria-hidden="true"></div>
+  <div id="ch" hidden>
+   <div class="win pop" role="dialog" aria-label="Chat">
+    <div class="tb"><span id="chT">Chat</span><span class="chb"><button id="chMute" class="wx2" data-tn="Tắt tiếng đối thủ" data-tip="Ẩn tin nhắn của đối thủ (chỉ trên máy bạn)."><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 18v-8l3-5h6l3 5v8"/><path d="M4 18h16"/><path d="M10 21h4"/></svg></button><button id="chX" class="wx" aria-label="Đóng" data-tip="Đóng" data-tk="C">X</button></span></div>
+    <div id="chLog" role="log" aria-live="polite"></div>
+    <div id="chNote" role="status" hidden></div>
+    <form id="chForm" autocomplete="off"><input id="chIn" maxlength="120" spellcheck="false" autocomplete="off" aria-label="Nội dung tin nhắn" placeholder="Nhập tin nhắn, Enter để gửi"><button id="chGo" type="submit" class="p">Gửi</button></form>
+   </div>
+  </div>
 </main>
 <footer>
 <button id="bMove" aria-pressed="true" data-tn="Đi quân" data-tk="Q" data-tip="Chọn một ô sáng để bước tới. Có thể nhảy qua đối thủ đứng kề.">Đi (Q)</button>
 <button id="bWall" aria-pressed="false" data-tn="Đặt tường" data-tk="W" data-tip="Dựng tường chặn đường đối thủ (phủ 2 cạnh ô). Không được bịt kín hẳn đường về đích.">Tường (W)</button>
 <button id="bRot" data-tn="Xoay tường" data-tk="R" data-tip="Đổi tường đang đặt giữa ngang và dọc.">Xoay (R)</button>
 <button id="bPause" hidden data-tn="Tạm dừng" data-tk="Space" data-tip="Dừng hoặc tiếp tục ván máy đấu máy.">Dừng</button>
-<button id="bView" data-tn="Góc nhìn" data-tk="E" data-tip="Đổi góc camera: tự do hoặc bám theo từng quân.">Góc (E)</button>
-<button id="bEval" aria-pressed="true" data-tn="Đánh giá" data-tk="T" data-tip="Bật/tắt thanh khả năng thắng bên trái bàn cờ.">Đánh giá (T)</button>
-<button id="bGuide" aria-pressed="false" data-tn="Hướng dẫn" data-tk="I" data-tip="Cách chơi, các loại ô, vật phẩm và sự kiện. Bấm lần nữa để đóng.">Hướng dẫn (I)</button>
-<button id="bSet" data-tn="Cài đặt" data-tk="O" data-tip="Chỉnh âm lượng và âm thanh.">Cài đặt (O)</button>
 <span class="rmgrp"><button id="bReset" data-tn="Ván mới" data-tk="P" data-tip="Bắt đầu một ván mới.">Mới (P)</button><span id="rmOpp" class="rmopp" role="status" aria-live="polite" hidden><i></i>Đối thủ sẵn sàng</span></span>
-<button id="bMenu" data-tn="Về menu" data-tk="Esc" data-tip="Rời ván đang chơi và quay lại menu chính.">Menu (Esc)</button>
 </footer>
 
 <!-- Cửa sổ xác nhận (đầu hàng / thoát game): mở bằng UI.ask(). Màu theo biome đang chơi, mặc định xanh lá. -->
@@ -165,6 +182,7 @@ Hỗn Loạn: có địa hình, rương và vật phẩm (bựa lắm chơi đi)
 
 <!-- Thứ tự nạp quan trọng: module sau dùng biến của module trước -->
 <script src="js/config.js"></script>
+<script src="js/icons.js"></script>
 <script src="js/util.js"></script>
 <script src="js/sfx.js"></script>
 <script src="js/settings.js"></script>
@@ -207,6 +225,7 @@ Hỗn Loạn: có địa hình, rương và vật phẩm (bựa lắm chơi đi)
 <script src="js/tooltip.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/guide.js"></script>
+<script src="js/chat.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/menu.js"></script>
 <script src="js/input.js"></script>

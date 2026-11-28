@@ -26,6 +26,8 @@ node tools/blocker-test.js       # người chặn đường
 node tools/wallwhy-test.js       # lý do tường bị từ chối (Core.wallWhy) + bảng chữ WALL_WHY (~530k kiểm tra)
 node tools/dumb-test.js          # mọi AI (nhất là Bé Khờ) không được đặt tường bịt kín đường về đích (~380k kiểm tra)
 node tools/chaos-client-test.mjs # client thật ↔ server thật
+python3 tools/chat-ui-test.py   # giao diện chat + thanh nút (Chromium headless; CHROME=đường-dẫn nếu cần)
+node server/test/chat.mjs       # chat + chống spam server
 node server/test/room-logic.mjs ; node server/test/items-room.mjs ; node server/test/blocker-room.mjs ; node server/test/chaos-room.mjs
 node tools/lowstone-test.js      # đá thấp/cao: tham chiếu độc lập + property test (~2,3 triệu kiểm tra)
 node tools/stone-surface-test.js # mặt đá THẬT (Terrain.surfaceAt) khớp hình học khối đá (650 kiểm tra)
@@ -100,3 +102,22 @@ Kiểm thử: test giao diện bằng Chromium headless (playwright) nằm NGOÀ
 **Triển khai: deploy SERVER TRƯỚC** (`cd server && wrangler deploy`), rồi mới đẩy client lên GitHub Pages. Server mới vẫn nhận client cũ (không gửi `name` thì tên rỗng). Client mới với server cũ: ô online tự ẩn, danh sách phòng báo lỗi mạng nhưng "Vô bừa" vẫn chạy.
 
 Việc có thể làm tiếp (chưa làm, cần chủ dự án quyết): tài khoản thật thay `Online.getName`; phòng riêng tư có mật khẩu; lọc danh sách theo "phòng có thể vào"; hiện số phòng đang chơi.
+
+## Tiến trình: CHAT TRONG VÁN (phím C) + GỌN THANH NÚT (phiên 2026-11-28)
+
+Yêu cầu: (1) chat trong ván online, bấm C mở ô chat làm theo ô Hướng dẫn, màu theo biome, có chống spam / an toàn mạng / không quá tải server; (2) thanh nút dưới quá nhiều: gom lại, đưa nút phụ thành nút nhỏ ở thanh trên.
+
+**ĐÃ XONG (server):** `server/src/chat.js` (cleanChat, makeChatGuard, makeFlood, hằng số CHAT), nối vào `room-logic.js` (`case'chat'`, `chat()`, chống dồn dập theo kết nối ở đầu `onMessage`). Test `server/test/chat.mjs` (đã vào `npm test`, 9/9 bộ đạt). Giao thức mới: client→server `chat{text}`; server→cả hai `chat{by,name,text,id}`; từ chối `chatRejected{reason:'rate'|'dup'|'muted',wait?}`; đóng 4008 'flood' nếu dồn dập kéo dài. **Không tăng `Core.PROTO`** (không đổi luật; client cũ/ server cũ chỉ bỏ qua tin lạ).
+Chống spam: không ghi storage, không lưu lịch sử; xô token theo ghế (burst 4, 1 tin/3s), cách nhau ≥600ms, chặn tin trùng 15s, vi phạm 4 lần → cấm 30s (gấp đôi mỗi lần, tối đa 10 phút), từ chối chỉ phản hồi ≤1 lần/1,5s (trừ lúc bị cấm luôn báo), 120 ký tự, bỏ ký tự điều khiển/ẩn/bidi, rút chuỗi ký tự lặp; mọi tin của một kết nối qua `makeFlood` (burst 40, 12/s, quá 300 lần liên tục thì đóng).
+
+**ĐÃ XONG (client):**
+- `js/chat.js` + `css/chat.css` + khối `#ch`/`#chFeed` trong `index.html` (nằm TRONG `#board` nên ăn đúng biến màu biome, giống ô Hướng dẫn; góc dưới phải, không chặn bàn cờ). Phím **C** (hoặc nút 💬) mở/đóng, Enter gửi, Esc đóng (Esc lần sau mới hỏi thoát ván). Chỉ online (`S.net`): ván offline nút ẩn, phím C không làm gì.
+- Ô đóng: tin mới nổi vài giây ở góc (`#chFeed`) + số chưa đọc trên nút 💬. Nút 🔔 tắt tiếng đối thủ (chỉ máy mình). Lịch sử ≤80 dòng trong bộ nhớ, `Chat.reset()` khi về menu; giữ qua "Đấu lại".
+- Client chống spam thân thiện: ≥0,8s giữa hai tin, `chatRejected` → khóa nút Gửi + đếm ngược, bị cấm thì báo đỏ. Mọi chữ hiện bằng `textContent` (test XSS đạt). Gõ trong ô nhập thì phím KHÔNG lọt ra game (`stopPropagation` ở `#chIn`).
+- `App.netIn` chuyển `chat`/`chatRejected` thẳng vào `Chat.recv` TRƯỚC hàng chờ (không bị trễ theo sự kiện người chặn). `Online.join(...).chat(text)`.
+- **Gọn thanh nút:** footer chỉ còn Đi / Tường / Xoay / Dừng (máy đấu máy) / Mới-Đầu hàng (10 nút → 4-5). Các nút phụ thành icon nhỏ ở góc trên phải `#tools`: 🎥 Góc (E) · 📊 Đánh giá (T) · 💬 Chat (C) · 📖 Hướng dẫn (I) · ⚙️ Cài đặt (O) · 🏠 Menu (Esc). Giữ nguyên id nút nên JS cũ chạy; mô tả/phím ở tooltip (`data-tn/tk/tip`). `bView` giờ không đổi chữ: tên "Theo Trắng" nằm ở tooltip, nút sáng khi đang bám quân. Hướng dẫn: header cũng nổi trên cửa sổ (`body.gdopen header`) để bấm lại 📖 mà đóng.
+- Test: `node server/test/chat.mjs` (chat/chống spam), `python3 tools/chat-ui-test.py` (Chromium headless, không cần three.js; 22 ca: phím C, gõ chữ không lọt phím tắt, XSS, khóa/cấm, feed, mute, offline, thanh nút, Hướng dẫn). `tools/chaos-client-test.mjs`: đồng hồ giả giờ nhích 0,1s/tin (trước đó chơi cả ván trong 0ms nên dính bộ chống dồn dập mới). Toàn bộ test cũ vẫn đạt (core 252867, items 755544, mapgen 96487, view 260, blocker 88, wallwhy 528276, guide 270, dumb, server 9 bộ). Không đụng `core.js` ⇒ không cần `build-worker`, không đổi `PROTO`.
+
+**Triển khai:** deploy SERVER TRƯỚC (`cd server && wrangler deploy`), rồi client. Client mới + server cũ: nút 💬 hiện nhưng tin gửi bị server bỏ qua (không có phản hồi). Server mới + client cũ: không sao.
+
+**CHƯA kiểm / có thể làm tiếp:** chưa thử trên Cloudflare thật (flood guard dùng `WeakMap` theo kết nối, chat không đụng storage); chưa xem trên điện thoại thật (đã chụp thử 390px, ổn); chưa có lọc từ tục (nếu cần: thêm vào `cleanChat` ở server); chưa có nút "báo cáo"; tên ván hiện icon emoji (phụ thuộc font hệ thống). Chỉnh ngưỡng spam ở một chỗ: hằng số `CHAT` trong `server/src/chat.js`.

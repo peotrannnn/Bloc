@@ -6,9 +6,9 @@
        biome: 'random' | 'balanced' | 'forest' | 'mountain' | 'snow' | 'river' | 'desert' (bỏ trống = 'random'; Classic bỏ qua biome)
      const conn=Online.join(code);
      Online.getName()/setName(s) · Online.rooms({mode,biome}) → danh sách phòng chờ · Online.presence(n=>...) → số người online (null = không biết)
-     conn.on('welcome'|'started'|'applied'|'over'|'opponentStatus'|'full'|'error'|'close', m=>...);   // close: m.code 4004 = mã không tồn tại, 4001 = đầy, 4005 = lệch phiên bản giao thức (Core.PROTO)
+     conn.on('welcome'|'started'|'applied'|'over'|'opponentStatus'|'chat'|'chatRejected'|'full'|'error'|'close', m=>...);   // close: m.code 4004 = mã không tồn tại, 4001 = đầy, 4005 = lệch phiên bản giao thức (Core.PROTO)
      conn.autoReconnect(true)  → rớt mạng thì tự nối lại (phát 'reconnecting'), server trả 'welcome' rồi 'state'
-     conn.action(seq,{move:[r,c]}) · conn.action(seq,{wall:{o,r,c}}) · conn.resign() · conn.sync() · conn.close() */
+     conn.action(seq,{move:[r,c]}) · conn.action(seq,{wall:{o,r,c}}) · conn.chat(text) · conn.resign() · conn.sync() · conn.close() */
 const Online=(()=>{
   /* ws/wss suy ra từ đây; đổi nếu sau này gắn tên miền riêng. Chạy thử ở máy: mở trang với ?server=http://localhost:8787 để nối vào
      server `wrangler dev` thay vì bản thật (chỉ có tác dụng khi trang đang mở từ localhost/127.0.0.1, trang trên mạng không bị đổi được). */
@@ -135,6 +135,7 @@ const Online=(()=>{
       resign:()=>send({t:'resign'}),
       rematch:()=>send({t:'rematch'}),                         /* ván xong: bấm "Đấu lại"; đủ cả hai thì server đổi phe và gửi 'started' mới */
       sync:()=>send({t:'sync'}),                               /* xin server gửi lại trạng thái đầy đủ (state) */
+      chat:text=>send({t:'chat',text}),                         /* chat trong ván: server làm sạch + chống spam, phát lại chat{by,name,text,id} cho cả hai */
       ping:()=>send({t:'ping'}),
       close(){done=true;clearTimeout(timer);if(ws)ws.close();}
     };

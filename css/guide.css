@@ -5,7 +5,7 @@
   background:rgba(0,0,0,.5);color:var(--g);font-family:var(--font);font-size:13px}
 #gd .win{width:min(980px,100%);height:min(660px,100%);display:flex;flex-direction:column;background:var(--bg);overflow:hidden;
   box-shadow:0 0 0 1px var(--gd),0 0 26px rgba(var(--gr),.25),inset 0 0 34px rgba(var(--gr),.05)}
-body.gdopen footer{position:relative;z-index:9}   /* chỉ khi đang mở Hướng dẫn: thanh nút dưới nằm trên cửa sổ để bấm lại nút Hướng dẫn mà đóng (không được nổi lên trên menu) */
+body.gdopen footer,body.gdopen header{position:relative;z-index:9}   /* chỉ khi đang mở Hướng dẫn: thanh nút dưới nằm trên cửa sổ để bấm lại nút Hướng dẫn mà đóng (không được nổi lên trên menu) */
 #gd .tb{flex:none;background:var(--pn)}
 .gdw{flex:1;min-height:0;display:grid;grid-template-columns:200px 1fr}
 
@@ -18,7 +18,7 @@ body.gdopen footer{position:relative;z-index:9}   /* chỉ khi đang mở Hướ
 #gdNav .gdi::before{content:"·";opacity:.6}
 #gdNav .gdi[aria-pressed="true"]::before{content:">"}
 #gdNav .gdi:hover:not(:disabled)::before{opacity:1}
-.gde{font-size:14px;line-height:1;width:18px;text-align:center}
+.gde{font-size:14px;line-height:1;width:18px;text-align:center;display:inline-flex;align-items:center;justify-content:center}
 
 /* Phần nội dung */
 #gdMain{overflow-y:auto;padding:14px 18px 20px;box-sizing:border-box;outline:none;scrollbar-width:thin;scrollbar-color:var(--gd) transparent}
@@ -43,7 +43,7 @@ body.gdopen footer{position:relative;z-index:9}   /* chỉ khi đang mở Hướ
 .gdnote::before{content:"// mẹo";display:block;font-size:11px;margin-bottom:3px;opacity:.85}
 
 /* Đang mở Hướng dẫn: chỉ nút Hướng dẫn còn bấm được ở thanh dưới */
-body.gdopen footer button:not(#bGuide){pointer-events:none;opacity:.45}
+body.gdopen footer button,body.gdopen #tools button:not(#bGuide){pointer-events:none;opacity:.45}
 body.gdopen footer .rmopp{opacity:.45}
 
 /* Màn hình hẹp: danh mục thành một hàng nút cuộn ngang ở trên */

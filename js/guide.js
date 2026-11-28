@@ -25,7 +25,7 @@ const Guide=(function(){
       E.forEach((e,i)=>{
         if(e.grp!==g||!vis.includes(i))return;
         const b=el('button','gdi');b.type='button';b.dataset.i=i;
-        if(e.item&&CFG.ITEMS[e.item])b.appendChild(el('span','gde',CFG.ITEMS[e.item].icon));   /* chỉ vật phẩm có biểu tượng (biểu tượng thật của game) */
+        if(e.item&&CFG.ITEMS[e.item]){const ic=el('span','gde');ic.innerHTML=Icons.svg(CFG.ITEMS[e.item].icon);b.appendChild(ic);}   /* chỉ vật phẩm có biểu tượng (biểu tượng thật của game) */
         b.appendChild(document.createTextNode(e.name));
         b.onclick=()=>select(i);n.appendChild(b);
       });
@@ -42,7 +42,7 @@ const Guide=(function(){
   /* Khung hình: ảnh tĩnh của từng ô (1-2 ảnh cạnh nhau) hoặc biểu tượng vật phẩm; thiếu file ảnh thì ẩn khung */
   function picture(e){
     const box=el('div','gdpic');
-    if(e.item){const it=CFG.ITEMS[e.item];box.classList.add('em');box.appendChild(el('div','gdemoji',it.icon));return box;}
+    if(e.item){const it=CFG.ITEMS[e.item];box.classList.add('em');{const ic=el('div','gdemoji');ic.innerHTML=Icons.svg(it.icon);box.appendChild(ic);}return box;}
     if(!e.vars||!e.vars.length){box.hidden=true;return box;}
     box.classList.add('n'+e.vars.length);
     for(const v of e.vars){
@@ -67,8 +67,8 @@ const Guide=(function(){
     if(isOpen||typeof S==='undefined')return;
     if(builtFor!==chaos()){nav();builtFor=chaos();if(!shown().includes(cur))cur=shown()[0];}   /* đổi Classic ↔ Hỗn Loạn thì dựng lại danh mục */
     isOpen=true;Tip.hide();
-    const g=$('gd'),ft=document.querySelector('footer');
-    g.style.paddingBottom=(ft?ft.offsetHeight:0)+14+'px';   /* thanh nút dưới vẫn nằm trên cửa sổ để bấm lại nút Hướng dẫn mà đóng */
+    const g=$('gd'),ft=document.querySelector('footer'),hd=document.querySelector('header');
+    g.style.paddingBottom=(ft?ft.offsetHeight:0)+14+'px';g.style.paddingTop=(hd?hd.offsetHeight:0)+14+'px';   /* thanh trên (nút Hướng dẫn nằm ở đó) vẫn nổi lên trên cửa sổ để bấm lại mà đóng */
     g.hidden=false;document.body.classList.add('gdopen');
     const w=g.querySelector('.win');w.classList.remove('pop');void w.offsetWidth;w.classList.add('pop');
     $('bGuide').setAttribute('aria-pressed','true');

@@ -1,0 +1,37 @@
+/* ===== Chat trong ván (js/chat.js) =====
+   Nằm TRONG #board nên dùng đúng biến màu của biome đang chơi (--bg, --pn, --g, --g2, --gd, --mut, --gr, --on), giống cửa sổ Hướng dẫn.
+   Không phủ kín màn hình: bàn cờ phía sau vẫn bấm được. Góc dưới bên phải (thanh khả năng thắng ở bên trái). */
+#ch{position:absolute;right:10px;bottom:10px;z-index:4;width:min(340px,calc(100% - 20px));max-height:calc(100% - 20px);display:flex;color:var(--g);font-family:var(--font);font-size:13px}
+#ch .win{width:100%;display:flex;flex-direction:column;min-height:0;background:var(--pn);
+  box-shadow:0 0 0 1px var(--gd),0 6px 22px rgba(0,0,0,.45),0 0 18px rgba(var(--gr),.18)}
+#ch .tb{flex:none}
+.chb{display:flex;gap:4px;align-items:center}
+.wx2{min-height:0;height:20px;padding:0 6px;border:1px solid var(--gd);color:var(--g);line-height:1;background:transparent;font-size:12px}
+.wx2[aria-pressed="true"]{border-color:var(--red);color:var(--red)}
+#chLog{height:clamp(90px,30vh,210px);overflow-y:auto;padding:6px 8px;box-sizing:border-box;display:flex;flex-direction:column;gap:3px;background:var(--bg);
+  scrollbar-width:thin;scrollbar-color:var(--gd) transparent;user-select:text;-webkit-user-select:text}
+.chm{line-height:1.4;overflow-wrap:anywhere;word-break:break-word}
+.chm .chn{font-weight:700;color:var(--g2);margin-right:5px}
+.chm.opp .chn{color:var(--g)}
+.chm.mine .chn::after,.chm.opp .chn::after{content:":"}
+.chm.sys{color:var(--mut);font-size:12px;font-style:italic}
+.chm.sys::before{content:"// "}
+.chm .cht{color:var(--mut);font-size:11px;margin-right:5px}
+#chNote{flex:none;padding:3px 8px;font-size:12px;color:var(--g2);background:rgba(var(--gr),.1);border-top:1px solid var(--gd)}
+#chNote.bad{color:var(--red)}
+#chForm{flex:none;display:flex;gap:6px;padding:6px;border-top:1px solid var(--gd);background:var(--pn)}
+#chIn{flex:1;min-width:0;box-sizing:border-box;padding:4px 7px;min-height:26px;border:1px solid var(--gd);border-radius:0;background:var(--bg);color:var(--g);font:inherit;outline:none}
+#chIn::placeholder{color:var(--mut);opacity:.8}
+#chIn:focus{border-color:var(--g);box-shadow:var(--halo)}
+#chIn:disabled{opacity:.5}
+#chGo{flex:none}
+
+/* Tin mới nổi lên ở góc khi ô chat đang đóng (tự mờ dần sau vài giây) */
+#chFeed{position:absolute;right:10px;bottom:10px;z-index:3;width:min(320px,calc(100% - 20px));display:flex;flex-direction:column;gap:3px;align-items:flex-end;pointer-events:none;font-family:var(--font);font-size:12.5px}
+#chFeed .chf{max-width:100%;padding:3px 8px;box-sizing:border-box;color:var(--g);border:1px solid var(--gd);overflow-wrap:anywhere;
+  background:color-mix(in srgb,var(--pn) 88%,transparent);box-shadow:0 2px 8px rgba(0,0,0,.35);animation:chIn .18s ease-out}
+#chFeed .chf b{color:var(--g2);margin-right:4px}
+#chFeed .chf.out{opacity:0;transform:translateY(4px);transition:opacity .5s,transform .5s}
+@keyframes chIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (max-width:520px){#ch{right:6px;bottom:6px;width:calc(100% - 12px)}#chFeed{right:6px;bottom:6px}#chLog{height:clamp(80px,26vh,170px)}}
+@media (prefers-reduced-motion:reduce){#chFeed .chf,#chFeed .chf.out{animation:none;transition:none}}
