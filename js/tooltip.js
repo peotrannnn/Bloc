@@ -50,6 +50,20 @@ const Tip=(function(){
     const r=a.getBoundingClientRect(),vw=document.documentElement.clientWidth,vh=document.documentElement.clientHeight;
     el.style.left='0px';el.style.top='0px';
     const w=el.offsetWidth,h=el.offsetHeight;
+    /* Nút trong menu: xếp sang BÊN CẠNH cửa sổ menu (phải, hết chỗ thì trái) để khỏi che các nút bên dưới */
+    const win=a.closest?a.closest('#menu .win'):null;
+    if(win){
+      const wr=win.getBoundingClientRect(),cy=r.top+r.height/2;
+      let sx=null,sd='r';
+      if(wr.right+GAP+w<=vw-EDGE)sx=wr.right+GAP;
+      else if(wr.left-GAP-w>=EDGE){sx=wr.left-GAP-w;sd='l';}
+      if(sx!==null){
+        const sy=Math.max(EDGE,Math.min(cy-h/2,vh-h-EDGE));
+        el.style.left=Math.round(sx)+'px';el.style.top=Math.round(sy)+'px';
+        el.style.setProperty('--ay',Math.round(Math.max(10,Math.min(cy-sy,h-10)))+'px');
+        el.dataset.side=sd;return;
+      }
+    }
     let x=Math.max(EDGE,Math.min(r.left+r.width/2-w/2,vw-w-EDGE));
     let y=r.bottom+GAP,side='b';   /* ưu tiên phía dưới; hết chỗ thì lên trên (thanh nút ở đáy màn hình) */
     if(y+h>vh-EDGE&&r.top-GAP-h>=EDGE){y=r.top-GAP-h;side='t';}

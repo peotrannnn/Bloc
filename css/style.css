@@ -327,6 +327,14 @@ footer button.rm2:not(:disabled){animation-duration:1s}
   border-top:0;
 }
 
+/* Xếp bên cạnh (nút trong menu): mũi tên nằm ở cạnh trái / phải khung */
+#tip[data-side="r"]{transform:translateX(-3px);transform-origin:0 var(--ay,50%)}
+#tip[data-side="l"]{transform:translateX(3px);transform-origin:100% var(--ay,50%)}
+#tip[data-side="r"]::before,
+#tip[data-side="l"]::before{top:var(--ay,50%);margin:-4px 0 0}
+#tip[data-side="r"]::before{left:-5px;border-top:0;border-right:0}
+#tip[data-side="l"]::before{left:auto;right:-5px;border-bottom:0;border-left:0}
+
 /* Hiển thị tooltip */
 #tip.on{
   opacity:1;

@@ -5,7 +5,7 @@
   background:rgba(0,0,0,.5);color:var(--g);font-family:var(--font);font-size:13px}
 #gd .win{width:min(980px,100%);height:min(660px,100%);display:flex;flex-direction:column;background:var(--bg);overflow:hidden;
   box-shadow:0 0 0 1px var(--gd),0 0 26px rgba(var(--gr),.25),inset 0 0 34px rgba(var(--gr),.05)}
-footer{position:relative;z-index:9}   /* thanh nút dưới nằm trên cửa sổ để bấm lại nút Hướng dẫn mà đóng */
+body.gdopen footer{position:relative;z-index:9}   /* chỉ khi đang mở Hướng dẫn: thanh nút dưới nằm trên cửa sổ để bấm lại nút Hướng dẫn mà đóng (không được nổi lên trên menu) */
 #gd .tb{flex:none;background:var(--pn)}
 .gdw{flex:1;min-height:0;display:grid;grid-template-columns:200px 1fr}
 
