@@ -23,6 +23,7 @@ node tools/items-test.js         # rương, vật phẩm, ván ngẫu nhiên ki�
 node tools/mapgen-test.js        # mapgen, đối chiếu BFS mapgen ↔ Core
 node tools/view-test.js          # logic hoạt ảnh phía client, không cần trình duyệt
 node tools/blocker-test.js       # người chặn đường
+node tools/blocker-balance-test.js # cân bằng người chặn đường (BlockerPick.pickTarget)
 node tools/net-events-test.js   # mọi loại tin server gửi phải được menu.js đăng ký (chat từng bị bỏ vì thiếu)
 node tools/wallwhy-test.js       # lý do tường bị từ chối (Core.wallWhy) + bảng chữ WALL_WHY (~530k kiểm tra)
 node tools/dumb-test.js          # mọi AI (nhất là Bé Khờ) không được đặt tường bịt kín đường về đích (~380k kiểm tra)

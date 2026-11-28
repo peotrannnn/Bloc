@@ -63,7 +63,7 @@ const CFG={
 
     /* LỊCH (đơn vị: nước đi, mỗi bên đi một nước = 1; mỗi khoảng là số nguyên ngẫu nhiên trong [min,max]) */
     auto:true,                               /* chỉ để thử (cần S.chaos): tự xuất hiện theo lịch plan bên dưới ở ván không online. Ván thật: server quyết định, không đọc cờ này */
-    plan:{first:[20,30],stay:[5,7],gap:[20,30]},   /* đầu ván đợi first nước → ở lại stay nước → trống gap nước → quay lại, lặp mãi */
+    plan:{first:[20,30],stay:[3,8],gap:[20,30]},   /* đầu ván đợi first nước → ở lại stay nước (3 nếu dẫn vừa đủ, 8 nếu dẫn rất xa; xem blocker-pick.js) → trống gap nước → quay lại, lặp mãi */
 
     /* VÀO SÂN: bay từ một điểm ngẫu nhiên trên trời, lượn tới trên đầu ô rồi hạ xuống đáp */
     fly:{dist:[10,14],up:[6,8],              /* điểm xuất phát (xa): cách ô đích ngang [min,max], cao [min,max] so với mặt ô */

@@ -28,7 +28,7 @@ const ctx=vm.createContext({
   AIWorker:{decide:async()=>null},Online:{},loadThree:async()=>{},
 });
 const load=f=>vm.runInContext(fs.readFileSync(path.join(root,f),'utf8'),ctx,{filename:f});
-for(const f of['js/config.js','js/util.js','js/state.js','js/core.js','js/rules.js','js/ai/registry.js','js/ai/basic.js','js/ai/dumb.js','js/ai/tools.js','js/ai/attacker.js','js/ai/defender.js','js/ai/thug.js','js/ai/mirror.js','js/ai/keeper.js','js/ai/control.js','js/ai/gambler.js','js/ai/biet.js','js/blocker-plan.js','js/view/pawns.js','js/view/blocker.js','js/app.js'])load(f);
+for(const f of['js/config.js','js/util.js','js/state.js','js/core.js','js/rules.js','js/ai/registry.js','js/ai/basic.js','js/ai/dumb.js','js/ai/tools.js','js/ai/attacker.js','js/ai/defender.js','js/ai/thug.js','js/ai/mirror.js','js/ai/keeper.js','js/ai/control.js','js/ai/gambler.js','js/ai/biet.js','js/blocker-plan.js','js/blocker-pick.js','js/view/pawns.js','js/view/blocker.js','js/app.js'])load(f);
 const run=s=>vm.runInContext(s,ctx);
 
 /* thế cờ giả: hai quân + tường; Pawns.list giả đứng yên (idle) để Pawns.quiet() đúng */
@@ -232,7 +232,7 @@ console.log('Hoạt ảnh rời đi');
 console.log('Lịch xuất hiện');
 {
   const BP=require(path.join(root,'js/blocker-plan.js'));
-  const plan={first:[20,30],stay:[5,7],gap:[20,30]};
+  const plan={first:[20,30],stay:[5,7],gap:[20,30]};   /* plan thử riêng: BlockerPlan.done vẫn bốc stay trong plan khi không có stay riêng */
   let okFirst=true,okStay=true,okGap=true,loops=0;
   for(let g=0;g<200;g++){
     const p=BP.init(plan);if(p.at<20||p.at>30||p.on)okFirst=false;
@@ -256,7 +256,7 @@ console.log('Lịch xuất hiện');
   run('S.ply=2;S.turn=0;S.mode="move"');
   run('App.endTurn()');
   ok(run('S.ply')===3&&run('S.event')&&run('S.event.k')==='blocker','đến nước 3: App bắt đầu sự kiện vào theo lịch');
-  const at=get('S.bplan');ok(at.on===true&&at.at>=3+5&&at.at<=3+7,'lịch đã đặt lại: ở lại 5-7 nước (rời ở nước '+at.at+')');
+  const at=get('S.bplan');ok(at.on===true&&at.at>=3+3&&at.at<=3+8,'lịch đã đặt lại: ở lại 3-8 nước (rời ở nước '+at.at+')');
   /* sự kiện kết thúc rồi đến giờ rời */
   run('S.event.t0=0;App.eventTick()');runAn();
   ok(run('S.blocker')>=0,'người chặn đã đứng ở ô '+run('S.blocker'));

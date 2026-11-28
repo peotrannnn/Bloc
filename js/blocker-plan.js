@@ -10,10 +10,14 @@ const BlockerPlan={
   init(plan,rnd,ply){return{on:false,at:(ply||0)+this.roll(plan.first,rnd)};},
   /* Gọi sau mỗi nước đi (ply = số nước đã đi). Trả 'enter' / 'leave' khi tới giờ, ngược lại null.
      Chưa làm được thì cứ gọi lại ở nước sau (at không đổi, ply tăng vẫn >= at). */
-  due(p,ply){return ply<p.at?null:p.on?'leave':'enter';},
+  /* release=true (bên bị nhắm đã hết dẫn rõ, xem BlockerPick.released): rời sớm, nhưng đã đứng ít nhất `minStay` nước */
+  due(p,ply,release,minStay){
+    if(p.on&&release&&ply-(p.since||0)>=(minStay||2))return 'leave';
+    return ply<p.at?null:p.on?'leave':'enter';
+  },
   /* Báo là sự kiện `what` ('enter' | 'leave') đã THỰC SỰ bắt đầu ở nước ply (cả khi người thử bấm phím B): đặt lại đồng hồ cho khoảng kế tiếp */
-  done(p,ply,what,plan,rnd){
-    if(what==='enter'){p.on=true;p.at=ply+this.roll(plan.stay,rnd);}
+  done(p,ply,what,plan,rnd,stay){   /* stay: số nước đứng do người chặn tính theo lợi thế (không có thì bốc trong plan.stay) */
+    if(what==='enter'){p.on=true;p.since=ply;p.at=ply+(stay>0?stay:this.roll(plan.stay,rnd));}
     else{p.on=false;p.at=ply+this.roll(plan.gap,rnd);}
     return p;
   }

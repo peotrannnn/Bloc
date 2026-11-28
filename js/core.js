@@ -88,7 +88,7 @@ const Core=(function(){
   const RULESETS={
     classic:{id:'classic',name:'Classic',N:9,walls:10,maxPly:300},
     chaos:{id:'chaos',name:'Hỗn Loạn',N:9,walls:10,maxPly:300,maxPlyCloser:true,trapClosed:2,trapOpen:1,slideMax:40,bag:2,
-           sandSink:.25,blockerPlan:{first:[20,30],stay:[5,7],gap:[20,30]}}   /* người chặn đường (CHỈ Hỗn Loạn, server chạy lịch; xem js/blocker-plan.js). Classic không có khóa này = không bao giờ có người chặn */
+           sandSink:.25,blockerPlan:{first:[20,30],stay:[3,8],gap:[20,30]}}   /* người chặn đường (CHỈ Hỗn Loạn, server chạy lịch; xem js/blocker-plan.js). Classic không có khóa này = không bao giờ có người chặn */
   };
   const ruleset=(id,over)=>Object.assign({},RULESETS[id||'classic'],over||{});
 

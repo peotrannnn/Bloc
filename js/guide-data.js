@@ -172,11 +172,11 @@ GUIDE.entries=[
      'Cách chọn tường giống như khi xài Búa.']},
 
   {id:'blocker',grp:'Sự kiện',name:'Người chặn đường',
-   sum:'Nhân vật màu vàng bay xuống và đứng chặn vị trí hiểm nhất trên bàn.',
+   sum:'Nhân vật màu vàng bay xuống chặn đường người đang dẫn quá xa.',
    lines:[
-     'Xuất hiện lần đầu sau khoảng 20 đến 30 lượt đi, rồi cứ thêm 20 đến 30 lượt lại xuất hiện lần nữa.',
-     'Bay xuống ô gây cản trở đường đi nhiều nhất. Ô bị chiếm sẽ được tính như khối đá: không ai bước vô hay nhảy qua được.',
-     'Đứng đó từ 5 đến 7 lượt rồi chạy đi chỗ khác (không chặn nữa) vì nó bận đi mua sữa cho con. Khi chơi online, server sẽ quyết định nên cả hai bên đều thấy cùng một kết quả.'],
+     'Chỉ xuất hiện (không sớm hơn khoảng 20 đến 30 lượt đi, rồi nghỉ 20 đến 30 lượt mới đến lại) khi một bên đang dẫn đường xa đối thủ từ 3 bước trở lên. Ván cân bằng thì nó không đến.',
+     'Chỉ nhắm vào người đang dẫn, ngay trên đường đi của họ. Dẫn càng xa thì nó đáp càng sát người đó; dẫn ít thì nó chặn ở chỗ xa hơn. Ô bị chiếm tính như khối đá: không ai bước vô hay nhảy qua được.',
+     'Dẫn càng xa thì đứng càng lâu (từ 3 đến 8 lượt). Nếu lợi thế đã bị kéo về gần bằng nhau thì nó rời đi sớm, vì nó bận đi mua sữa cho con. Khi chơi online, server sẽ quyết định nên cả hai bên đều thấy cùng một kết quả.'],
    vars:[one('blocker.png','Người chặn đường',null,{blocker:true,dist:6.8,ty:.3})]}
 ];
 

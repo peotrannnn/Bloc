@@ -74,13 +74,13 @@ async function main(){
     for(const m of list)for(const e of blockerFx(m))if(side==='A')events.push({ply:m.ply,e,turnLeft:m.turnLeft});
   }
   const enters=events.filter(x=>x.e.cell),leaves=events.filter(x=>x.e.leave);
-  ck(enters.length>=2&&leaves.length>=2,'ván dài có nhiều lần vào/rời ('+enters.length+' vào, '+leaves.length+' rời)');
-  ck(enters[0].ply>=20&&enters[0].ply<=30+1,'lần đầu xuất hiện ở nước '+enters[0].ply+' (đợi 20-30)');
+  ck(enters.length>=1&&leaves.length>=1,'ván có người dẫn xa thì có vào/rời ('+enters.length+' vào, '+leaves.length+' rời)');
+  ck(enters[0].ply>=20,'lần đầu xuất hiện ở nước '+enters[0].ply+' (không sớm hơn 20; còn phải có người dẫn đủ xa)');
   const seq=events.map(x=>x.e.cell?'E':'L').join('');
   ck(/^(EL)+E?$/.test(seq),'vào/rời xen kẽ đúng thứ tự ('+seq+')');
   let stayOk=true,gapOk=true;
-  for(let i=0;i<events.length-1;i++){const d=events[i+1].ply-events[i].ply;if(events[i].e.cell&&(d<5||d>7+1))stayOk=false;if(events[i].e.leave&&(d<20||d>30+1))gapOk=false;}
-  ck(stayOk,'ở lại 5-7 nước rồi mới rời');ck(gapOk,'rời xong trống 20-30 nước mới quay lại');
+  for(let i=0;i<events.length-1;i++){const d=events[i+1].ply-events[i].ply;if(events[i].e.cell&&(d<2||d>8+1+1))stayOk=false;if(events[i].e.leave&&d<20)gapOk=false;}
+  ck(stayOk,'ở lại 2-9 nước (tùy lợi thế, có thể rời sớm) rồi mới rời');ck(gapOk,'rời xong trống ít nhất 20 nước mới quay lại');
   ck(enters.every(x=>x.e.cell.length===2&&x.e.cell[0]>=1&&x.e.cell[0]<=7),'ô được chọn nằm trong bàn, không phải hàng đích');
   const bothSaw=msgs.A.filter(m=>m.t==='applied'&&blockerFx(m).length).length===msgs.B.filter(m=>m.t==='applied'&&blockerFx(m).length).length;
   ck(bothSaw,'cả hai bên đều nhận fx người chặn đường (kể cả khi quân bị cỏ che)');

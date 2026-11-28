@@ -193,6 +193,7 @@ const Blocker={
     return n;
   },
   pick(){
+    if(typeof BlockerPick!=='undefined'){const t=BlockerPick.pickTarget(R,S,Math.random);if(t)return t.cell;}   /* bản cân bằng (cùng server); không ai dẫn rõ thì rơi về cách cũ (phím B thử) */
     const d0=dist(0,S.pl[0]),d1=dist(1,S.pl[1]);
     let best=-1,top=[];
     for(let r=1;r<N-1;r++)for(let c=0;c<N;c++){

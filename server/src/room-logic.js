@@ -224,20 +224,21 @@ export class RoomLogic{
   blockerStep(res){
     const g=this.g,st=this.st,plan=this.rs().blockerPlan;
     if(!plan||!g.bplan)return;
-    const due=BlockerPlan.due(g.bplan,st.ply);
-    if(!due)return;
     const R=this.rk(),N=R.N;
-    let fx=null;
+    const due=BlockerPlan.due(g.bplan,st.ply,st.blocker>=0&&BlockerPick.released(R,st,g.bplan.tgt,plan),BlockerPick.minStay);   /* đang đứng mà bên bị nhắm hết dẫn: rời sớm */
+    if(!due)return;
+    let fx=null,stay=0;
     if(due==='enter'){
       if(st.blocker>=0)return;
-      const k=BlockerPick.pick(R,st,this.rand);
-      if(k<0)return;
+      const pk=BlockerPick.pickTarget(R,st,this.rand,plan);   /* chưa ai dẫn đủ xa (hoặc không có ô hợp lệ): không xuất hiện, nước sau xét lại */
+      if(!pk)return;
+      const k=pk.cell;stay=pk.stay;g.bplan.tgt=pk.tgt;
       st.blocker=k;fx={t:'blocker',cell:[(k/N)|0,k%N]};
     }else{
       if(st.blocker<0){BlockerPlan.done(g.bplan,st.ply,'leave',plan,this.rand);return;}   /* lịch lệch với bàn (không nên xảy ra): coi như đã rời */
       st.blocker=-1;fx={t:'blocker',leave:true};
     }
-    BlockerPlan.done(g.bplan,st.ply,due,plan,this.rand);
+    BlockerPlan.done(g.bplan,st.ply,due,plan,this.rand,stay);
     res.fx=(res.fx||[]).concat([fx]);
     if(g.turnEnds>0)g.turnEnds+=BLOCKER_PAUSE_MS;
   }

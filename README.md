@@ -29,6 +29,7 @@ Game cờ 3D chạy trên trình duyệt (biến thể Quoridor), giao diện ti
 node tools/core-test.js                       # kiểm thử lõi luật
 node tools/items-test.js                      # kiểm thử rương và vật phẩm của lõi luật (kèm hàng trăm ván ngẫu nhiên kiểm các bất biến)
 node tools/view-test.js                       # kiểm thử logic hoạt ảnh Hỗn Loạn phía client (không cần trình duyệt)
+node tools/blocker-balance-test.js            # cân bằng người chặn đường: chỉ nhắm bên dẫn xa, lợi thế càng lớn càng sát + đứng lâu, rời sớm khi hết dẫn
 node tools/blocker-test.js                    # kiểm thử sự kiện người chặn đường: chọn ô, đường chạy, tạm dừng hai bên, camera, mọi AI né người chặn
 node tools/chaos-client-test.mjs              # client thật ↔ server thật: so sánh trạng thái sau MỖI tin (kể cả túi đồ, chủ tường, rương, quân leo đá)
 node tools/stone-surface-test.js              # mặt đá thật (độ cao quân/ô gợi ý đứng trên đá) khớp hình học khối đá
