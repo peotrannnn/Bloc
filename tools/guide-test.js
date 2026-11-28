@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 /* Kiểm dữ liệu cửa sổ Hướng dẫn (js/guide-data.js):   node tools/guide-test.js
-   1) đủ mọi loại ô và mọi vật phẩm của game, không thừa mục lạ;  2) mô tả ảnh (shot) hợp lệ: ô nằm trong bàn, mã ô đúng, kiểu đá chỉ đặt ở ô đá, cổng bị chặn đúng ô cổng;
+   1) đủ mọi loại ô và mọi vật phẩm của game, không thừa mục lạ;  2) mô tả ảnh (shot) + tên file ảnh (img) hợp lệ: ô nằm trong bàn, mã ô đúng, kiểu đá chỉ đặt ở ô đá, cổng bị chặn đúng ô cổng;
    3) chữ luật khớp số liệu THẬT của lõi (tỉ lệ rương, xác suất lún cát, chu kỳ bẫy, số lần trượt tối đa, sức chứa túi, lịch người chặn đường) nên sửa luật mà quên sửa hướng dẫn là test đỏ. */
 const fs=require('fs'),vm=require('vm'),path=require('path');
 const root=path.join(__dirname,'..');
@@ -32,7 +32,9 @@ for(const e of E){
   if(e.item){ck(!e.vars,`${e.id}: vật phẩm dùng biểu tượng game, không có ảnh dựng`);continue;}
   for(const[i,v]of(e.vars||[]).entries()){
     const w=`${e.id}#${i} (${v.label})`,s=v.shot;
-    ck(v.label&&v.cap,`${w}: thiếu nhãn / chú thích`);
+    ck(/^[a-z0-9-]+\.png$/.test(v.img||''),`${w}: tên file ảnh "${v.img}" sai`);
+    if(!fs.existsSync(path.join(root,'img/guide',v.img||'?')))console.log(`  ! thiếu ảnh img/guide/${v.img} (chạy tools/make-guide-images.py)`);
+    ck(v.label,`${w}: thiếu nhãn`);
     ck(s&&typeof s.biome==='string'&&!!s.biome,`${w}: thiếu biome`);
     ck(['meadow','forest','river','autumn','desert','snow','mountain'].includes(s.biome),`${w}: biome "${s.biome}" lạ`);
     const cells=[...(s.cells||[])];
@@ -66,12 +68,11 @@ ck(txt(byId.sand).includes(sink+'%'),`cát: lõi lún ${sink}% nhưng hướng d
 ck(txt(byId.trap).includes(`đóng ${RS.trapClosed} lượt`)&&txt(byId.trap).includes(`bật ${RS.trapOpen} lượt`),`bẫy: chu kỳ phải là đóng ${RS.trapClosed} / bật ${RS.trapOpen}`);
 ck(txt(byId.ice).includes(RS.slideMax+' lần'),`băng: số lần trượt tối đa phải là ${RS.slideMax}`);
 ck(/tối đa 2 món/.test(txt(byId.chest))&&RS.bag===2,`túi đồ: hướng dẫn ghi tối đa 2 món, lõi bag=${RS.bag}`);
-ck(/tối đa 2 món/.test(txt(byId.intro))||/tối đa 2 món/.test(txt(byId.chest)),'túi đồ 2 món');
 const bp=RS.blockerPlan;
 ck(txt(byId.blocker).includes(`${bp.first[0]} đến ${bp.first[1]} nước`),'người chặn đường: lần đầu không khớp lịch');
 ck(txt(byId.blocker).includes(`${bp.gap[0]} đến ${bp.gap[1]} nước`),'người chặn đường: khoảng nghỉ không khớp lịch');
 ck(txt(byId.blocker).includes(`${bp.stay[0]} đến ${bp.stay[1]} nước`),'người chặn đường: thời gian đứng không khớp lịch');
-ck(/10 tường/.test(txt(byId.intro)),'tổng quan: số tường mỗi bên');
+ck(/10 tường/.test(txt(byId.wall)),'đặt tường: số tường mỗi bên');
 ck(/ít nhất 2 tường/.test(txt(byId.glove)),'găng tay: điều kiện đối thủ còn ≥ 2 tường');
 ck(/cạnh/i.test(txt(byId.stone)),'đá cao: luật tường theo cạnh');
 

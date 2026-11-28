@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8">
+<title>Bloc - chụp ảnh Hướng dẫn</title>
+<style>
+body{margin:0;padding:18px;background:#2f6a22;color:#fff;font:14px/1.45 system-ui,sans-serif}
+h1{font-size:18px;margin:0 0 6px}p{margin:0 0 14px;opacity:.9;max-width:760px}
+#grid{display:flex;flex-wrap:wrap;gap:14px}
+figure{margin:0;padding:8px;background:rgba(0,0,0,.2);border-radius:8px;text-align:center}
+figure img{display:block;width:256px;height:256px}
+a{color:#d6ff9c;font-size:12px}
+#host{position:fixed;left:-9999px;top:0}
+</style></head><body>
+<h1>Chụp ảnh minh họa Hướng dẫn (đồ họa thật của game)</h1>
+<p>Mở trang này bằng <code>python3 -m http.server</code> (cần mạng để tải three.js, hoặc đặt sẵn <code>tools/three.min.js</code> r128). Mỗi ô một ảnh, góc chéo 45° kiểu khối Minecraft. Bấm "tải" để lưu từng ảnh vào <code>img/guide/</code>, hoặc chạy <code>python3 tools/make-guide-images.py</code> để lưu hết một lần. Muốn đổi góc: sửa mặc định ở <code>js/guide-shots.js</code> (yaw / pitch / fov / dist) hoặc <code>shot</code> của từng ô trong <code>js/guide-data.js</code>.</p>
+<div id="grid"></div><div id="host"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" onerror="document.title='no-three'"></script>
+<script src="../js/config.js"></script>
+<script src="../js/util.js"></script>
+<script src="../js/mapgen.js"></script>
+<script>/* stage.js gọi goalRow (do js/rules.js định nghĩa trong game); trang chụp không nạp luật nên khai báo lại */var goalRow=p=>p===0?0:8;</script>
+<script src="../js/view/pawns.js"></script>
+<script src="../js/view/stage.js"></script>
+<script src="../js/view/terrain.js"></script>
+<script src="../js/view/blocker.js"></script>
+<script src="../js/guide-data.js"></script>
+<script>
+window.__shots={};
+const jobs=[];
+for(const e of GUIDE.entries)for(const v of e.vars||[])jobs.push({file:v.img,spec:Object.assign({png:true},v.shot)});
+let at=0;
+function next(){
+  if(at>=jobs.length){document.body.dataset.done='1';return;}
+  parent.postMessage({t:'shot',key:jobs[at].file,spec:jobs[at].spec},'*');
+}
+addEventListener('message',ev=>{
+  const m=ev.data;if(!m)return;
+  if(m.t==='ready'){next();}
+  else if(m.t==='fail'){document.body.dataset.done='fail';}
+  else if(m.t==='img'||m.t==='err'){
+    if(m.t==='img'){
+      window.__shots[m.key]=m.url;
+      const f=document.createElement('figure'),i=new Image(),a=document.createElement('a');
+      i.src=m.url;a.href=m.url;a.download=m.key;a.textContent='tải '+m.key;f.append(i,a);document.getElementById('grid').appendChild(f);
+    }else console.error('shot lỗi',m.key,m.why);
+    at++;next();
+  }
+});
+</script>
+<script src="../js/guide-shots.js"></script>
+</body></html>
