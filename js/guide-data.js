@@ -2,7 +2,7 @@
 /* [GUIDE-DATA] Nội dung cửa sổ Hướng dẫn (nhóm 'Cách chơi' hiện ở cả Classic; các nhóm khác chỉ ở Hỗn Loạn). Chỉ là DỮ LIỆU, không đụng DOM / 3D nên test được bằng Node (tools/guide-test.js).
    Chữ luật ở đây phải khớp js/core.js (đầu file) và CFG.ITEMS: sửa luật thì sửa cả chỗ này.
 
-   Mỗi mục:  id · grp (nhóm ở cột trái) · ic (biểu tượng ở danh mục) · name · sum (một câu tóm tắt) · lines[] (ý chính, NGẮN; **chữ đậm** bằng hai dấu sao) · note[] (mẹo, tùy chọn)
+   Mỗi mục:  id · grp (nhóm ở cột trái) · name · sum (một câu tóm tắt) · lines[] (ý chính, NGẮN; **chữ đậm** bằng hai dấu sao) · note[] (mẹo, tùy chọn)
              item: tên món trong CFG.ITEMS (mục vật phẩm: hiện biểu tượng của game thay cho ảnh dựng)
              vars[]: các biến thể, mỗi biến thể = {label, cap, shot}
    Mỗi biến thể có img = tên file ảnh trong img/guide/ (chụp sẵn một lần, MỖI ẢNH MỘT Ô, góc nhìn khối Minecraft) và
@@ -30,14 +30,14 @@ GUIDE.basicGroups=['Cách chơi'];   /* nhóm hiện ở CẢ Classic; các nhó
 const one=(img,cap,code,extra)=>({label:cap,cap,img,shot:Object.assign({biome:'meadow',cells:code==null?[]:[[4,4,code]],look:[4,4]},extra||{})});
 
 GUIDE.entries=[
-  {id:'how',grp:'Cách chơi',ic:'🎯',name:'Cách chơi',
+  {id:'how',grp:'Cách chơi',name:'Cách chơi',
    sum:'Đi tới hàng đối diện trước đối thủ là thắng.',
    lines:[
      'Mỗi lượt chọn **một** việc: **đi quân** một ô (lên, xuống, trái, phải) hoặc **đặt một tường**.',
      'Đối thủ đứng ngay trước mặt thì **nhảy qua đầu họ**. Có tường phía sau họ thì bước né sang bên.'],
    note:['Phím I (hoặc nút Hướng dẫn) bật / tắt cửa sổ này. ↑ ↓ đổi mục. Phím tắt: Q đi quân · W đặt tường · R xoay tường · E đổi góc nhìn · T đánh giá · O cài đặt · P ván mới · Esc về menu. Mũi tên đi quân hoặc dời tường, Enter để đặt.']},
 
-  {id:'pawn',grp:'Cách chơi',ic:'♟️',name:'Quân cờ',
+  {id:'pawn',grp:'Cách chơi',name:'Quân cờ',
    sum:'Mỗi bên một quân, hai bên đứng đối mặt nhau.',
    lines:[
      '**Trắng** đi trước, **Đen** đi sau.',
@@ -46,21 +46,21 @@ GUIDE.entries=[
      one('pawn-trang.png','Trắng',null,{pawn:0,dist:6.8,ty:.3}),
      one('pawn-den.png','Đen',null,{pawn:1,dist:6.8,ty:.3})]},
 
-  {id:'wall',grp:'Cách chơi',ic:'🧱',name:'Đặt tường',
+  {id:'wall',grp:'Cách chơi',name:'Đặt tường',
    sum:'Tường chặn đường đối thủ, nhưng không được nhốt kín ai.',
    lines:[
      'Bấm **Tường (W)**, rê chuột tới khe giữa các ô rồi bấm. **R** để xoay ngang / dọc.',
      'Mỗi bên có **10 tường**, mỗi tường dài **hai ô**.',
      'Không được cắt ngang tường khác, không được bịt kín đường về đích của **bất kỳ ai** (kể cả bạn). Chỗ nào bị cấm, game báo lý do.']},
 
-  {id:'floor',grp:'Ô địa hình',ic:'🟫',name:'Ô thường',
+  {id:'floor',grp:'Ô địa hình',name:'Ô thường',
    sum:'Ô gỗ bình thường, không có hiệu ứng.',
    lines:[
      'Đi, nhảy và đặt tường y như luật gốc.',
      'Hai hàng đầu và hai hàng cuối của bàn **luôn** là ô thường.'],
    vars:[one('floor.png','Ô gỗ',null)]},
 
-  {id:'grass',grp:'Ô địa hình',ic:'🌿',name:'Cỏ',
+  {id:'grass',grp:'Ô địa hình',name:'Cỏ',
    sum:'Quân đứng trong cỏ thì đối thủ không nhìn thấy.',
    lines:[
      'Chỉ **ẩn mình**, không chặn đường hay làm chậm.',
@@ -69,7 +69,7 @@ GUIDE.entries=[
    note:['Cỏ trông khác theo bản đồ nhưng luật y hệt.'],
    vars:[one('grass.png','Cỏ',2)]},
 
-  {id:'ice',grp:'Ô địa hình',ic:'🧊',name:'Băng',
+  {id:'ice',grp:'Ô địa hình',name:'Băng',
    sum:'Bước vào là trượt đi một đoạn, không điều khiển được.',
    lines:[
      'Trượt sang một ô kề **ngẫu nhiên** (không quay lại ô vừa đứng), rơi vào băng nữa thì trượt tiếp.',
@@ -78,7 +78,7 @@ GUIDE.entries=[
    note:['Băng không trượt lên đá.'],
    vars:[one('ice.png','Băng',3)]},
 
-  {id:'trap',grp:'Ô địa hình',ic:'🪤',name:'Bẫy',
+  {id:'trap',grp:'Ô địa hình',name:'Bẫy',
    sum:'Bẫy lò xo: bật lên đúng lúc bạn đứng trên là bị hất về nhà.',
    lines:[
      'Chạy theo số nước đi: **đóng 2 lượt**, **bật 1 lượt**, rồi lặp lại.',
@@ -89,7 +89,7 @@ GUIDE.entries=[
      one('trap-dong.png','Đang đóng',4,{trap:0}),
      one('trap-bat.png','Đang bật',4,{trap:2})]},
 
-  {id:'chest',grp:'Ô địa hình',ic:'🎁',name:'Rương',
+  {id:'chest',grp:'Ô địa hình',name:'Rương',
    sum:'Kết thúc nước đi trên rương là mở ra một món quà.',
    lines:[
      'Rương mở xong là biến mất. Quà ngẫu nhiên: Gạch 30% · Giày 20% · Búa 20% · Găng tay 15% · Cuốc chim 15%.',
@@ -97,7 +97,7 @@ GUIDE.entries=[
      'Bị cổng hay bẫy hất tới ô rương thì rương **không** mở.'],
    vars:[one('chest.png','Rương',5)]},
 
-  {id:'gate',grp:'Ô địa hình',ic:'🌀',name:'Cổng dịch chuyển',
+  {id:'gate',grp:'Ô địa hình',name:'Cổng dịch chuyển',
    sum:'Hai cổng là một cặp: bước vào cổng này, ra ở cổng kia.',
    lines:[
      'Bàn có đúng **2 cổng**. Cổng kia đang có người đứng thì bạn chờ trên cổng (hiện **X đỏ**) tới khi họ rời đi.',
@@ -105,7 +105,7 @@ GUIDE.entries=[
      'Game không cho đặt tường làm cả hai cổng cùng mất đường về đích.'],
    vars:[one('gate.png','Cổng',6)]},
 
-  {id:'water',grp:'Ô địa hình',ic:'💧',name:'Nước',
+  {id:'water',grp:'Ô địa hình',name:'Nước',
    sum:'Bước xuống nước là đứng yên một lượt.',
    lines:[
      'Lượt kế tiếp bạn **không đi quân được**, chỉ đặt tường (hết tường thì mất lượt).',
@@ -113,7 +113,7 @@ GUIDE.entries=[
      'Giữa hai ô nước (hoặc nước và cát) kề nhau không đặt được tường.'],
    vars:[one('water.png','Nước',7)]},
 
-  {id:'sand',grp:'Ô địa hình',ic:'🏜️',name:'Cát',
+  {id:'sand',grp:'Ô địa hình',name:'Cát',
    sum:'Kết thúc nước đi trên cát có thể bị lún mất lượt.',
    lines:[
      'Kết thúc nước đi trên cát có **25%** bị lún.',
@@ -121,7 +121,7 @@ GUIDE.entries=[
      'Bị cổng hay bẫy hất xuống cát thì không lún. Giữa hai ô cát (hoặc cát và nước) kề nhau không đặt được tường.'],
    vars:[one('sand.png','Cát',8,{biome:'desert'})]},
 
-  {id:'stone',grp:'Ô địa hình',ic:'🪨',name:'Đá cao',
+  {id:'stone',grp:'Ô địa hình',name:'Đá cao',
    sum:'Khối đá cao bằng quân cờ, bậc 2 trong luật độ cao.',
    lines:[
      'Ô thường **bậc 0**, đá thấp **bậc 1**, đá cao **bậc 2**. Chỉ bước giữa hai ô kề chênh tối đa **1 bậc**.',
@@ -130,7 +130,7 @@ GUIDE.entries=[
    note:['Trên đá không có rương, bẫy, cổng, nước, cát, cỏ, băng.'],
    vars:[one('stone.png','Đá cao',1,{biome:'mountain',vi:0})]},
 
-  {id:'low',grp:'Ô địa hình',ic:'🪜',name:'Đá thấp',
+  {id:'low',grp:'Ô địa hình',name:'Đá thấp',
    sum:'Bậc thang giữa mặt bàn và đá cao. Chỉ có ở bản đồ Núi.',
    lines:[
      'Cao bằng nửa đá cao (**bậc 1**): từ ô thường leo lên được, rồi leo tiếp lên đá cao.',
@@ -171,7 +171,7 @@ GUIDE.entries=[
      'Tường bị phá **không** trả lại cho họ. Khe đó bị chiếm vĩnh viễn: không ai xây lại được, không còn chắn đường.',
      'Cách chọn tường giống Búa.']},
 
-  {id:'blocker',grp:'Sự kiện',ic:'👷',name:'Người chặn đường',
+  {id:'blocker',grp:'Sự kiện',name:'Người chặn đường',
    sum:'Nhân vật vàng bay xuống đứng chặn chỗ hiểm nhất trên bàn.',
    lines:[
      'Xuất hiện lần đầu sau khoảng 20 đến 30 nước, rồi cứ cách 20 đến 30 nước lại quay lại.',

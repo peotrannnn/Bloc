@@ -25,7 +25,7 @@ const Guide=(function(){
       E.forEach((e,i)=>{
         if(e.grp!==g||!vis.includes(i))return;
         const b=el('button','gdi');b.type='button';b.dataset.i=i;
-        const ic=e.item&&CFG.ITEMS[e.item]?CFG.ITEMS[e.item].icon:e.ic;if(ic)b.appendChild(el('span','gde',ic));
+        if(e.item&&CFG.ITEMS[e.item])b.appendChild(el('span','gde',CFG.ITEMS[e.item].icon));   /* chỉ vật phẩm có biểu tượng (biểu tượng thật của game) */
         b.appendChild(document.createTextNode(e.name));
         b.onclick=()=>select(i);n.appendChild(b);
       });
