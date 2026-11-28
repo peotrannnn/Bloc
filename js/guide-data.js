@@ -51,7 +51,7 @@ GUIDE.entries=[
    lines:[
      'Bấm **Tường (W)**, rê chuột tới khe giữa các ô rồi bấm để đặt. Bấm **R** để xoay tường ngang / dọc.',
      'Mỗi bên có **10 bức tường**, mỗi bức dài **hai ô**.',
-     'Không được đặt chồng/cắt ngang tường khác, cũng không được bịt kín đường về đích của **bất kỳ bên nào** (kể cả bạn). Nếu vị trí nào không hợp lệ, game sẽ báo lý do.']},
+     'Không được đặt chồng/cắt ngang tường khác, cũng không được bịt kín đường về đích của **bất kỳ bên nào** (kể cả bạn).']},
 
   {id:'floor',grp:'Ô địa hình',name:'Ô thường',
    sum:'Ô gỗ bình thường, không có hiệu ứng gì đặc biệt.',
