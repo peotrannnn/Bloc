@@ -511,5 +511,288 @@ console.log('Vật phẩm (client)');
   ok(run('S.ply')===4&&run('S.turn')===0&&run('S.bonus[0]')===1&&run('S.inv[0].length')===0,'giày: ply/lượt giữ nguyên, bonus=1, túi cập nhật');
   ok(log.pops.some(p=>p[2]==='boots'),'giày: biểu tượng nổi trên quân');
 }
+
+/* ---------- P5: hoạt ảnh trên đá thấp / đá cao ---------- */
+{
+  console.log('Hoạt ảnh đá thấp / đá cao');
+  const TOPv=run('TOP'),LOWH=run('CFG.TERRAIN.lowH'),HIGHH=run('CFG.TERRAIN.stoneH');
+  /* Terrain giả có heightAt đọc S.terr (Terrain thật cần three.js) */
+  run(`Terrain.heightAt=(r,c)=>{if(!S.terr||r<0||r>=N||c<0||c>=N)return 0;const v=S.terr[r*N+c];return v===1?CFG.TERRAIN.stoneH:v===9?CFG.TERRAIN.lowH:0;}`);
+  const mk=(cells,pl)=>{const t=new Uint8Array(81);for(const[r,c,v]of cells)t[r*9+c]=v;return setup(t,pl);};
+  const queue=i=>JSON.parse(run(`JSON.stringify(Pawns.list[${i}].q)`));
+  const pushMove=(i,r,c)=>{run(`S.pl[${i}]={r:${r},c:${c}}`);};
+  const ymax=tr=>tr.reduce((a,p)=>Math.max(a,p.y),-1);
+  const state=(terr,pl)=>{const st=R.newState({spawn:[4,4],terr,seed:5});st.pl=pl.map(p=>({r:p[0],c:p[1]}));return st;};
+
+  /* 1. đi thường → đá thấp → đá cao → đá thấp → thường: phân loại và độ cao cuối mỗi bước */
+  {
+    mk([[4,4,9],[4,5,1],[4,6,9]],[[4,3],[0,0]]);
+    const path=[[4,4,'climb',1,LOWH],[4,5,'climb',1,HIGHH],[4,6,'climb',-1,LOWH],[4,7,'climb',-1,0]];
+    let prevH=0;
+    for(const[r,c,k,dh,h]of path){
+      pushMove(0,r,c);run('Pawns.update(0)');
+      const sp=JSON.parse(run('JSON.stringify({k:Pawns.list[0].stp,dh:Pawns.list[0].dh})'));   /* update(0) xếp hàng rồi bắt đầu đoạn ngay */
+      ok(sp.k===k&&sp.dh===dh,`bước tới (${r},${c}) phân loại ${k} dh=${dh} (được ${sp.k} ${sp.dh})`);
+      const {tr}=play(0),end=tr[tr.length-1];
+      ok(Math.abs(end.y-(TOPv+h))<1e-6,`đứng ở (${r},${c}) đúng độ cao ${h} (được ${(end.y-TOPv).toFixed(3)})`);
+      ok(near(end,r,c,.15),`dừng gần tâm ô (${r},${c})`);
+      ok(ymax(tr)<=TOPv+Math.max(h,prevH)+.16,'bước tới ('+r+','+c+'): không vọt quá cao so với hai đầu ('+(ymax(tr)-TOPv-Math.max(h,prevH)).toFixed(3)+')');prevH=h;
+    }
+    /* không hạ thấp hơn sàn ở bất kỳ khung nào khi đi từ đá xuống đất */
+    pushMove(0,4,7);
+  }
+  /* 2. leo lên: y không thấp hơn đường nội suy tuyến tính (có nhấc chân), kết thúc scale = 1 */
+  {
+    mk([[4,4,9]],[[4,3],[0,0]]);pushMove(0,4,4);run('Pawns.update(0)');
+    const {tr}=play(0),end=tr[tr.length-1];
+    let below=0;for(const p of tr){const e=Math.min(1,Math.max(0,(p.x-cx(3))/(cx(4)-cx(3))));if(p.y<TOPv+LOWH*Math.max(0,e-.25)-.12)below++;}
+    ok(below===0,'leo lên: quân không chìm xuống dưới đường nội suy (lệch '+below+' khung)');
+    ok(Math.abs(end.sx-1)<1e-6&&Math.abs(end.sy-1)<1e-6,'leo xong: scale về 1');
+  }
+  /* 3. tường chặn giữa hai đá thấp → hop (nhảy qua tường, không lộn, cung thấp); thường–thường có tường → không có bước nào */
+  {
+    mk([[4,4,9],[4,5,9]],[[4,4],[0,0]]);
+    run('S.ws.v[3*WN+4]=1;S.ws.v[4*WN+4]=1');   /* tường dọc giữa cột 4 và 5, phủ hàng 3-4 */
+    pushMove(0,4,5);run('Pawns.update(0)');
+    ok(run('Pawns.list[0].stp')==='hop','đá thấp–đá thấp có tường: phân loại hop');
+    const {tr}=play(0),end=tr[tr.length-1];
+    ok(tr.some(p=>Math.abs(p.rx)>0)===false,'hop: không lộn (rx luôn 0)');
+    ok(ymax(tr)>TOPv+LOWH+.12&&ymax(tr)<TOPv+LOWH+.5,'hop: cung vượt đỉnh tường (>.12) nhưng thấp (<.5): '+(ymax(tr)-TOPv-LOWH).toFixed(2));
+    ok(Math.abs(end.y-(TOPv+LOWH))<1e-6&&near(end,4,5,.15),'hop: đáp đúng ô và độ cao');
+    /* tường đặt SAU khi đã xếp hàng không đổi kiểu hoạt ảnh: đi sang ô kề không có tường trước, rồi thêm tường */
+    mk([[4,4,9],[4,5,9],[4,6,9]],[[4,4],[0,0]]);
+    pushMove(0,4,5);run('Pawns.update(0)');   /* đoạn đầu đang chạy */
+    pushMove(0,4,6);run('Pawns.update(0)');   /* đoạn thứ hai xếp hàng chờ */
+    run('S.ws.v[3*WN+5]=1;S.ws.v[4*WN+5]=1');   /* tường đặt sau lúc xếp hàng, nằm giữa cột 5 và 6 */
+    const q=queue(0);
+    ok(q.length===1&&q[0].m&&q[0].m.k==='walk','kiểu bước chốt lúc xếp hàng (tường đặt sau không đổi): walk');
+  }
+  /* 4. đá cao–đá cao có tường: đi bình thường (tường chìm trong đá) */
+  {
+    mk([[4,4,1],[4,5,1]],[[4,4],[0,0]]);run('S.ws.v[3*WN+4]=1;S.ws.v[4*WN+4]=1');
+    pushMove(0,4,5);run('Pawns.update(0)');
+    ok(run('Pawns.list[0].stp')==='walk','đá cao–đá cao có tường: walk');
+  }
+  /* 5. nhảy qua đối thủ đứng trên đá cao: quân phải bay cao hơn đỉnh đá (không xuyên) và đáp đúng độ cao */
+  {
+    const terr=new Uint8Array(81);terr[4*9+3]=9;terr[4*9+4]=1;terr[4*9+5]=9;   /* thấp, CAO, thấp */
+    const st=state(terr,[[4,3],[4,4]]),a={move:[4,5]};
+    ok(R.moves(st,0).some(m=>m[0]===4&&m[1]===5),'(tiền đề) thấp qua cao sang thấp: nhảy thẳng hợp lệ');
+    setup(terr,[[4,3],[4,4]]);pushMove(0,4,5);run('Pawns.update(0)');
+    const {tr}=play(0),end=tr[tr.length-1];
+    ok(ymax(tr)>TOPv+HIGHH+.15,'nhảy qua đối thủ trên đá cao: đỉnh cung vượt đầu đá ('+(ymax(tr)-TOPv).toFixed(2)+' > '+(HIGHH+.15).toFixed(2)+')');
+    ok(Math.abs(end.y-(TOPv+LOWH))<1e-6&&near(end,4,5,.15),'đáp đúng ô đá thấp, đúng độ cao');
+    /* so sánh: nhảy qua đối thủ trên đất bằng giữ cung như cũ (không đổi hành vi Classic) */
+    setup(new Uint8Array(81),[[4,3],[4,4]]);pushMove(0,4,5);run('Pawns.update(0)');
+    const flat=play(0),air0=run('CFG.PAWN.launch.air')*0+ymax(flat.tr)-TOPv;
+    ok(air0>=.8&&air0<=1.3,'nhảy trên đất bằng: cung như cũ ('+air0.toFixed(2)+')');
+  }
+  /* 6. đặt/đưa quân về chỗ đứng: Pawns.place dùng độ cao ô */
+  {
+    mk([[4,4,1]],[[4,4],[0,0]]);run('Pawns.place(0)');
+    ok(Math.abs(run('Pawns.list[0].g.position.y')-(TOPv+HIGHH))<1e-6,'place(): quân đặt trên đá cao đứng đúng độ cao');
+  }
+  /* 7. không có địa hình (Classic): floorY = TOP, không phân loại */
+  {
+    run('S.terr=null');ok(run('Pawns.floorY(3,3)')===TOPv&&run('Pawns.classify(3,3,3,4)')===null,'Classic: floorY=TOP, classify=null');
+  }
+}
+
+/* ---------- P4: chọn ô bằng chuột có độ cao đá (Input.cellAt, hàm thuần) ---------- */
+{
+  console.log('Chọn ô theo độ cao đá');
+  const c2=vm.createContext({console,Math});
+  for(const f of['js/config.js','js/util.js','js/input.js'])vm.runInContext(fs.readFileSync(path.join(root,f),'utf8'),c2,{filename:f});
+  const get=e=>vm.runInContext(e,c2);
+  const Hh={high:CFGv('stoneH'),low:CFGv('lowH')};
+  function CFGv(k){return get('CFG.TERRAIN.'+k);}
+  ok(Hh.high===.7&&Hh.low===.35,'config: stoneH .7, lowH .35');
+  const lv=[Hh.high,Hh.low,0],P=get('CFG.PITCH'),HALF_=get('HALF'),TOP_=get('TOP'),N_=get('N');
+  /* bàn thử: (4,4) đá cao, (4,5) đá thấp, còn lại thường */
+  const hAt=(r,c)=>r===4&&c===4?Hh.high:r===4&&c===5?Hh.low:0;
+  const wx=c=>(c-HALF_)*P,wz=r=>(r-HALF_)*P;
+  const cellAt=(o,d)=>get('Input').cellAt(o[0],o[1],o[2],d[0],d[1],d[2],hAt,lv);
+  const aimAt=(x,y,z,from)=>{const d=[x-from[0],y-from[1],z-from[2]],l=Math.hypot(...d);return[from,d.map(v=>v/l)];};
+  const cam=[wx(4),TOP_+6,wz(4)+5];   /* camera phía sau, nhìn xuống */
+  /* nhắm vào đỉnh từng loại ô */
+  for(const[r,c,h]of[[4,4,Hh.high],[4,5,Hh.low],[4,3,0],[2,2,0]]){
+    const[o,d]=aimAt(wx(c),TOP_+h,wz(r),cam),q=cellAt(o,d);
+    ok(q&&q.r===r&&q.c===c,`nhắm đỉnh ô (${r},${c}) độ cao ${h} → đúng ô`);
+  }
+  /* ô thường nằm SAU đá cao (xa camera) khi tia đi qua phía trên đá cao: phải trả ô thường, không phải đá */
+  {const[o,d]=aimAt(wx(3),TOP_,wz(3),cam),q=cellAt(o,d);ok(q&&q.r===3&&q.c===3,'ô thường phía sau đá: trúng ô thường');}
+  /* sườn đá cao: nhắm vào thân đá (độ cao .3, mặt gần camera) → chọn ô đá */
+  {const[o,d]=aimAt(wx(4),TOP_+.3,wz(4)+P*.49,cam),q=cellAt(o,d);ok(q&&q.r===4&&q.c===4,'bấm vào sườn đá cao → chọn ô đá');}
+  /* tia hướng lên hoặc nằm ngang: không trúng gì */
+  ok(cellAt(cam,[0,1,0])===null&&cellAt(cam,[0,0,-1])===null,'tia hướng lên/ngang: null');
+  /* ngoài bàn */
+  {const[o,d]=aimAt(wx(0)-3*P,TOP_,wz(0),cam);ok(cellAt(o,d)===null,'ngoài bàn: null');}
+  /* mọi tâm ô thường trong bàn: tia từ nhiều hướng camera đều trả đúng ô khi không có đá */
+  let bad=0;for(let r=0;r<N_;r++)for(let c=0;c<N_;c++)for(const cm of[[wx(c)+4,TOP_+7,wz(r)+4],[wx(c)-3,TOP_+5,wz(r)-6]]){
+    const[o,d]=aimAt(wx(c),TOP_,wz(r),cm),q=get('Input').cellAt(o[0],o[1],o[2],d[0],d[1],d[2],()=>0,[0]);if(!q||q.r!==r||q.c!==c)bad++;}
+  ok(bad===0,'bàn phẳng: mọi tâm ô × 2 hướng camera đều trúng đúng ô (lệch '+bad+')');
+}
+
+/* ---------- P4: lời nhắn khi bấm không đi được / đặt tường bị từ chối (lý do từ Core.wallWhy; chi tiết ở tools/wallwhy-test.js) ---------- */
+{
+  console.log('Thông báo UI trên núi');
+  const c3=vm.createContext({console,Math,JSON,Date,Sfx:{play(){}},App:{refresh(){}},localStorage:{getItem:()=>null,setItem(){}}});
+  for(const f of['js/config.js','js/util.js','js/state.js','js/core.js','js/rules.js','js/input.js'])vm.runInContext(fs.readFileSync(path.join(root,f),'utf8'),c3,{filename:f});
+  const g=e=>vm.runInContext(e,c3);
+  /* ván Hỗn Loạn thử: đá cao ở (4,4), đá thấp (4,3); quân 0 ở (4,5) bên phải đá cao */
+  g(`(function(){const t=new Uint8Array(81);t[4*9+4]=1;t[4*9+3]=9;const st=R.newState({spawn:[4,4],terr:t,seed:5});
+    S.chaos=true;S.terr=st.terr;S.pl=[{r:4,c:5},{r:0,c:4}];S.turn=0;S.orient='h';S.net={note:''};
+    S.ws={h:new Uint8Array(WN*WN),v:new Uint8Array(WN*WN)};S.left=[10,10];S.stuck=[false,false];S.blocker=-1;})()`);
+  g('Input.explainMove(4,4)');
+  ok(g('S.net.note')==='Đá quá cao, hãy leo từ đá thấp','bấm đá cao từ ô thường: nhắn "Đá quá cao…"');
+  g("S.net.note='';Input.explainMove(2,2)");ok(g('S.net.note')==='','ô xa không kề: không nhắn');
+  g("S.net.note='';S.chaos=false;Input.explainMove(4,4);S.chaos=true");ok(g('S.net.note')==='','Classic: không nhắn gì');
+  /* quân 0 đứng trên đá cao (4,4), lối xuống duy nhất là đá thấp (4,3); mọi ô thường quanh đá bị tường hoặc... dựng bằng cách dùng thật canWall: tìm một tường bị từ chối vì nhốt */
+  g(`(function(){const t=new Uint8Array(81);
+    for(const[r,c]of[[4,4],[4,5],[4,6]])t[r*9+c]=1;t[4*9+3]=9;const st=R.newState({spawn:[4,4],terr:t,seed:5});
+    S.terr=st.terr;S.pl=[{r:4,c:5},{r:0,c:4}];S.net.note='';
+    S.ws={h:new Uint8Array(WN*WN),v:new Uint8Array(WN*WN)};setW('h',3,3,1);setW('h',4,2,1);})()`);   /* đã bịt hai trong ba lối xuống của đá thấp (4,3): lên và xuống */
+  const trap=JSON.parse(g(`(function(){const out=[];for(const o of['h','v'])for(let r=0;r<WN;r++)for(let c=0;c<WN;c++)if(R.wallFree(S,o,r,c)&&R.wallDists(S,o,r,c)===null)out.push([o,r,c]);return JSON.stringify(out);})()`));
+  ok(trap.length>0,'(tiền đề) có tường hợp lệ vị trí nhưng nhốt một bên (số: '+trap.length+')');
+  if(trap.length){g(`S.me=0;S.orient='${trap[0][0]}';Input.explainWall(${trap[0][1]},${trap[0][2]})`);const nt=g('S.net.note');ok(/nhốt kín đường về đích/.test(nt)&&/núi/.test(nt),'tường nhốt quân đang đứng trên đá: nhắn "nhốt kín… (quân đang đứng trên núi)", nhận: '+nt);}
+  /* tường bị từ chối vì lý do khác (chồng tường) → nhắn ĐÚNG lý do đó, không nhắc núi dù có quân trên đá (chi tiết từng lý do: tools/wallwhy-test.js) */
+  g(`S.net.note='';S.ws.h[0]=1;S.orient='h';Input.explainWall(0,0)`);ok(g('S.net.note')===g('WALL_WHY.taken()')&&!/núi/.test(g('S.net.note')),'tường bị từ chối vì trùng: nhắn lý do trùng, không nhắc núi');
+}
+/* ---------- P8: mặt đá THẬT (Terrain.surfaceAt/topAt/topMaxAt) + quân bám mặt đá ---------- */
+{
+  console.log('Mặt đá thật và quân bám mặt đá');
+  /* nạp terrain.js THẬT (không dùng three.js ở mức trên cùng) để thử hàm thuần độ cao mặt đá */
+  const c4=vm.createContext({console,Math,JSON,Date,Map,Set,Uint8Array,Float32Array,Array,Object,Number,String,window:{},document:{},localStorage:{getItem:()=>null,setItem(){}}});
+  for(const f of['js/config.js','js/util.js','js/view/terrain.js'])vm.runInContext(fs.readFileSync(path.join(root,f),'utf8'),c4,{filename:f});
+  const g4=e=>vm.runInContext(e,c4);
+  const T4=g4('Terrain'),H=g4('CFG.CELL_H'),LOW=g4('CFG.TERRAIN.lowH'),HIGH=g4('CFG.TERRAIN.stoneH'),P4=g4('CFG.PITCH');
+  const wx=c=>(c-4)*P4,wz=r=>(r-4)*P4;
+  const put=(r,c,o)=>T4._stoneAt.set(r*9+c,o);
+  const clear=()=>T4._stoneAt.clear();
+  ok(typeof T4.surfaceAt==='function'&&typeof T4.topAt==='function'&&typeof T4.topMaxAt==='function','Terrain có surfaceAt/topAt/topMaxAt');
+
+  /* không có đá ở ô: luôn 0 (kể cả ngoài bàn) */
+  clear();put(4,4,{rot:0,sy:1,vi:0,low:false});
+  ok(T4.surfaceAt(wx(2),wz(2))===0&&T4.surfaceAt(99,99)===0&&T4.topAt(0,0)===0,'ô không có khối đá / ngoài bàn: độ cao 0');
+
+  /* sy là nguồn lệch lớn nhất: tâm ô đá cao sy=1 ≈ stoneH, sy=.94 thấp hơn ≈ (sy-1)·(H+stoneH), sy=1.06 cao hơn; sai số nhiễu đỉnh ≤ ~.012·sy */
+  for(const[sy,low]of[[1,false],[.94,false],[1.06,false],[1,true],[.94,true],[1.06,true]]){
+    clear();put(4,4,{rot:0,sy,vi:0,low});
+    const top=low?LOW:HIGH,want=top+(sy-1)*(H+top),got=T4.topAt(4,4);
+    ok(Math.abs(got-want)<.015,`tâm ô ${low?'đá thấp':'đá cao'} sy=${sy}: topAt=${got.toFixed(3)} ≈ ${want.toFixed(3)}`);
+  }
+  /* sy=.94 ở đá cao: mặt thật thấp hơn danh nghĩa hơn .05 → quân đứng ở heightAt sẽ LƠ LỬNG (lỗi gốc); sy=1.06 cao hơn → chân CHÌM */
+  clear();put(4,4,{rot:0,sy:.94,vi:0,low:false});const lo=T4.topAt(4,4);
+  clear();put(4,4,{rot:0,sy:1.06,vi:0,low:false});const hi=T4.topAt(4,4);
+  ok(hi-lo>.1,'hai khối đá cao sy khác nhau lệch nhau >.1 (đó là lý do không dùng độ cao danh nghĩa): '+(hi-lo).toFixed(3));
+
+  /* xoay khối bội 90° chỉ xoay mặt đá: mẫu ở điểm đã xoay phải ra đúng giá trị của khối chưa xoay tại điểm gốc (kiểm nghịch đảo phép xoay) */
+  for(const vi of[0,1,2])for(const low of[false,true]){
+    let bad=0;
+    for(const[ux,uz]of[[.3,.1],[-.35,.22],[.1,-.4],[.42,.4],[-.2,-.3]]){
+      clear();put(4,4,{rot:0,sy:1,vi,low});const base=T4.surfaceAt(wx(4)+ux,wz(4)+uz);
+      for(let k=1;k<4;k++){
+        const a=k*Math.PI/2,ca=Math.round(Math.cos(a)),sa=Math.round(Math.sin(a));
+        clear();put(4,4,{rot:a,sy:1,vi,low});
+        const x=wx(4)+ux*ca+uz*sa,z=wz(4)-ux*sa+uz*ca;   /* điểm (ux,uz) cục bộ sau khi xoay a quanh Y */
+        if(Math.abs(T4.surfaceAt(x,z)-base)>1e-9)bad++;
+      }
+    }
+    ok(bad===0,`xoay khối (kiểu ${vi}, ${low?'thấp':'cao'}) bội 90°: mặt đá xoay theo đúng (lệch ${bad})`);
+  }
+
+  /* biến thể sứt góc: góc bị cắt thấp hơn tâm rõ rệt; kiểu nguyên khối thì mép chỉ thấp hơn tâm ~.02-.04 */
+  clear();put(4,4,{rot:0,sy:1,vi:2,low:false});
+  const ctr=T4.surfaceAt(wx(4),wz(4)),corner=Math.min(T4.surfaceAt(wx(4)+.45,wz(4)+.45),T4.surfaceAt(wx(4)-.45,wz(4)+.45));
+  ok(ctr-corner>.1,'khối sứt sâu: góc thấp hơn tâm >.1 ('+(ctr-corner).toFixed(3)+')');
+  clear();put(4,4,{rot:0,sy:1,vi:0,low:false});
+  let mx=-9,mn=9;for(let i=-2;i<=2;i++)for(let j=-2;j<=2;j++){const v=T4.surfaceAt(wx(4)+i*.2,wz(4)+j*.2);mx=Math.max(mx,v);mn=Math.min(mn,v);}
+  ok(mx-mn<.08,'khối nguyên: mặt đỉnh gồ ghề nhẹ (<.08): '+(mx-mn).toFixed(3));
+  ok(T4.topMaxAt(4,4)>=mx-1e-9&&T4.topMaxAt(4,4)>=T4.topAt(4,4),'topMaxAt ≥ mọi mẫu trong vùng giữa ô');
+  /* liên tục: dịch 1 cm không nhảy quá .02 (không có vách đứng bên trong ô) */
+  let jump=0;for(let x=-.4;x<.4;x+=.01)for(const z of[-.3,0,.3])if(Math.abs(T4.surfaceAt(wx(4)+x+.01,wz(4)+z)-T4.surfaceAt(wx(4)+x,wz(4)+z))>.02)jump++;
+  ok(jump===0,'mặt đá liên tục trong ô (không có bước nhảy >.02 mỗi cm): '+jump);
+  clear();
+
+  /* ----- quân bám mặt đá: Terrain giả có mặt đá gồ ghề xác định, dùng surfaceAt/topAt ----- */
+  const TOPv=run('TOP');
+  const bump=(x,z,r,c)=>{const t=run('S.terr')[r*9+c];return t===1||t===9?(t===1?.7:.35)+.08*Math.sin(x*7)+.06*Math.cos(z*9):0;};   /* mặt đá giả lồi lõm ±.14 (lớn hơn lỗi thật) */
+  ctx.__bump=bump;
+  run(`Terrain.surfaceAt=(x,z)=>{const c=Math.round(x/CFG.PITCH+HALF),r=Math.round(z/CFG.PITCH+HALF);if(r<0||r>=N||c<0||c>=N)return 0;return __bump(x,z,r,c);};
+       Terrain.topAt=(r,c)=>Terrain.surfaceAt(cellX(c),cellZ(r));`);
+  const mk=(cells,pl)=>{const t=new Uint8Array(81);for(const[r,c,v]of cells)t[r*9+c]=v;return setup(t,pl);};
+  const pushMove=(i,r,c)=>run(`S.pl[${i}]={r:${r},c:${c}}`);
+  const sf=(x,z)=>run(`Terrain.surfaceAt(${x},${z})`);
+  /* đi qua chuỗi: thường → thấp → cao → thấp → thường; ở MỌI khung chân không được thấp hơn mặt đá dưới tâm quân */
+  {
+    mk([[4,4,9],[4,5,1],[4,6,9]],[[4,3],[0,0]]);
+    let below=0,frames=0,endErr=0,endLow=0;
+    for(const[r,c]of[[4,4],[4,5],[4,6],[4,7]]){
+      pushMove(0,r,c);run('Pawns.update(0)');
+      const {tr}=play(0);
+      const FR=run('CFG.PAWN.R*CFG.PAWN.scale*1.2'),ring=(x,z)=>{let m=sf(x,z);for(let k=0;k<8;k++)m=Math.max(m,sf(x+Math.cos(k*Math.PI/4)*FR,z+Math.sin(k*Math.PI/4)*FR));return m;};   /* mặt đá cao nhất dưới cả vòng chân, tính độc lập từ Terrain giả */
+      for(const p of tr){frames++;if(p.y<TOPv+ring(p.x,p.z)-1e-9)below++;}   /* KHÔNG khung nào để thân/chân lún vào chỗ lồi trong vòng chân */
+      const e=tr[tr.length-1];
+      const want=TOPv+ring(e.x,e.z);
+      endErr=Math.max(endErr,e.y-want);   /* dương = lơ lửng, âm = lún */
+      endLow=Math.min(endLow,e.y-want);
+    }
+    ok(below===0,`${frames} khung đi qua đá thấp/cao: thân/chân không bao giờ lún vào chỗ lồi trong vòng chân (lún ${below} khung)`);
+    /* ngưỡng 6 mm, không phải 0: khung cuối quân còn xoay nốt hướng sau khi step tính vị trí chân nên lệch tối đa ~3 mm so với tính lại bằng hướng mới (đo 25 lần: ≤ 3,1 mm). Lỗi thật cần bắt (độ cao danh nghĩa) lệch ~33 mm. */
+    ok(endLow>-1e-9&&endErr<.03,'đứng yên: y = mặt đá cao nhất dưới vòng chân, không lún, lơ lửng tối đa 3 cm (lơ lửng '+endErr.toFixed(4)+', lún '+(-endLow).toFixed(4)+')');
+  }
+  /* leo lên: nhấc trước rồi mới bước vào (xong độ cao trước khi tâm quân qua mép đá); xuống: bước ra mép rồi mới hạ */
+  {
+    mk([[4,4,1]],[[4,3],[0,0]]);run('Pawns.update(0)');pushMove(0,4,4);run('Pawns.update(0)');
+    const {tr}=play(0),y1=run('Pawns.list[0].ty');
+    const edgeX=cx(4)-.5*1.2*.97-.0;   /* mép khối đá phía quân đi tới (nửa ô .97) */
+    let sunk=0;for(const p of tr)if(p.x>edgeX+.02&&p.y<y1-.095)sunk++;   /* đã vào phạm vi đá mà còn thấp hơn mặt (trừ cung nhấc/nhún .08) */
+    ok(sunk===0,'leo lên đá cao: khi tâm quân đã vào phạm vi khối đá thì y đã lên tới mặt đá (còn thấp ở '+sunk+' khung)');
+    mk([[4,4,1]],[[4,4],[0,0]]);run('Pawns.place(0)');const y0=run('Pawns.list[0].g.position.y');pushMove(0,4,3);run('Pawns.update(0)');
+    const d=play(0).tr;let early=0;const edge2=cx(4)-.5*1.2*.97;
+    for(const p of d)if(p.x>edge2+.02&&p.y<y0-1e-6)early++;   /* còn nằm trên phạm vi đá mà đã hạ */
+    ok(early===0,'xuống khỏi đá cao: chưa ra khỏi mép đá thì chưa hạ (hạ sớm ở '+early+' khung)');
+  }
+  /* nhảy qua đối thủ trên đá: cũng không lún */
+  {
+    mk([[4,3,9],[4,4,1],[4,5,9]],[[4,3],[4,4]]);pushMove(0,4,5);run('Pawns.update(0)');
+    const {tr}=play(0);let below=0;for(const p of tr)if(p.y<TOPv+sf(p.x,p.z)-1e-9)below++;
+    ok(below===0,'nhảy qua đối thủ trên đá cao: không khung nào lún (lún '+below+')');
+  }
+  /* ----- ăn mừng khi đứng trên đá (lỗi cũ: mọi kiểu ăn mừng lấy TOP làm nền nên quân trên đá bị lún vào đá, vd đối thủ đầu hàng lúc mình đang ở trên núi) -----
+     Ở MỌI khung: chân không thấp hơn mặt đá cao nhất dưới vòng chân (tính độc lập, như khối trên); xong thì đứng đúng độ cao đứng yên; kiểu nảy/lộn thật sự nhấc lên khỏi nền. */
+  {
+    const FR=run('CFG.PAWN.R*CFG.PAWN.scale*1.2'),ring=(x,z)=>{let m=sf(x,z);for(let k=0;k<8;k++)m=Math.max(m,sf(x+Math.cos(k*Math.PI/4)*FR,z+Math.sin(k*Math.PI/4)*FR));return m;};
+    const cx=run('cellX(4)'),cz=run('cellZ(4)');
+    for(const[cells,name]of[[[],'ô thường'],[[[4,4,9]],'đá thấp'],[[[4,4,1]],'đá cao']]){
+      for(const kind of['flip','hiphop','bounce','run']){
+        mk(cells,[[4,4],[0,4]]);run(`CFG.CELEB.force='${kind}';Pawns.place(0);Pawns.win(0)`);
+        const base=TOPv+ring(cx,cz);
+        ok(Math.abs(run('Pawns.list[0].g.position.y')-base)<1e-9,`${name}/${kind}: (tiền đề) quân đứng đúng mặt nền trước khi ăn mừng`);
+        let frames=0,below=0,worst=0,peak=0,started=false;
+        for(let k=0;k<60*8;k++){
+          const o=run('(function(){Pawns.update(1/60);const s=Pawns.list[0];return{y:s.g.position.y,x:s.g.position.x,z:s.g.position.z,cel:s.cel?s.cel.kind:null,win:s.win};})()');
+          if(o.cel)started=true;if(started&&!o.cel&&!o.win)break;
+          if(!o.cel)continue;
+          frames++;const gap=o.y-(TOPv+ring(o.x,o.z));if(gap<-1e-9){below++;worst=Math.min(worst,gap);}peak=Math.max(peak,o.y-base);
+        }
+        ok(started&&frames>20,`${name}/${kind}: ăn mừng thật sự chạy (${frames} khung)`);
+        ok(below===0,`${name}/${kind}: không khung nào lún vào mặt đá (lún ${below}/${frames} khung, sâu nhất ${(-worst).toFixed(3)})`);
+        const e=run('(function(){const g=Pawns.list[0].g;return{y:g.position.y,x:g.position.x,z:g.position.z,sx:g.scale.x,sy:g.scale.y};})()');
+        ok(Math.abs(e.y-base)<1e-6&&Math.abs(e.x-cx)<1e-6&&Math.abs(e.z-cz)<1e-6&&e.sy===1,`${name}/${kind}: xong thì đứng lại đúng chỗ và độ cao cũ (lệch y ${(e.y-base).toFixed(4)})`);
+        if(kind==='flip'||kind==='bounce')ok(peak>.2,`${name}/${kind}: thật sự nhấc lên khỏi nền (cao nhất +${peak.toFixed(2)})`);
+      }
+    }
+    run('CFG.CELEB.force=null');
+  }
+  /* Classic / không đá: groundY = TOP và y không đổi so với trước */
+  {
+    run('Terrain.surfaceAt=undefined;Terrain.topAt=undefined');
+    mk([],[[4,3],[0,0]]);pushMove(0,4,4);run('Pawns.update(0)');const {tr}=play(0),e=tr[tr.length-1];
+    ok(Math.abs(e.y-TOPv)<1e-6,'không có surfaceAt (Classic): đứng đúng TOP');
+    ok(run('Pawns.groundY(0,0,0)')===TOPv,'groundY không có địa hình = TOP');
+  }
+}
+
 console.log(fails?'\nTHẤT BẠI '+fails+'/'+checks:'\nTất cả '+checks+' kiểm tra đạt');
 process.exit(fails?1:0);

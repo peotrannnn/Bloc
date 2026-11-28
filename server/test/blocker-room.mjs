@@ -1,3 +1,4 @@
+import __Core from '../../js/core.js';const HELLO_V=__Core.PROTO;   /* số phiên bản giao thức, như client thật gửi */
 /* Kiểm tra người chặn đường ở phía SERVER, không cần Cloudflare, không cần mạng:   cd server && node test/blocker-room.mjs
    Phủ: Hỗn Loạn — server tự chạy lịch (vào ở nước 20-30, ở lại 5-7 nước, trống 20-30 nước, lặp lại), chọn ô hợp lệ, báo fx{t:'blocker'} cho CẢ HAI bên
    (kể cả khi quân bị cỏ che), snapshot có blocker, nối lại giữa lúc người chặn đang đứng, đấu lại thì lịch đặt lại, bù giờ lượt.
@@ -31,7 +32,7 @@ async function start(mode,biome,seed){
   const rm=makeRoom(lcg(seed));
   await rm.logic.init({mode,visibility:'private',code:'ABCDEF',biome});
   const A=rm.connect(),B=rm.connect();
-  await rm.say(A,{t:'hello',token:tok('A')});await rm.say(B,{t:'hello',token:tok('B')});
+  await rm.say(A,{t:'hello',v:HELLO_V,token:tok('A')});await rm.say(B,{t:'hello',v:HELLO_V,token:tok('B')});
   const sA=rm.take(A,'started'),sB=rm.take(B,'started');
   const white=sA.you===0?A:B,black=white===A?B:A;
   return{rm,A,B,sA,sB,white,black};
@@ -113,7 +114,7 @@ async function main(){
   const st=g.rm.logic.st;ck(st.blocker>=0,'đã có người chặn đứng trên bàn (ô '+st.blocker+')');
   const keepAt=g.rm.logic.g.bplan.at;
   g.rm.restart(lcg(777));                                  /* Durable Object "ngủ" rồi dậy: chỉ còn bản ghi đã lưu */
-  const C=g.rm.connect();await g.rm.say(C,{t:'hello',token:tok(g.rm.logic.g?'A':'A')});
+  const C=g.rm.connect();await g.rm.say(C,{t:'hello',v:HELLO_V,token:tok(g.rm.logic.g?'A':'A')});
   const state=g.rm.take(C,'state');
   ck(state&&state.snapshot.blocker===st.blocker,'state sau khi nối lại có blocker đúng ô');
   ck(g.rm.logic.g.bplan&&g.rm.logic.g.bplan.on===true&&g.rm.logic.g.bplan.at===keepAt,'lịch người chặn đường được lưu (on, at) qua lúc ngủ');

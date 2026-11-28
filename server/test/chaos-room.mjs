@@ -1,3 +1,4 @@
+import __Core from '../../js/core.js';const HELLO_V=__Core.PROTO;   /* số phiên bản giao thức, như client thật gửi */
 /* Kiểm tra phía server của chế độ Hỗn Loạn (chaos), không cần Cloudflare, không cần mạng:   cd server && node test/chaos-room.mjs
    Phủ: mã chế độ/biome, ghép phòng theo biome, bắt đầu ván (map, rng không lộ), biome ngẫu nhiên, giấu quân dưới cỏ theo từng người,
    nối lại sau hibernate, đấu lại ra map mới, Classic không đổi. */
@@ -32,7 +33,7 @@ async function start(mode,biome,rand){
   const rm=makeRoom(rand);
   await rm.logic.init({mode,visibility:'private',code:'ABCDEF',biome});
   const A=rm.connect(),B=rm.connect();
-  await rm.say(A,{t:'hello',token:tok('A')});await rm.say(B,{t:'hello',token:tok('B')});
+  await rm.say(A,{t:'hello',v:HELLO_V,token:tok('A')});await rm.say(B,{t:'hello',v:HELLO_V,token:tok('B')});
   const wA=A.inbox.find(m=>m.t==='welcome');
   const sA=rm.take(A,'started'),sB=rm.take(B,'started');
   const white=sA.you===0?A:B,black=white===A?B:A;
@@ -115,7 +116,7 @@ try{
     const rngBefore=rm.store.snap.rng,terrBefore=rm.store.snap.terr;
     rm.restart();                                               /* Durable Object ngủ rồi dậy: chỉ còn storage */
     const A2=rm.connect();
-    await rm.say(A2,{t:'hello',token:tok(A===white?'A':'B')});
+    await rm.say(A2,{t:'hello',v:HELLO_V,token:tok(A===white?'A':'B')});
     const w=rm.take(A2,'welcome'),s=rm.take(A2,'state');
     ck(w.started&&w.biome==='mountain','welcome sau khi nối lại có biome');
     ck(s&&s.map&&s.map.biome==='mountain','state có map');

@@ -23,7 +23,7 @@
   AIs.register({
     id:'keeper',
     name:'Mr. Thủ Môn',
-    desc:'Phòng thủ: cứ chạy, giữ tường, đến khi đối thủ áp sát vạch đích thì dựng hàng rào sát nhà chặn cổng',
+    desc:'Đắp bê tông ở nhà',
 
     decide(p){
       if(!mem[p]||S.ply<2)mem[p]=roll();

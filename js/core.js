@@ -16,7 +16,7 @@
    Tường (o,r,c): 'h' nằm giữa hàng r và r+1, phủ cột c và c+1; 'v' nằm giữa cột c và c+1, phủ hàng r và r+1.
 
    Địa hình (tùy chọn, chỉ chế độ 'chaos'; Classic không có các trường này nên mọi thứ chạy y như cũ):
-     terr:Uint8Array(N*N)  mã ô: 0 thường, 1 đá (không đi qua được), 2 cỏ, 3 băng, 4 bẫy, 5 rương, 6 cổng, 7 nước, 8 cát
+     terr:Uint8Array(N*N)  mã ô: 0 thường, 1 đá CAO, 2 cỏ, 3 băng, 4 bẫy, 5 rương, 6 cổng, 7 nước, 8 cát, 9 đá THẤP (xem mục "Độ cao" bên dưới)
                            (lõi biết đá, nước, cát; các mã còn lại dành cho bước hiệu ứng sau này)      blocker:chỉ số ô (r*N+c) của người chặn đường, -1 = chưa có
      spawn:[{r,c},{r,c}]   ô xuất phát của mỗi bên (dùng cho bẫy bật sau này)
      stuck:[bool,bool]     bên nào đang "đứng yên" (vừa bước vào ô nước): lượt kế tiếp của bên đó không được đi, chỉ được đặt tường
@@ -30,7 +30,16 @@
    Luật cát lún (chỉ Hỗn Loạn): kết thúc nước ĐI trên ô cát (bước vào, nhảy xuống, hoặc trượt băng dừng đúng ô) thì bốc rnd(st) < rs.sandSink (mặc định 15%) → quân bị LÚN: st.sunk[p]=true.
      Tới lượt kế tiếp của p thì lượt đó bị BỎ QUA hoàn toàn (không đi, không đặt tường, không dùng đồ; tính 1 nước ply; res.skipped có p và fx {t:'sunkskip',p}) rồi sunk[p]=false.
      Lún không cho giày: lượt thêm bị hủy. Dịch chuyển cổng / bẫy hất không kích hoạt lún. fx:{t:'sink',p,cell:[r,c]} báo quân vừa bị lún.
-   Ô "mở" = trong bàn, không phải đá, không có người chặn. BFS/nước đi chỉ đi qua ô mở.
+   Độ cao (chỉ biome núi, chỉ khi có terr; Classic và map không có đá thấp chạy y như cũ):
+     Bậc: ô thường (mọi mã khác) = 0 · đá thấp (mã 9) = 1 (cao 0,35) · đá cao (mã 1) = 2 (cao 0,7).  lvl(st,r,c) trả bậc, ngoài bàn / không có terr = 0.
+     • Đi bước: chỉ giữa hai ô kề (4 hướng) chênh bậc ≤ 1. Thường↔thấp, thấp↔cao được; thường↔cao KHÔNG. Leo lên/xuống KHÔNG tốn thêm nhịp (một nước đi vẫn là một lượt). Đối xứng: lên đường nào xuống được đường đó.
+     • Tường xét TỪNG CẠNH ô: cạnh giữa hai ô ĐỀU là đá (thấp–thấp, thấp–cao, cao–cao) thì tường KHÔNG chặn (tường vẫn đặt được và vẫn tính vào số tường). Cạnh có ít nhất một ô thường thì tường chặn như thường.
+       Tường phủ 2 cạnh: mỗi cạnh tự xét, phần chìa ra trên đá không làm mất tác dụng của phần chắn hai ô thường.
+     • Nhảy qua đối thủ (A qua B tới C): A→B, B→C đều bước được VÀ |bậc A − bậc C| ≤ 1. Nhảy thẳng bị chặn (kể cả vì độ cao) thì cho bước né sang ô S kề B: A→B, B→S bước được và |bậc A − bậc S| ≤ 1.
+     • Ô đá không có rương/bẫy/cổng/nước/cát/cỏ/băng. Băng chỉ trượt sang ô thường (không trượt lên đá). Bẫy hất, cổng, người chặn đường chỉ ở ô thường. Hàng 0,1,7,8 luôn là ô thường.
+     • Chống kẹt: blk là điểm DUY NHẤT quyết định "không qua được cạnh này", dist/wallDists/canWall dùng blk nên tường nhốt MỘT BÊN (kể cả quân đang đứng trên núi) bị từ chối. Đừng thêm đường tính khoảng cách nào khác ngoài blk.
+     • stepInfo(st,r1,c1,r2,c2) phân loại bước cho hoạt ảnh: {k:'walk'|'climb'|'hop'|'jump',dh}; wallOn = tường thật sự nằm trên cạnh (kể cả khi bị đá bỏ qua); ground = ô mở và bậc 0.
+  Ô "mở" = trong bàn, không có người chặn (đá giờ vào được, nhưng đi vào hay không do blk quyết định). BFS/nước đi chỉ đi qua ô mở.
    dist() trả NOPATH (9999) khi bị chặn kín (giữ nguyên 9999 và mảng Int16 để sau này đổi cỡ bàn không phải sửa lại).
 
    Hiệu ứng ô (chỉ khi có terr; Classic không bị ảnh hưởng). Mọi hiệu ứng chạy trong apply() ngay sau khi quân bước xong:
@@ -39,11 +48,14 @@
      • Băng (3): bước vào ô băng thì trượt sang một ô kề hợp lệ ngẫu nhiên (không bị tường/đá/blocker/đối thủ chặn, không quay lại ô vừa rời). Rơi vào băng tiếp thì trượt tiếp;
        dừng khi tới ô không phải băng, hết đường, chạm hàng đích (thắng) hoặc đủ rs.slideMax lần. Ô cuối cùng vẫn được áp hiệu ứng của nó (nước → đứng yên, bẫy, cổng...).
      • Bẫy (4): bẫy lò xo, chu kỳ theo ply: rs.trapClosed lượt đóng (mặc định 2) rồi rs.trapOpen lượt bật (mặc định 1). trapOn(st,0) cho biết lượt đang đi có phải lượt bẫy bật không.
-       Kết thúc lượt của mình (đi tới HOẶC đứng yên đặt tường) trên ô bẫy đúng lúc nó bật → bị bắn về một ô ngẫu nhiên trên hàng xuất phát của mình (ô mở, không phải ô đối thủ đang đứng).
+       Kết thúc lượt của mình (đi tới HOẶC đứng yên đặt tường) trên ô bẫy đúng lúc nó bật → bị bắn về một ô ngẫu nhiên trên hàng xuất phát của mình (ô mở, không phải ô đối thủ đang đứng,
+       VÀ còn đường về đích: ô bị tường bịt kín bị loại để quân không bị hất vào túi mất đường. Không còn ô nào hợp lệ thì quân đứng nguyên).
        Bẫy chỉ tính cho bên đang đi: bên kia đứng trên bẫy lúc nó bật ở lượt của đối phương thì không sao (bên đó thấy dấu hiệu "!" và còn lượt của mình để bước đi).
      • Cổng (6): đúng 2 ô mã 6 là một cặp. Bước vào một cổng → dịch chuyển sang cổng kia (không kích hoạt lại). Số cổng khác 2 thì cổng không hoạt động.
        Cổng kia đang có đối thủ đứng → KHÔNG dịch chuyển, quân đó "chờ" (st.gwait[p]=true) và đứng nguyên trên ô cổng. Ngay khi đối thủ rời cổng kia (xong nước đi/đặt tường của họ, vẫn trong lượt đó)
        thì quân đang chờ được dịch chuyển sang cổng vừa trống (fx có late:true). gwait tự tắt khi quân đó đi khỏi ô cổng.
+       Cổng đích bị tường bịt kín (không còn đường về đích của quân định dịch chuyển) → KHÔNG dịch chuyển (quân đứng nguyên, phải đi bộ vòng). Ngoài ra canWall từ chối tường làm CẢ HAI cổng mất đường
+       về đích của cả hai bên (gateAlive); một cổng bị bịt thì được, và khi đó bên nào bước vào cổng còn sống cũng không bị đưa vào túi kín.
      • Dịch chuyển/bắn về không kích hoạt thêm hiệu ứng ô nào ở nơi đáp (tránh vòng lặp).
      • Ngẫu nhiên: lõi KHÔNG dùng Math.random. Trạng thái có st.rng (số nguyên 32 bit, PRNG mulberry32); newState({seed}) đặt hạt giống. Cùng trạng thái + cùng hành động ⇒ cùng kết quả,
        nên client, AI và server khớp nhau. Server nên giữ seed bí mật (snapshotFor không gửi rng).
@@ -58,7 +70,8 @@
          boots   MIỄN PHÍ (không tốn lượt, không tăng ply): st.bonus[p]=1. Sau hành động kế tiếp của p (đi hoặc đặt tường), p được thêm MỘT lượt CHỈ ĐƯỢC ĐI QUÂN (st.bonus[p]=2, st.turn giữ nguyên).
                  Nếu lúc đó p đang đứng yên (vừa lội xuống nước) hoặc không còn nước đi thì mất lượt thêm. Không dùng giày khi đang có giày chờ hoặc trong lượt thêm.
          glove   tốn một lượt: cướp 1 tường của đối thủ (chỉ khi đối thủ còn ≥ 2 tường).
-         hammer  tốn một lượt, kèm {o,r,c}: tháo một tường của ĐỐI THỦ, trả lại cho đối thủ (left[đối thủ]++); khe đó đặt lại được.
+         hammer  MIỄN PHÍ (không tốn lượt, không tăng ply, kèm {o,r,c}): tháo một tường của ĐỐI THỦ, trả lại cho đối thủ (left[đối thủ]++); khe đó đặt lại được. Dùng xong p VẪN còn nguyên lượt để đi quân / đặt tường
+                 (cũng như giày, nhưng không chiếm lượt thêm). Không dùng được trong lượt thêm của giày (chỉ được đi quân). Dùng xong mà p hết hành động nào (không đi được, không đặt được tường, hết đồ) thì lượt tự chuyển (mất lượt, res.skipped).
          pick    tốn một lượt, kèm {o,r,c}: phá hẳn một tường của đối thủ (không trả lại); khe đó bị chiếm vĩnh viễn (st.dead), không ai xây lại được và không còn chắn đường.
      • Chủ tường: st.wo = {h,v} Uint8Array(WN*WN), 0 không có, 1 = Trắng đặt, 2 = Đen đặt (giá trị = bên + 1). st.dead = {h,v} tường bị cuốc chim phá (chỉ dùng trong wallFree).
      • st.inv = [[tên…],[tên…]] túi đồ (công khai cho cả hai bên), st.bonus = [0|1|2, 0|1|2] trạng thái giày.
@@ -66,7 +79,7 @@
      maxPlyCloser:true → hết maxPly thì bên gần đích hơn thắng (bằng nhau mới hòa). */
 const Core=(function(){
   const D=[[-1,0],[1,0],[0,-1],[0,1]];
-  const TERR={STONE:1,GRASS:2,ICE:3,TRAP:4,CHEST:5,GATE:6,WATER:7,SAND:8};   /* các mã ô mà lõi cần biết */
+  const TERR={STONE:1,GRASS:2,ICE:3,TRAP:4,CHEST:5,GATE:6,WATER:7,SAND:8,LOW:9};   /* các mã ô mà lõi cần biết */
   const NOPATH=9999;
   const GIFTS=[['brick',30],['boots',20],['hammer',20],['glove',15],['pick',15]];   /* quà trong rương: [tên, trọng số] */
   const ITEMS=['boots','glove','hammer','pick'];   /* món vào túi (gạch cộng tường ngay nên không nằm đây) */
@@ -89,8 +102,19 @@ const Core=(function(){
     /* Ô mở: trong bàn, không phải đá, không có người chặn đường. Classic (không có terr/blocker) thì chỉ còn kiểm tra trong bàn. */
     const open=(st,r,c)=>{
       if(r<0||r>=N||c<0||c>=N)return false;
-      if(st.terr&&st.terr[r*N+c]===1)return false;
       return st.blocker===undefined||st.blocker<0||st.blocker!==r*N+c;
+    };
+    /* Bậc độ cao: 0 thường, 1 đá thấp (mã 9), 2 đá cao (mã 1). Ngoài bàn / Classic (không terr) = 0. */
+    const lvl=(st,r,c)=>{
+      if(!st.terr||r<0||r>=N||c<0||c>=N)return 0;
+      const v=st.terr[r*N+c];return v===1?2:v===9?1:0;
+    };
+    /* Ô thường đi được (mở và bậc 0): chỗ của người chặn đường, ô trượt băng, ô bẫy hất */
+    const ground=(st,r,c)=>open(st,r,c)&&lvl(st,r,c)===0;
+    /* Hai ô cách nhau tối đa 1 bậc: điều kiện A→C của cú nhảy qua đối thủ (Classic: luôn đúng) */
+    const near=(st,r1,c1,r2,c2)=>{
+      if(!st.terr)return true;
+      const d=lvl(st,r1,c1)-lvl(st,r2,c2);return d<=1&&d>=-1;
     };
     /* Ô nước hoặc cát. Cạnh giữa hai ô như vậy kề nhau thì không đặt tường được. Classic (không có terr) thì luôn false. */
     const soft=(st,r,c)=>{
@@ -136,6 +160,7 @@ const Core=(function(){
           for(const[dr,dc]of D){
             const r=a.r+dr,c=a.c+dc;
             if(blk(st,a.r,a.c,dr,dc)||!open(st,r,c))continue;
+            if(lvl(st,r,c)!==0)continue;   /* băng chỉ trượt sang ô thường, không trượt lên đá */
             if(r===o.r&&c===o.c)continue;
             if(r===prev.r&&c===prev.c)continue;
             cand.push([r,c]);
@@ -160,7 +185,7 @@ const Core=(function(){
         const g=gateOther(st,a.r,a.c);
         if(g){
           if(g.r===o.r&&g.c===o.c)st.gwait[p]=true;   /* cổng kia có người: đứng chờ tại chỗ, đối thủ đi khỏi thì được dịch chuyển (gateRelease) */
-          else{st.pl[p]={r:g.r,c:g.c};fx.push({t:'gate',p,from:[a.r,a.c],to:[g.r,g.c]});}
+          else if(dist(st,p,g)<NOPATH){st.pl[p]={r:g.r,c:g.c};fx.push({t:'gate',p,from:[a.r,a.c],to:[g.r,g.c]});}   /* cổng đích bị tường bịt kín (không còn đường về đích của p): KHÔNG dịch chuyển, quân đứng nguyên, p phải đi bộ vòng qua bờ kia */
         }
       }
       return fx;
@@ -189,6 +214,7 @@ const Core=(function(){
       const row=st.spawn[p].r,cs=[];
       for(let c=0;c<N;c++){
         if(!open(st,row,c)||(row===o.r&&c===o.c)||(row===a.r&&c===a.c))continue;
+        if(dist(st,p,{r:row,c})>=NOPATH)continue;   /* không hất vào ô bị tường bịt kín (quân sẽ mất đường về đích) */
         cs.push(c);
       }
       if(cs.length){
@@ -203,18 +229,41 @@ const Core=(function(){
       const a=st.pl[q],g=tc(st,a.r,a.c)===TERR.GATE?gateOther(st,a.r,a.c):null;
       if(!g){st.gwait[q]=false;return;}
       if(g.r===st.pl[p].r&&g.c===st.pl[p].c)return;   /* vẫn bị chiếm */
+      if(dist(st,q,g)>=NOPATH)return;                 /* cổng đích đã bị bịt kín: không dịch chuyển (q vẫn chờ tới khi đi khỏi ô cổng) */
       st.gwait[q]=false;st.pl[q]={r:g.r,c:g.c};
       fx.push({t:'gate',p:q,from:[a.r,a.c],to:[g.r,g.c],late:true});
     }
     const W=(st,o,r,c)=>r>=0&&r<WN&&c>=0&&c<WN&&st.ws[o][r*WN+c]===1;
     const setW=(st,o,r,c,v)=>{st.ws[o][r*WN+c]=v;};
 
-    /* Có tường chắn khi đi từ ô (r,c) theo hướng (dr,dc) không */
-    function blk(st,r,c,dr,dc){
+    /* Có tường THẬT SỰ nằm trên cạnh từ ô (r,c) theo hướng (dr,dc) không (kể cả khi cạnh đá–đá bỏ qua tường) */
+    function wallOn(st,r,c,dr,dc){
       if(dr===1)return W(st,'h',r,c)||W(st,'h',r,c-1);
       if(dr===-1)return W(st,'h',r-1,c)||W(st,'h',r-1,c-1);
       if(dc===1)return W(st,'v',r,c)||W(st,'v',r-1,c);
       return W(st,'v',r,c-1)||W(st,'v',r-1,c-1);
+    }
+    /* blk = "KHÔNG qua được cạnh này": chênh quá 1 bậc, hoặc tường chắn (trừ cạnh đá–đá). ĐIỂM DUY NHẤT quyết định chuyện này: mọi BFS/nước đi gọi nó.
+       Classic (không terr) chạy đúng đường cũ, không tra độ cao. Muốn cạnh thấp–cao cũng bị tường chặn: đổi điều kiện "h1>0&&h2>0" thành "h1>0&&h2>0&&h1===h2". */
+    function blk(st,r,c,dr,dc){
+      if(st.terr){
+        const h1=lvl(st,r,c),h2=lvl(st,r+dr,c+dc);
+        if(h1-h2>1||h2-h1>1)return true;
+        if(h1>0&&h2>0)return false;
+      }
+      if(dr===1)return W(st,'h',r,c)||W(st,'h',r,c-1);
+      if(dr===-1)return W(st,'h',r-1,c)||W(st,'h',r-1,c-1);
+      if(dc===1)return W(st,'v',r,c)||W(st,'v',r-1,c);
+      return W(st,'v',r,c-1)||W(st,'v',r-1,c-1);
+    }
+    /* Phân loại một bước cho hoạt ảnh (hàm thuần của trạng thái + hai ô): 'jump' hai ô không kề (nhảy qua đối thủ / né sang bên), 'hop' đá thấp–đá thấp có tường nằm trên cạnh (nhảy qua tường),
+       'climb' hai ô khác bậc (dh=+1 lên, −1 xuống), còn lại 'walk'. dh = bậc ô đến − bậc ô đi. */
+    function stepInfo(st,r1,c1,r2,c2){
+      const h1=lvl(st,r1,c1),h2=lvl(st,r2,c2),dh=h2-h1;
+      if(Math.abs(r2-r1)+Math.abs(c2-c1)!==1)return{k:'jump',dh};
+      if(h1===1&&h2===1&&wallOn(st,r1,c1,r2-r1,c2-c1))return{k:'hop',dh:0};
+      if(dh!==0)return{k:'climb',dh};
+      return{k:'walk',dh:0};
     }
     /* Các ô người p có thể đi tới (gồm cả nhảy qua đối thủ, kể cả nhảy chéo khi bị tường chắn sau lưng) */
     function moves(st,p){
@@ -225,9 +274,9 @@ const Core=(function(){
         const r=a.r+dr,c=a.c+dc;if(!open(st,r,c))continue;
         if(r===o.r&&c===o.c){
           const r2=r+dr,c2=c+dc;
-          if(open(st,r2,c2)&&!blk(st,r,c,dr,dc))out.push([r2,c2]);
+          if(open(st,r2,c2)&&!blk(st,r,c,dr,dc)&&near(st,a.r,a.c,r2,c2))out.push([r2,c2]);
           else for(const[er,ec]of D){
-            if(er*dr+ec*dc!==0||blk(st,r,c,er,ec)||!open(st,r+er,c+ec))continue;
+            if(er*dr+ec*dc!==0||blk(st,r,c,er,ec)||!open(st,r+er,c+ec)||!near(st,a.r,a.c,r+er,c+ec))continue;
             out.push([r+er,c+ec]);
           }
         }else out.push([r,c]);
@@ -254,35 +303,64 @@ const Core=(function(){
       }
       return NOPATH;
     }
-    /* Tường không trùng/chéo với tường đã có */
-    function wallFree(st,o,r,c){
-      if(o!=='h'&&o!=='v')return false;
-      if(r<0||r>=WN||c<0||c>=WN||W(st,o,r,c))return false;
-      if(o==='h'&&(W(st,'h',r,c-1)||W(st,'h',r,c+1)||W(st,'v',r,c)))return false;
-      if(o==='v'&&(W(st,'v',r-1,c)||W(st,'v',r+1,c)||W(st,'h',r,c)))return false;
+    /* Khe tường (o,r,c) có đặt được về MẶT VỊ TRÍ không (chưa xét đường đi). Trả null nếu được, ngược lại là mã lý do:
+         'range' ngoài bàn / hướng sai · 'taken' trùng, chéo hoặc chồng lên tường khác (kể cả tường đã bị cuốc chim phá) · 'water' phủ lên cạnh giữa hai ô nước/cát
+       Đây là chỗ DUY NHẤT quyết định luật vị trí; wallFree chỉ là bản "có/không" của nó. */
+    function wallSlot(st,o,r,c){
+      if(o!=='h'&&o!=='v')return'range';
+      if(r<0||r>=WN||c<0||c>=WN)return'range';
+      if(W(st,o,r,c))return'taken';
+      if(o==='h'&&(W(st,'h',r,c-1)||W(st,'h',r,c+1)||W(st,'v',r,c)))return'taken';
+      if(o==='v'&&(W(st,'v',r-1,c)||W(st,'v',r+1,c)||W(st,'h',r,c)))return'taken';
       if(st.dead){   /* tường bị cuốc chim phá: khe vẫn bị chiếm (cùng khe, chéo nhau, hoặc chồng lên đầu) nhưng không còn chắn đường (blk không xét st.dead) */
         const X=(oo,rr,cc)=>rr>=0&&rr<WN&&cc>=0&&cc<WN&&st.dead[oo][rr*WN+cc]===1;
-        if(X(o,r,c)||(o==='h'&&(X('h',r,c-1)||X('h',r,c+1)||X('v',r,c)))||(o==='v'&&(X('v',r-1,c)||X('v',r+1,c)||X('h',r,c))))return false;
+        if(X(o,r,c)||(o==='h'&&(X('h',r,c-1)||X('h',r,c+1)||X('v',r,c)))||(o==='v'&&(X('v',r-1,c)||X('v',r+1,c)||X('h',r,c))))return'taken';
       }
       if(st.terr){   /* tường phủ 2 cạnh; cạnh nào nằm giữa hai ô nước/cát kề nhau thì cấm */
-        if(o==='h'&&(bridged(st,r,c,r+1,c)||bridged(st,r,c+1,r+1,c+1)))return false;
-        if(o==='v'&&(bridged(st,r,c,r,c+1)||bridged(st,r+1,c,r+1,c+1)))return false;
+        if(o==='h'&&(bridged(st,r,c,r+1,c)||bridged(st,r,c+1,r+1,c+1)))return'water';
+        if(o==='v'&&(bridged(st,r,c,r,c+1)||bridged(st,r+1,c,r+1,c+1)))return'water';
       }
-      return true;
+      return null;
     }
-    /* Đường đi mới của hai bên nếu đặt tường này; null nếu làm kín đường.
-       Khi có người chặn đường: tường phải giữ đường đi cả khi có người chặn lẫn khi người chặn đã đi (số trả về là lúc có người chặn). */
-    function wallDists(st,o,r,c){
+    /* Tường không trùng/chéo với tường đã có */
+    const wallFree=(st,o,r,c)=>wallSlot(st,o,r,c)===null;
+    /* Cổng "còn sống": ô cổng còn đường về đích của CẢ HAI bên. Luật cổng: tường không được làm CẢ HAI cổng mất đường (một cổng bị bịt thì được:
+       cổng đó ngừng dịch chuyển vào, bên kia phải đi bộ vòng qua). Chỉ xét khi có đúng 2 cổng. */
+    function gateAlive(st){
+      if(!st.terr)return true;
+      const g=[];
+      for(let i=0;i<N*N;i++)if(st.terr[i]===TERR.GATE)g.push({r:(i/N)|0,c:i%N});
+      if(g.length!==2)return true;
+      for(const x of g)if(dist(st,0,x)<NOPATH&&dist(st,1,x)<NOPATH)return true;
+      return false;
+    }
+    /* Đặt THỬ tường (giả định khe đã qua wallSlot) rồi đo: {a,b: đường đi mới của Trắng/Đen (NOPATH = bị nhốt kín), gates: tường bịt nốt cổng còn lại}.
+       Một lần đo dùng chung cho wallDists (có/không) và wallWhy (vì sao), nên hai bên không thể lệch nhau.
+       Người chặn đường (st.blocker) chỉ THÊM vật cản nên không cần đo riêng "lúc người chặn đã đi": bỏ người chặn mà vẫn kín thì lúc có người chặn càng kín (a hoặc b đã là NOPATH). */
+    function wallEval(st,o,r,c){
+      const gateWas=st.terr?gateAlive(st):true;   /* đã chết sẵn từ trước (không do tường này) thì không bắt tường này chịu */
       setW(st,o,r,c,1);
       const a=dist(st,0,st.pl[0]),b=dist(st,1,st.pl[1]);
-      let freeOk=true;
-      if(st.blocker>=0){
-        const keep=st.blocker;st.blocker=-1;
-        freeOk=dist(st,0,st.pl[0])<NOPATH&&dist(st,1,st.pl[1])<NOPATH;
-        st.blocker=keep;
-      }
+      const gates=gateWas&&!!st.terr&&a<NOPATH&&b<NOPATH&&!gateAlive(st);   /* tường bịt nốt cổng còn lại */
       setW(st,o,r,c,0);
-      return a<NOPATH&&b<NOPATH&&freeOk?[a,b]:null;
+      return{a,b,gates};
+    }
+    /* Đường đi mới của hai bên nếu đặt tường này; null nếu làm kín đường. */
+    function wallDists(st,o,r,c){
+      const e=wallEval(st,o,r,c);
+      return e.a<NOPATH&&e.b<NOPATH&&!e.gates?[e.a,e.b]:null;
+    }
+    /* VÌ SAO tường (o,r,c) không đặt được — dùng cho lời nhắn trên giao diện. null = đặt được (khớp canWall). Ngược lại {why, sides?}:
+         'range' | 'taken' | 'water'   từ wallSlot (vị trí)
+         'sealed'  tường nhốt kín đường về đích (kể cả khi có người chặn đường); sides=[Trắng bị nhốt, Đen bị nhốt] (có thể cả hai)
+         'gates'   tường bịt nốt cổng dịch chuyển còn lại (luật cổng)
+       Thứ tự kiểm khớp canWall nên mỗi tường bị từ chối đều có đúng một lý do. Thêm lý do mới: thêm vào đây + bảng chữ WALL_WHY ở js/input.js + ca trong tools/wallwhy-test.js. */
+    function wallWhy(st,o,r,c){
+      const slot=wallSlot(st,o,r,c);if(slot)return{why:slot};
+      const e=wallEval(st,o,r,c);
+      if(e.a>=NOPATH||e.b>=NOPATH)return{why:'sealed',sides:[e.a>=NOPATH,e.b>=NOPATH]};
+      if(e.gates)return{why:'gates'};
+      return null;
     }
     const canWall=(st,o,r,c)=>wallFree(st,o,r,c)&&wallDists(st,o,r,c)!==null;
 
@@ -343,7 +421,7 @@ const Core=(function(){
       for(const o of['h','v'])for(let i=0;i<WN*WN;i++)if(st.wo[o][i]===2-p&&st.ws[o][i]===1)out.push({o,r:(i/WN)|0,c:i%WN});
       return out;
     }
-    /* p có dùng được món nào TỐN LƯỢT (găng/búa/cuốc) không — để lượt đứng yên không bị bỏ qua oan khi hết tường mà còn món dùng được */
+    /* p còn món nào có thể mở ra hành động không (găng/cuốc tốn lượt; búa miễn phí nhưng tháo tường đối thủ có thể mở đường) — để lượt đứng yên không bị bỏ qua oan khi hết tường mà còn món dùng được */
     function hasPaidItem(st,p){
       if(!st.inv)return false;
       for(const u of st.inv[p]){
@@ -390,6 +468,21 @@ const Core=(function(){
         st.inv[p].splice(st.inv[p].indexOf('boots'),1);st.bonus[p]=1;
         return{ok:true,over:false,winner:-1,draw:false,by:p,free:true,fx:[{t:'boots',p}]};
       }
+      if(a.item&&a.item.use==='hammer'){   /* búa: MIỄN PHÍ như giày. Tháo tường đối thủ, trả lại cho họ; lượt của p giữ nguyên (không đụng stuck/ply/turn) để p còn đi quân hoặc đặt tường */
+        const it=a.item,i=it.r*WN+it.c;
+        st.inv[p].splice(st.inv[p].indexOf('hammer'),1);
+        st.ws[it.o][i]=0;st.wo[it.o][i]=0;st.left[q]++;
+        const res={ok:true,over:false,winner:-1,draw:false,by:p,free:true,fx:[{t:'hammer',p,o:it.o,r:it.r,c:it.c}]};
+        /* Tường vừa tháo là của ĐỐI THỦ nên không thể làm p mất nước đi, nhưng p có thể vốn đã hết hành động (chỉ còn trông vào búa) mà búa không mở ra được gì: khi đó mất lượt như mọi lượt bí khác */
+        if(!(moves(st,p).length||hasWall(st,p)||hasPaidItem(st,p))){
+          if(st.bonus&&st.bonus[p]===1)st.bonus[p]=0;
+          st.stuck[p]=false;st.ply++;res.free=false;res.skipped=[p];
+          if(rs.maxPly&&st.ply>=rs.maxPly)finishByPly(st);
+          else{st.turn=q;for(const x of resolveSkips(st,res.fx))res.skipped.push(x);}
+          res.over=st.over;res.winner=st.winner;res.draw=st.draw;
+        }
+        return res;
+      }
       const wasExtra=!!st.bonus&&st.bonus[p]===2;   /* hành động này là lượt thêm của giày */
       if(st.stuck)st.stuck[p]=false;   /* lượt đứng yên (nếu có) được dùng để đặt tường hoặc dùng vật phẩm */
       let fx=st.terr?[]:null;
@@ -404,7 +497,7 @@ const Core=(function(){
         if(it.use==='glove'){st.left[q]--;st.left[p]++;fx.push({t:'glove',p});}
         else{
           const i=it.r*WN+it.c;st.ws[it.o][i]=0;st.wo[it.o][i]=0;
-          if(it.use==='pick')st.dead[it.o][i]=1;else st.left[q]++;   /* búa trả tường về cho đối thủ, cuốc chim thì phá hẳn */
+          st.dead[it.o][i]=1;   /* cuốc chim phá hẳn (búa đã xử lý ở trên: nó miễn phí và trả tường về cho đối thủ) */
           fx.push({t:it.use,p,o:it.o,r:it.r,c:it.c});
         }
       }
@@ -477,9 +570,12 @@ const Core=(function(){
       return sn;
     }
 
-    return{rs,N,WN,HALF,D,NOPATH,goalRow,inb,open,W,setW,blk,moves,dist,wallFree,wallDists,canWall,bridged,hasWall,newState,check,apply,snapshot,fromSnapshot,snapshotFor,sees,trapOn,gateOther,oppWalls,hasPaidItem};
+    return{rs,N,WN,HALF,D,NOPATH,goalRow,inb,open,lvl,ground,wallOn,stepInfo,W,setW,blk,moves,dist,wallFree,wallSlot,wallDists,wallWhy,canWall,bridged,hasWall,newState,check,apply,snapshot,fromSnapshot,snapshotFor,sees,trapOn,gateOther,oppWalls,hasPaidItem};
   }
 
-  return{D,NOPATH,TERR,GIFTS,ITEMS,RULESETS,ruleset,make};
+  /* Số phiên bản giao thức client↔server. TĂNG mỗi khi luật (core.js) hay map (mapgen.js) đổi theo cách làm client cũ và server mới (hoặc ngược lại) tính khác nhau.
+     1 = trước đá thấp/cổng mới (không gửi số này). 2 = đá thấp/đá cao, bẫy hất vào ô còn đường, luật cổng mới. Client gửi trong 'hello', server đối chiếu; lệch thì server đóng 4005. */
+  const PROTO=3;
+  return{D,NOPATH,TERR,GIFTS,ITEMS,RULESETS,PROTO,ruleset,make};
 })();
 if(typeof module!=='undefined')module.exports=Core;   /* để server/tools Node nạp được; trên trình duyệt đoạn này bị bỏ qua */

@@ -31,7 +31,7 @@ Danh tính là một token ngẫu nhiên (16-64 ký tự) client tự sinh và l
 ## Giao thức (JSON)
 
 Client → server
-- `hello{token}` vào phòng / nối lại
+- `hello{token,v}` vào phòng / nối lại (`v` = `Core.PROTO`; lệch thì `error{reason:'version',v}` rồi đóng 4005; `welcome` cũng kèm `v`)
 - `action{seq, move:[r,c]}` hoặc `action{seq, wall:{o,r,c}}` (`seq` = số nước đã đi = `ply` hiện tại)
 - `resign` · `sync` (xin thế cờ hiện tại) · `ping`
 

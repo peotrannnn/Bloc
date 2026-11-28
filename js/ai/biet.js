@@ -206,7 +206,7 @@
     worker:true,                             /* App chạy AI này ở Web Worker (js/ai/worker.js) để không làm đứng trang; lỗi worker thì tự gọi decide() ở luồng chính */
     name:'Mr. Biết',
     dbg:{pawnMoves,field,syncEdges,pos,F},   /* chỉ để tools/ kiểm thử đối chiếu với rules.js */
-    desc:'Boss: tìm kiếm sâu, đọc lối chơi đối thủ để khai thác, công thủ tùy thế cờ, mỗi nước đi đều khó đoán',
+    desc:'Mít stơ Biết (ăn chốt cô lát)',
 
     decide(p){
       const C=CFG.AI.biet,op=1-p;

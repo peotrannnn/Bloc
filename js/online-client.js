@@ -5,7 +5,7 @@
      Hỗn Loạn: Online.createRoom({mode:'chaos',biome:'forest',visibility:'private'}) · Online.quick('chaos','forest')
        biome: 'random' | 'balanced' | 'forest' | 'mountain' | 'snow' | 'river' | 'desert' (bỏ trống = 'random'; Classic bỏ qua biome)
      const conn=Online.join(code);
-     conn.on('welcome'|'started'|'applied'|'over'|'opponentStatus'|'full'|'error'|'close', m=>...);   // close: m.code 4004 = mã không tồn tại, 4001 = đầy
+     conn.on('welcome'|'started'|'applied'|'over'|'opponentStatus'|'full'|'error'|'close', m=>...);   // close: m.code 4004 = mã không tồn tại, 4001 = đầy, 4005 = lệch phiên bản giao thức (Core.PROTO)
      conn.autoReconnect(true)  → rớt mạng thì tự nối lại (phát 'reconnecting'), server trả 'welcome' rồi 'state'
      conn.action(seq,{move:[r,c]}) · conn.action(seq,{wall:{o,r,c}}) · conn.resign() · conn.sync() · conn.close() */
 const Online=(()=>{
@@ -55,7 +55,7 @@ const Online=(()=>{
   function setLastRoom(code){try{if(code)sessionStorage.setItem('bloc.room',code);else sessionStorage.removeItem('bloc.room');}catch(e){}}
 
   const RECONNECT_MS=50e3;                 /* tự nối lại tối đa ngần này; server giữ ghế 45 giây rồi xử thua */
-  const FATAL=[4000,4001,4002,4004];       /* bị thay thế, phòng đầy, hết hạn, không tồn tại: nối lại vô ích */
+  const FATAL=[4000,4001,4002,4004,4005];  /* bị thay thế, phòng đầy, hết hạn, không tồn tại, lệch phiên bản: nối lại vô ích */
 
   function join(rawCode){
     const code=normalizeCode(rawCode);
@@ -68,11 +68,12 @@ const Online=(()=>{
 
     function open(){
       const me=new WebSocket(url);ws=me;                       /* me!==ws nghĩa là kết nối cũ đã bị thay: bỏ qua mọi sự kiện của nó */
-      me.onopen=()=>{if(me===ws)send({t:'hello',token:getToken()});};
+      me.onopen=()=>{if(me===ws)send({t:'hello',v:Core.PROTO,token:getToken()});};
       me.onmessage=ev=>{
         if(me!==ws)return;
         let m;try{m=JSON.parse(ev.data);}catch(e){return;}
         if(!m||!m.t)return;
+        if(m.t==='welcome'&&m.v!==Core.PROTO){done=true;emit('error',{t:'error',reason:'version',v:m.v});try{me.close(4005,'version');}catch(e){}return;}   /* server cũ/mới hơn client: báo tải lại trang */
         if(m.t==='welcome'){attempt=0;giveUpAt=0;}              /* nối được rồi: lần rớt sau tính lại từ đầu */
         emit(m.t,m);
       };

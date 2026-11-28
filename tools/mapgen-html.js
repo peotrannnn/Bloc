@@ -42,7 +42,7 @@ canvas{display:block;width:100%;max-width:440px;margin-left:auto;margin-right:au
 </style></head><body>
 <h1>Map Hỗn Loạn <span id="sub" style="font-weight:400;color:#9aa0ac"></span></h1>
 <div class="legend">
-<span><i style="background:#6b7280"></i>đá</span><span><i style="background:#4ea45f"></i>cỏ</span>
+<span><i style="background:#6b7280"></i>đá cao</span><span><i style="background:#9aa3b2"></i>đá thấp (biome núi, leo được; thường↔cao thì không)</span><span><i style="background:#4ea45f"></i>cỏ</span>
 <span><i style="background:#bfe6f5"></i>băng</span><span><i style="background:#4aa3df"></i>nước (bước vào: lượt sau chỉ đặt tường)</span><span><i style="background:#e3c88a"></i>cát</span>
 <span><i style="background:#fff;border:1px dashed #333"></i>nét đứt = cạnh giữa 2 ô nước/cát kề nhau, không đặt tường</span><span><i style="background:#d9534f"></i>bẫy</span>
 <span><i style="background:#f0b429"></i>rương (ô vật phẩm, chưa có hiệu ứng)</span><span><i style="background:#9b6bdc"></i>cổng (cùng chữ = một cặp)</span>
@@ -65,6 +65,7 @@ function draw(m){
     g.fillStyle=(r+c)%2?'#e9e5d9':'#dfdac9';g.fillRect(x,y,S,S);
     if(r<D.SAFE||r>N-D.SAFE-1){g.fillStyle='rgba(120,140,200,.12)';g.fillRect(x,y,S,S);}
     if(v===T.STONE){g.fillStyle='#6b7280';g.fillRect(x,y,S,S);g.fillStyle='#4b5260';g.fillRect(x,y+S-3,S,3);g.fillStyle='#8a92a1';g.fillRect(x+2,y+2,S-8,3);}
+    else if(v===T.LOW){g.fillStyle='#9aa3b2';g.fillRect(x,y,S,S);g.fillStyle='#7c8594';g.fillRect(x,y+S-2,S,2);g.fillStyle='#b6bdc9';g.fillRect(x+2,y+2,S-8,2);}   /* đá thấp: xám sáng hơn đá cao */
     else if(v===T.BRUSH){g.fillStyle='#4ea45f';g.fillRect(x,y,S,S);g.strokeStyle='#2f7a40';g.lineWidth=1.3;g.beginPath();
       for(const[a,b]of[[4,14],[9,15],[14,14]]){g.moveTo(x+a,y+b);g.lineTo(x+a-1.5,y+b-8);g.moveTo(x+a,y+b);g.lineTo(x+a+2,y+b-7);}g.stroke();}
     else if(v===T.ICE){g.fillStyle='#bfe6f5';g.fillRect(x,y,S,S);g.fillStyle='rgba(255,255,255,.75)';g.fillRect(x+2,y+2,S-9,2);g.fillRect(x+2,y+2,2,S-9);

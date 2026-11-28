@@ -4,12 +4,12 @@
    Kiểm: cùng seed → cùng map; hàng spawn trống; số cụm và kích thước trong khoảng; đá và cỏ không có lỗ kín; mỗi cụm liền cạnh, không chồng nhau; ô lẻ (bẫy, rương, cổng) đúng luật;
    cả hai bên luôn có đường về đích, chênh lệch chi phí ≤ ngưỡng; biome nghiêng đúng hướng; biome sông (sông kín ngang, cả hai bên phải lội) và sa mạc (không băng, 2 cụm cát ở 2 góc); nước/cát rải rác sát băng/đá;
    serialize ↔ JSON; ghép với Core (BFS của lõi khớp BFS của mapgen; chơi thử ván thật trên map sinh ra). */
-const MapGen=require('../js/mapgen.js'),Core=require('../js/core.js');
+const MapGen=require('../js/mapgen.js'),Core=require('../js/core.js'),fs=require('fs'),path=require('path');
 let fails=0,checks=0;
 const ok=(c,msg)=>{checks++;if(!c){fails++;console.log('  ✗',msg);}};
 const N=MapGen.N,SAFE=MapGen.SAFE,T=MapGen.T,SEEDS=1000;
 const D4=[[-1,0],[1,0],[0,-1],[0,1]];
-const typeOf={stone:T.STONE,brush:T.BRUSH,ice:T.ICE,water:T.WATER,sand:T.SAND};
+const typeOf={stone:T.STONE,brush:T.BRUSH,ice:T.ICE,water:T.WATER,sand:T.SAND,low:T.LOW};
 /* khoảng hợp lệ lấy thẳng từ MapGen.KINDS (kích thước) và MapGen.COUNT (số cụm) để chỉnh mapgen.js không phải sửa lại test */
 const MAXN=Math.max(...Object.values(MapGen.COUNT).map(r=>r[1]));
 const RANGE={};for(const k of Object.keys(MapGen.KINDS))RANGE[k]={n:[0,MAXN],s:MapGen.KINDS[k].size};
@@ -34,7 +34,7 @@ function enclosed(terr,types){
   return false;
 }
 const KINDS5=['stone','brush','ice','water','sand'];
-const sum={};for(const b of MapGen.BIOMES)sum[b]={stone:0,brush:0,ice:0,water:0,sand:0,n:0,water_dots:0,sand_dots:0,rivers:0,sandClusters:0,iceClusters:0};
+const sum={};for(const b of MapGen.BIOMES)sum[b]={stone:0,brush:0,ice:0,water:0,sand:0,low:0,n:0,water_dots:0,sand_dots:0,rivers:0,sandClusters:0,iceClusters:0};
 ok(MapGen.BIOMES.includes('river')&&MapGen.BIOMES.includes('desert'),'có biome river và desert');
 ok(Core.TERR.WATER===T.WATER&&Core.TERR.SAND===T.SAND&&Core.TERR.STONE===T.STONE,'mã ô nước/cát/đá của Core khớp MapGen.T');
 let fallbacks=0,retried=0;
@@ -56,12 +56,12 @@ for(let seed=1;seed<=SEEDS;seed++){
   ok(clean,'vùng spawn trống (seed '+seed+')');
   ok(m.spawn.every(c=>Number.isInteger(c)&&c>=0&&c<N),'cột spawn hợp lệ');
   /* cụm: số lượng, kích thước, liền cạnh, không chồng, đúng mã ô */
-  const used=new Set(),count={stone:0,brush:0,ice:0,water:0,sand:0};
+  const used=new Set(),count={stone:0,brush:0,ice:0,water:0,sand:0,low:0};
   for(const cl of m.clusters){
     count[cl.kind]++;
     const rg=RANGE[cl.kind];
     ok(cl.cells.length>=rg.s[0]&&cl.cells.length<=rg.s[1],'kích thước cụm '+cl.kind+' = '+cl.cells.length+' (seed '+seed+')');
-    ok(connected(cl.cells),'cụm '+cl.kind+' liền cạnh (seed '+seed+')');
+    if(cl.kind!=='low')ok(connected(cl.cells),'cụm '+cl.kind+' liền cạnh (seed '+seed+')');   /* đá thấp: nhóm chân núi có thể ở hai phía núi; kiểm riêng ở khối đá thấp bên dưới */
     for(const k of cl.cells){ok(!used.has(k),'không chồng ô (seed '+seed+')');used.add(k);ok(m.terr[k]===typeOf[cl.kind],'mã ô đúng loại');}
   }
   for(const k of Object.keys(count))ok(count[k]>=RANGE[k].n[0]&&count[k]<=RANGE[k].n[1],'số cụm '+k+' = '+count[k]);
@@ -213,6 +213,97 @@ for(const[b,fav]of[['forest','brush'],['mountain','stone'],['snow','ice']]){
     ok(st.over,'ván trên map sinh kết thúc (seed '+seed+')');games++;
   }
   console.log('  ván thử trên map sông/sa mạc/tuyết/núi:',games,'· lượt đứng yên:',froze);
+}
+/* ===== ĐÁ THẤP (chân núi) ===== */
+console.log('Đá thấp');
+const LVt=v=>v===1?2:v===9?1:0;   /* bậc, tự viết trong test (không gọi MapGen.LV) */
+const refBfs=(m,p,useLow)=>{   /* BFS tham chiếu độc lập, chưa có tường; cổng nối hai đầu như một cạnh */
+  const from=p===0?(N-1)*N+m.spawn[0]:m.spawn[1],goal=p===0?0:N-1,d=new Array(N*N).fill(-1),q=[from],lk={};d[from]=0;
+  for(const pr of m.portals){lk[pr[0]]=pr[1];lk[pr[1]]=pr[0];}
+  for(let h=0;h<q.length;h++){
+    const k=q[h],r=(k/N)|0,c=k%N;if(r===goal)return d[k];
+    const nb=[];for(const[dr,dc]of D4)if(r+dr>=0&&r+dr<N&&c+dc>=0&&c+dc<N)nb.push((r+dr)*N+c+dc);if(lk[k]!==undefined)nb.push(lk[k]);
+    for(const k2 of nb)if(d[k2]<0&&Math.abs(LVt(m.terr[k])-LVt(m.terr[k2]))<=1){d[k2]=d[k]+1;q.push(k2);}
+  }
+  return Infinity;
+};
+{
+  const old=JSON.parse(fs.readFileSync(path.join(__dirname,'golden','terr-old.json'),'utf8'));
+  let mapsLow=0,mapsMtn=0,lowCells=0,same=0,shorter=0,sumShort=0,bothSides=0;
+  const biomes=['forest','mountain','snow','river','desert'];
+  for(const b of biomes)for(let seed=0;seed<200;seed++){
+    const m=MapGen.generate(seed,{biome:b}),o=old[b+':'+seed].split('|'),oTerr=o[0],oSpawn=o[1],oPaths=o[2],oCosts=o[3];
+    const flat=Array.from(m.terr).map(v=>v===9?0:v).join('');
+    /* I7: bỏ đá thấp thì map y hệt bản cũ (mọi biome); biome khác núi không có đá thấp và đúng nguyên xi, kể cả đường đi */
+    ok(flat===oTerr,'map '+b+' seed '+seed+' bỏ đá thấp = map cũ');
+    ok(m.spawn.join(',')===oSpawn,'spawn không đổi '+b+' '+seed);
+    if(b!=='mountain'){ok(m.low.length===0&&!m.terr.includes(9),b+': không có đá thấp');ok(m.paths.join(',')===oPaths&&m.costs.join(',')===oCosts,b+': paths/costs như cũ');same++;}
+    const off=MapGen.generate(seed,{biome:b,foothills:false});
+    ok(Array.from(off.terr).join('')===oTerr&&off.paths.join(',')===oPaths&&off.costs.join(',')===oCosts&&off.low.length===0,'foothills:false cho đúng map cũ '+b+' '+seed);
+    if(b!=='mountain')continue;
+    mapsMtn++;
+    const low=[];m.terr.forEach((v,i)=>{if(v===9)low.push(i);});
+    ok(JSON.stringify(low)===JSON.stringify(m.low.slice().sort((x,y)=>x-y)),'m.low khớp các ô mã 9 (seed '+seed+')');
+    if(!low.length)continue;
+    mapsLow++;lowCells+=low.length;
+    ok(low.length<=6,'tối đa 6 ô thấp mỗi bản đồ ('+low.length+')');
+    const lows=m.clusters.filter(c=>c.kind==='low');
+    ok(lows.length>=1&&lows.every(c=>c.cells.length>=1&&c.cells.length<=3),'mỗi nhóm đá thấp 1-3 ô');
+    ok(lows.reduce((a,c)=>a+c.cells.length,0)===low.length,'nhóm đá thấp khớp số ô mã 9');
+    for(const k of low){
+      const r=(k/N)|0,c=k%N;
+      ok(r>=SAFE&&r<=N-SAFE-1,'đá thấp chỉ ở 5 hàng giữa (hàng '+r+', seed '+seed+')');
+      ok(oTerr[k]==='0','đá thấp chỉ thay ô thường cũ (không đè rương/bẫy/cổng/nước/cát/cỏ/băng)');
+      const nbs=D4.map(([dr,dc])=>[r+dr,c+dc]).filter(([a,b2])=>a>=0&&a<N&&b2>=0&&b2<N).map(([a,b2])=>m.terr[a*N+b2]);
+      /* có dốc: đi qua chuỗi ô đá thấp (bậc thang) sẽ gặp một ô thấp kề ô không phải đá */
+      {const seen=new Set([k]),q=[k];let slope=false;
+       for(let h=0;h<q.length&&!slope;h++){const rr=(q[h]/N)|0,cc=q[h]%N;
+         for(const[dr,dc]of D4){const r2=rr+dr,c2=cc+dc;if(r2<0||r2>=N||c2<0||c2>=N)continue;const v=m.terr[r2*N+c2];
+           if(v!==1&&v!==9){slope=true;break;}if(v===9&&!seen.has(r2*N+c2)){seen.add(r2*N+c2);q.push(r2*N+c2);}}}
+       ok(slope,'đá thấp có dốc xuống ô thường qua chuỗi đá thấp (seed '+seed+')');}
+      ok(nbs.some(v=>v===1||v===9),'đá thấp kề đá cao hoặc đá thấp khác (seed '+seed+')');
+    }
+    for(const cl of lows)ok(cl.cells.every(k=>{const r=(k/N)|0,c=k%N;return D4.some(([dr,dc])=>{const v=m.terr[(r+dr)*N+c+dc];return r+dr>=0&&r+dr<N&&c+dc>=0&&c+dc<N&&(v===1||cl.cells.includes((r+dr)*N+c+dc));});}),'mỗi ô thấp kề đá cao hoặc ô thấp cùng nhóm');
+    /* không ô nào bị bao kín (đá cao + thấp), đường đi/chi phí khớp BFS tham chiếu, cân bằng */
+    ok(!enclosed(m.terr,[T.STONE,T.LOW]),'đá thấp không bao kín ô nào (seed '+seed+')');
+    ok(refBfs(m,0)===m.paths[0]&&refBfs(m,1)===m.paths[1],'m.paths khớp BFS tham chiếu theo bậc (seed '+seed+')');
+    ok(Math.abs(m.costs[0]-m.costs[1])<=MapGen.MAXDIFF,'đá thấp vẫn cân bằng');
+    const op=oPaths.split(',').map(Number);
+    for(const p of[0,1]){ok(m.paths[p]<=op[p],'đá thấp không làm đường dài hơn');if(m.paths[p]<op[p]){shorter++;sumShort+=op[p]-m.paths[p];}}
+    if(m.paths[0]<op[0]&&m.paths[1]<op[1])bothSides++;
+  }
+  console.log('  biome núi:',mapsLow+'/'+mapsMtn,'map có đá thấp · TB',(lowCells/Math.max(1,mapsLow)).toFixed(2),'ô/map · đường ngắn đi: '+shorter+' lượt (TB '+(sumShort/Math.max(1,shorter)).toFixed(2)+' bước) · cả hai bên ngắn đi '+bothSides+' map');
+  ok(mapsLow>=mapsMtn*.6,'phần lớn map núi có đá thấp ('+mapsLow+'/'+mapsMtn+')');
+  ok(same===800,'800 map biome khác núi: giống hệt bản cũ');
+  /* map ngẫu nhiên biome (generate(seed) không chỉ định): bỏ đá thấp thì khớp tham chiếu cũ */
+  for(let seed=1;seed<=300;seed++){const m=MapGen.generate(seed),o=old['rand:'+seed].split('|');
+    ok(m.biome===o[0]&&Array.from(m.terr).map(v=>v===9?0:v).join('')===o[1]&&m.spawn.join(',')===o[2],'biome ngẫu nhiên seed '+seed+': khớp bản cũ khi bỏ đá thấp');
+    if(m.biome!=='mountain')ok(m.paths.join(',')===o[3]&&m.costs.join(',')===o[4],'biome ngẫu nhiên không phải núi: paths như cũ');}
+  /* xác định, serialize round-trip có mã 9, Core.dist khớp mapgen, snapshot giữ mã 9, luật chống kẹt chạy trên map thật */
+  const R=Core.make(Core.ruleset('chaos'));let checked=0;
+  for(let seed=0;seed<200;seed++){
+    const m=MapGen.generate(seed,{biome:'mountain',portalPairs:[0,0]}),m2=MapGen.generate(seed,{biome:'mountain',portalPairs:[0,0]});
+    ok(JSON.stringify(MapGen.serialize(m))===JSON.stringify(MapGen.serialize(m2)),'núi: cùng seed cùng map (đá thấp) '+seed);
+    const back=MapGen.deserialize(JSON.parse(JSON.stringify(MapGen.serialize(m))));
+    ok(back.terr.every((v,i)=>v===m.terr[i])&&JSON.stringify(back.low)===JSON.stringify(m.low.slice().sort((a,b)=>a-b)),'serialize giữ ô đá thấp '+seed);
+    const st=R.newState({spawn:m.spawn,terr:m.terr});
+    ok(R.dist(st,0,st.pl[0])===m.paths[0]&&R.dist(st,1,st.pl[1])===m.paths[1],'Core.dist khớp mapgen trên map núi có đá thấp (seed '+seed+')');
+    const sn=R.snapshot(st),bk=R.fromSnapshot(JSON.parse(JSON.stringify(sn)));
+    ok(bk.terr.every((v,i)=>v===m.terr[i]),'snapshot Core giữ mã 9');
+    if(m.low.length)checked++;
+  }
+  ok(checked>=100,'đối chiếu Core ↔ mapgen có đủ map núi chứa đá thấp ('+checked+')');
+  /* maxDiff:0 buộc bước kiểm cân bằng sau khi thêm đá thấp phải thật sự chạy: hai bên luôn bằng chi phí */
+  let strict=0;
+  for(let seed=0;seed<300;seed++){
+    const m=MapGen.generate(seed,{biome:'mountain',maxDiff:0});
+    if(m.fallback)continue;
+    ok(m.costs[0]===m.costs[1],'maxDiff 0: chi phí hai bên bằng nhau (seed '+seed+': '+m.costs+')');
+    ok(refBfs(m,0)===m.paths[0]&&refBfs(m,1)===m.paths[1],'maxDiff 0: paths khớp BFS tham chiếu');
+    if(m.low.length)strict++;
+  }
+  ok(strict>=30,'maxDiff 0 vẫn có map giữ được đá thấp ('+strict+')');
+  ok(MapGen.T.LOW===Core.TERR.LOW&&Core.TERR.LOW===9,'mã ô đá thấp của Core khớp MapGen.T.LOW');
 }
 console.log(fails?'\nTHẤT BẠI '+fails+'/'+checks+' kiểm tra':'\nTất cả '+checks+' kiểm tra đạt');
 process.exit(fails?1:0);

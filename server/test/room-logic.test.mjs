@@ -1,3 +1,4 @@
+import __Core from '../../js/core.js';const HELLO_V=__Core.PROTO;   /* số phiên bản giao thức, như client thật gửi */
 /* Kiểm thử RoomLogic bằng Node (không cần Cloudflare):  node test/room-logic.test.mjs
    Mỗi "người chơi giả" giữ bản trạng thái riêng, chỉ cập nhật từ tin server gửi (started/applied/state) bằng chính Core,
    để chứng minh giao thức đủ để hai client luôn đồng bộ với server. */
@@ -37,7 +38,7 @@ function player(env,token){
   const p={env,token,conn:null,inbox:null,st:null,side:null,msgs:[],
     connect(){p.conn={inbox:[],slot:undefined,closed:null};env.conns.add(p.conn);return p;},
     async say(o){await env.logic.onMessage(p.conn,typeof o==='string'?o:JSON.stringify(o));for(const q of env.players)q.pump();},
-    async hello(){await p.say({t:'hello',token});},
+    async hello(){await p.say({t:'hello',v:HELLO_V,token});},
     pump(){
       for(const m of p.conn.inbox.splice(0)){
         p.msgs.push(m);

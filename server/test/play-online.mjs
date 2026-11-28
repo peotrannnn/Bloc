@@ -1,3 +1,4 @@
+import __Core from '../../js/core.js';const HELLO_V=__Core.PROTO;   /* số phiên bản giao thức, như client thật gửi */
 /* Chơi thử một ván THẬT qua WebSocket với server đang chạy (wrangler dev hoặc bản đã deploy):
      terminal 1:  cd server && wrangler dev
      terminal 2:  node test/play-online.mjs                         (mặc định ws://localhost:8787)
@@ -33,7 +34,7 @@ function client(name){
       if(!c.sentBad){c.sentBad=true;send({t:'action',seq:c.st.ply,move:[0,0]});}   /* một nước sai cố ý: server phải từ chối */
       send({t:'action',seq:c.st.ply,...randomAction(c.st)});
     };
-    ws.onopen=()=>send({t:'hello',token});
+    ws.onopen=()=>send({t:'hello',v:HELLO_V,token});
     ws.onerror=e=>{bad(name+': lỗi kết nối (server đã chạy chưa?)');resolve(c);};
     ws.onmessage=ev=>{
       const m=JSON.parse(ev.data);

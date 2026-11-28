@@ -50,7 +50,7 @@
   AIs.register({
     id:'defender',
     name:'Mr. Nhây Nhưa',
-    desc:'Phòng thủ: giữ tường, đợi đối thủ ra đòn rồi phản công, đi quân khó chặn',
+    desc:'Thằng này phòng thủ and phản công',
 
     decide(p){
       const C=CFG.AI.defender,op=1-p;

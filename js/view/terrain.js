@@ -17,6 +17,7 @@
      Terrain.shadowBusy                   // true nếu trong khung hình vừa rồi có vật tĩnh-có-bóng (tấm bẫy) đang chuyển động → vòng lặp cần dựng lại bản đồ bóng
 
    Mỗi loại ô (cao đo theo quân cờ ≈ .7):
+     9 đá thấp  như đá cao nhưng cao một nửa (CFG.TERRAIN.lowH), sáng/ẩm hơn một chút để phân biệt bậc; quân leo lên được. Độ cao mặt ô: Terrain.heightAt(r,c)
      1 đá     khối vuông vức cao ≈ quân (một dạng duy nhất, mặt nhám, không vết nứt), nhám, flatShading; xoay 0/90/180/270° cho đỡ lặp
      2 cỏ     nền đất + các cụm cỏ (tuft) rải tự nhiên (dart-throwing có seed), mỗi cụm vài lưỡi dẹt thon cong, xoè ra nhiều hướng (InstancedMesh, 1 draw call); gió thổi trong vertex shader (sóng gió chung + rung riêng từng lưỡi), không tốn CPU
               Hình dạng cỏ theo biome (biome.shape): forest cỏ CAO gấp đôi + nhiều hoa + thỉnh thoảng có cây tre (thân có đốt, lá thon) · meadow nhiều hoa · autumn như cũ ·
@@ -31,9 +32,10 @@
      8 cát    ô như ô gỗ, màu và vân cát NHÁM (hạt li ti), mặt cát GỢN SÓNG: các gợn ngẫu nhiên như gợn cát do gió (hướng/độ dày/độ đậm đổi theo từng mảng), TĨNH (đứng yên, không chuyển động) và liền mạch giữa các ô (theo toạ độ thế giới) — khác kiểu sóng ngẫu nhiên của nước
      Nước/cát kề nhau (đúng luật "không đặt tường được"): khe giữa được lấp bằng cách nới mỗi ô thêm nửa khe về phía ô kề, ngã tư 3 ô thì thêm miếng lấp. */
 const Terrain=(function(){
-  const T={STONE:1,BRUSH:2,ICE:3,TRAP:4,CHEST:5,PORTAL:6,WATER:7,SAND:8};
+  const T={STONE:1,BRUSH:2,ICE:3,TRAP:4,CHEST:5,PORTAL:6,WATER:7,SAND:8,LOW:9};
   const DEF={
-    stoneH:.7,                 /* cao khối đá trên mặt ô (quân cờ cao ≈ .7) */
+    stoneH:.7,                 /* cao khối đá cao trên mặt ô (quân cờ cao ≈ .7) */
+    lowH:.35,                  /* cao khối đá thấp (mã 9, chỉ biome núi): một nửa đá cao, luật độ cao ở js/core.js (lvl) */
     tufts:7,tuftBlades:5,      /* số cụm cỏ mỗi ô và số lưỡi mỗi cụm (±1) */
     bladeH:[.4,.75],           /* khoảng cao lưỡi cỏ */
     sway:.34,swaySpeed:1.2,    /* biên độ ngọn cỏ khi gió thổi (đơn vị bàn cờ) và tốc độ */
@@ -79,7 +81,7 @@ const Terrain=(function(){
     h=Math.imul(h^(h>>>13),1274126177);h^=h>>>16;return(h>>>0)/4294967296;
   }
 
-  let root=null,cache=null,stage=null,traps=[],gates=[],animOn=false,grass=[],stones=[],geos=[],flowerMesh=null,flowerCols=[],biome=Object.assign({},BIOMES.meadow),hidden=[],time={value:0},trapPhase=0,hasWater=false,hasSand=false,waterTex=null,lastTerr=null,lastSeed,tumbles=[],tumbleMesh=null,tumbleAcc=0,tw=null,chests=[],baseSway=.34,gustK=0;
+  let root=null,cache=null,stage=null,traps=[],gates=[],animOn=false,grass=[],stones=[],geos=[],flowerMesh=null,flowerCols=[],biome=Object.assign({},BIOMES.meadow),hidden=[],time={value:0},trapPhase=0,hasWater=false,hasSand=false,waterTex=null,lastTerr=null,curTerr=null,lastSeed,tumbles=[],tumbleMesh=null,tumbleAcc=0,tw=null,chests=[],baseSway=.34,gustK=0;
 
   /* ----- Texture vẽ bằng canvas ----- */
   function canvas(S){const cv=document.createElement('canvas');cv.width=cv.height=S;return[cv,cv.getContext('2d')];}
@@ -224,26 +226,64 @@ const Terrain=(function(){
   /* ----- Hình khối ----- */
   /* Khối đá: hộp chia nhỏ rồi bóp méo nhẹ theo hash tọa độ: vuông vức, vát cạnh trên, mặt hơi gồ ghề.
      3 biến thể (variant): 0 nguyên khối · 1 sứt chéo một góc trên · 2 sứt sâu góc khác. Có màu đỉnh tối dần về chân (giả AO, nhân với texture). */
+  /* Bóp méo MỘT đỉnh của khối đá (hàm thuần, không cần three.js): dùng chung cho hình học thật (stoneGeo) và cho bảng độ cao mặt đá (topGrid),
+     nên chiều cao quân đứng/ô gợi ý tính từ đây luôn khớp với thứ đang vẽ. Trả [x,y,z] mới. */
+  function stoneVert(x,y,z,Hh,hw,vs,chip){
+    const jt=.012;
+    if(y>.04){
+      const n1=hash3(x,y,z,11+vs)-.5,n2=hash3(x,y,z,23+vs)-.5,n3=hash3(x,y,z,37+vs)-.5;
+      const onX=Math.abs(Math.abs(x)-hw)<1e-4,onZ=Math.abs(Math.abs(z)-hw)<1e-4,isTop=y>Hh-1e-4;
+      if(onX)x-=Math.sign(x)*Math.abs(n1)*2*jt;else x+=n1*jt*.6;   /* mẻ vào trong, không phình ra ngoài ô */
+      if(onZ)z-=Math.sign(z)*Math.abs(n2)*2*jt;else z+=n2*jt*.6;
+      if(isTop){y+=n3*.02;if(onX||onZ){y-=.02;if(onX)x-=Math.sign(x)*.04;if(onZ)z-=Math.sign(z)*.04;}}
+      if(chip){const t=x*chip[0]+z*chip[1];if(t>hw*1.1)y=Math.min(y,Hh-(t-hw*1.1)*chip[2]);}   /* mặt cắt phẳng chéo qua một góc */
+    }
+    return[x,y,z];
+  }
+  const chipOf=variant=>variant===1?[1,1,.5]:variant===2?[-1,1,.75]:null;
   function stoneGeo(top,variant){
     const C=CFG.CELL,W=C*.97,hw=W/2,Hh=CFG.CELL_H+top,g=new THREE.BoxGeometry(W,Hh,W,4,7,4),vs=variant*101;
     g.translate(0,Hh/2,0);   /* đáy ở y=0, đỉnh ở y=Hh; đặt mesh ở y=-CELL_H/2 để đáy chạm đáy ô */
-    const p=g.attributes.position,jt=.012,col=new Float32Array(p.count*3),chip=variant===1?[1,1,.5]:variant===2?[-1,1,.75]:null;
+    const p=g.attributes.position,col=new Float32Array(p.count*3),chip=chipOf(variant);
     for(let i=0;i<p.count;i++){
-      let x=p.getX(i),y=p.getY(i),z=p.getZ(i);
-      if(y>.04){
-        const n1=hash3(x,y,z,11+vs)-.5,n2=hash3(x,y,z,23+vs)-.5,n3=hash3(x,y,z,37+vs)-.5;
-        const onX=Math.abs(Math.abs(x)-hw)<1e-4,onZ=Math.abs(Math.abs(z)-hw)<1e-4,isTop=y>Hh-1e-4;
-        if(onX)x-=Math.sign(x)*Math.abs(n1)*2*jt;else x+=n1*jt*.6;   /* mẻ vào trong, không phình ra ngoài ô */
-        if(onZ)z-=Math.sign(z)*Math.abs(n2)*2*jt;else z+=n2*jt*.6;
-        if(isTop){y+=n3*.02;if(onX||onZ){y-=.02;if(onX)x-=Math.sign(x)*.04;if(onZ)z-=Math.sign(z)*.04;}}
-        if(chip){const s=x*chip[0]+z*chip[1];if(s>hw*1.1)y=Math.min(y,Hh-(s-hw*1.1)*chip[2]);}   /* mặt cắt phẳng chéo qua một góc */
-      }
+      const[x,y,z]=stoneVert(p.getX(i),p.getY(i),p.getZ(i),Hh,hw,vs,chip);
       p.setXYZ(i,x,y,z);
       const ao=.5+.5*Math.min(1,Math.max(0,y/.45));col[i*3]=col[i*3+1]=col[i*3+2]=ao;
     }
     g.setAttribute('color',new THREE.BufferAttribute(col,3));
     g.computeVertexNormals();g.computeBoundingSphere();
     return g;
+  }
+
+  /* ----- Độ cao THẬT của mặt đá (để quân, ô gợi ý, nhãn bám đúng mặt đang vẽ) -----
+     heightAt chỉ là độ cao danh nghĩa theo bậc (0/lowH/stoneH) dùng cho luật và chọn ô. Mặt đá vẽ ra lệch khỏi đó vì: mỗi khối nhân chiều cao với sy (±6% của cả khối,
+     tới ±.1), đỉnh nhiễu ±.01, mép vát .02, biến thể 1/2 sứt chéo một góc. Quân đứng ở độ cao danh nghĩa nên chân chìm vào chỗ lồi / lơ lửng ở chỗ lõm (lỗi người chơi báo). */
+  const gridCache={},stoneAt=new Map();   /* stoneAt: k=r*N+c → {rot,sy,vi,low} của khối đá đang dựng (đặt trong build) */
+  function topGrid(top,variant){   /* lưới 5×5 độ cao đỉnh (đơn vị khối chưa nhân sy), cùng lưới đỉnh mặt trên của BoxGeometry(…,4,7,4) */
+    const key=top+':'+variant;if(gridCache[key])return gridCache[key];
+    const W=CFG.CELL*.97,hw=W/2,Hh=CFG.CELL_H+top,vs=variant*101,chip=chipOf(variant),y=[];
+    for(let iz=0;iz<5;iz++)for(let ix=0;ix<5;ix++)y.push(stoneVert(-hw+ix*W/4,Hh,-hw+iz*W/4,Hh,hw,vs,chip)[1]);
+    return gridCache[key]={y,W,hw};
+  }
+  /* Độ cao mặt đá tại điểm thế giới (x,z), so với mặt ô thường (cùng gốc với heightAt). Không có khối đá ở đó (hoặc ngoài bàn) → 0. Hàm thuần theo stoneAt. */
+  function surfaceAt(x,z){
+    if(!stoneAt.size)return 0;
+    const c=Math.round(x/CFG.PITCH+HALF),r=Math.round(z/CFG.PITCH+HALF);
+    if(r<0||r>=N||c<0||c>=N)return 0;
+    const inf=stoneAt.get(r*N+c);if(!inf)return 0;
+    const dx=x-cellX(c),dz=z-cellZ(r),ca=Math.round(Math.cos(inf.rot)),sa=Math.round(Math.sin(inf.rot));
+    const top=inf.low?cfg().lowH:cfg().stoneH,G=topGrid(top,inf.vi),q=G.W/4;
+    const lx=dx*ca-dz*sa,lz=dx*sa+dz*ca;   /* nghịch đảo phép xoay quanh trục Y của khối */
+    const fx=Math.min(4,Math.max(0,(lx+G.hw)/q)),fz=Math.min(4,Math.max(0,(lz+G.hw)/q));
+    const ix=Math.min(3,Math.floor(fx)),iz=Math.min(3,Math.floor(fz)),tx=fx-ix,tz=fz-iz,Y=G.y;
+    const y0=Y[iz*5+ix]*(1-tx)+Y[iz*5+ix+1]*tx,y1=Y[(iz+1)*5+ix]*(1-tx)+Y[(iz+1)*5+ix+1]*tx;
+    return inf.sy*(y0*(1-tz)+y1*tz)-CFG.CELL_H;   /* thế giới = -CELL_H/2 + sy*y; trừ TOP (= CELL_H/2) */
+  }
+  const topAt=(r,c)=>surfaceAt(cellX(c),cellZ(r));   /* độ cao mặt đá ngay tâm ô */
+  function topMaxAt(r,c){   /* cao nhất trong vùng giữa ô (ô gợi ý là tấm phẳng, đặt theo chỗ cao nhất để không chìm vào chỗ lồi) */
+    let m=-1e9;const x=cellX(c),z=cellZ(r),R=CFG.CELL*.4;
+    for(let i=-2;i<=2;i++)for(let j=-2;j<=2;j++)m=Math.max(m,surfaceAt(x+i*R/2,z+j*R/2));
+    return m;
   }
   /* Đường xoắn của lò xo. KHÔNG được viết `class Helix extends THREE.Curve` ở mức trên cùng: file này chạy lúc trang vừa tải,
      khi three.js còn chưa được loader.js tải (nó tải lười), nên THREE chưa tồn tại → lỗi. Tạo lúc cần (trong getCache). */
@@ -404,7 +444,7 @@ diffuseColor.rgb*=mix(.55,1.25,smoothstep(.25,.75,n))*mix(.82,1.15,n2)*mix(vec3(
                  armH:new THREE.CylinderGeometry(.04,.04,.14,8),armV:new THREE.CylinderGeometry(.04,.04,.2,8),armCap:new THREE.SphereGeometry(.04,8,6)};
     K.cactusGeo.armH.rotateZ(Math.PI/2);
     /* tre (rừng): dựng lười ở ensureBamboo khi bàn thật sự có tre */
-    K.stoneGeos=null;   /* dựng theo chiều cao cấu hình ở build() */
+    K.stoneGeos=null;K.lowGeos=null;   /* dựng theo chiều cao cấu hình ở build() */
     K.headGeo=new THREE.IcosahedronGeometry(.032,0);K.headGeo.scale(1,.8,1);   /* đầu hoa */
     /* rương: nhỏ và dài; vân gỗ lấy đúng từ hàm vẽ gỗ của ô sàn */
     K.chestGeo={body:new THREE.BoxGeometry(.56,.2,.34),lid:new THREE.BoxGeometry(.56,.11,.34),lock:new THREE.BoxGeometry(.07,.1,.03)};
@@ -733,17 +773,22 @@ gl_Position=projectionMatrix*mvPosition;`);
     const sp=Object.assign({},cf,biome.shape),lk=sp.lean===undefined?1:sp.lean,hm=sp.hMul||1,bladeCurve=(BLADES[sp.geo]||BLADES.grass).curve;   /* sp = cấu hình cỏ đã gộp hình dạng của biome */
     root=new THREE.Group();st.scene.add(root);
     if(!K.stoneGeos||K.stoneH!==cf.stoneH){if(K.stoneGeos)K.stoneGeos.forEach(g=>g.dispose());K.stoneGeos=[0,1,2].map(v=>stoneGeo(cf.stoneH,v));K.stoneH=cf.stoneH;}
+    if(!K.lowGeos||K.lowH!==cf.lowH){if(K.lowGeos)K.lowGeos.forEach(g=>g.dispose());K.lowGeos=[0,1,2].map(v=>stoneGeo(cf.lowH,v));K.lowH=cf.lowH;}
+    curTerr=terr;stoneAt.clear();
     seed=seed===undefined?1:(typeof seed==='number'?seed>>>0:[...String(seed)].reduce((a,ch)=>Math.imul(a^ch.charCodeAt(0),16777619)>>>0,2166136261));
     const hideCell=(r,c)=>{const m=st.cells[r][c];if(m){m.visible=false;hidden.push(m);}};
     const tv=(r,c)=>r>=0&&r<N&&c>=0&&c<N?terr[r*N+c]:0,isSoft=(r,c)=>{const v=tv(r,c);return v===T.WATER||v===T.SAND;},isB=(r,c)=>tv(r,c)===T.BRUSH,own=v=>(r,c)=>tv(r,c)===v;
-    const blades=[],flowerList=[],bambooList=[],reedList=[],tumbleList=[],iceList=[],snowmanList=[],stoneList=[[],[],[]],gatePos=[],span=C*.84,half=span/2;
+    const blades=[],flowerList=[],bambooList=[],reedList=[],tumbleList=[],iceList=[],snowmanList=[],stoneList=[[],[],[]],lowList=[[],[],[]],gatePos=[],span=C*.84,half=span/2;
     const dm=new THREE.Object3D(),col=new THREE.Color(),tip=new THREE.Vector3();dm.rotation.order='YXZ';
 
     for(let r=0;r<N;r++)for(let c=0;c<N;c++){
       const k=r*N+c,v=terr[k],x=cellX(c),z=cellZ(r),rnd=mul32((seed+Math.imul(k+1,0x9E3779B1))>>>0);
       if(v===T.STONE){
         hideCell(r,c);const u=rnd();   /* 3 kiểu khối: nguyên / sứt nhẹ / sứt sâu; mỗi khối xoay bội 90°, cao thấp và tông màu lệch nhẹ */
-        stoneList[u<.55?0:u<.8?1:2].push({x,z,rot:Math.floor(rnd()*4)*Math.PI/2,sy:.94+rnd()*.12,l:.84+rnd()*.28,s:(rnd()-.5)*.1});
+        const vi=u<.55?0:u<.8?1:2,e={x,z,rot:Math.floor(rnd()*4)*Math.PI/2,sy:.94+rnd()*.12,l:.84+rnd()*.28,s:(rnd()-.5)*.1};stoneList[vi].push(e);stoneAt.set(k,{rot:e.rot,sy:e.sy,vi,low:false});
+      }else if(v===T.LOW){
+        hideCell(r,c);const u=rnd();   /* đá thấp: cùng 3 kiểu khối với đá cao, màu sáng/ẩm hơn (l cao hơn, lệch xanh nhẹ) */
+        const vi=u<.55?0:u<.8?1:2,e={x,z,rot:Math.floor(rnd()*4)*Math.PI/2,sy:.94+rnd()*.12,l:1.02+rnd()*.2,s:(rnd()-.5)*.1-.03};lowList[vi].push(e);stoneAt.set(k,{rot:e.rot,sy:e.sy,vi,low:true});
       }else if(v===T.SAND||v===T.WATER){
         hideCell(r,c);   /* mặt cát/nước dựng gộp bên dưới */
         if(v===T.SAND&&sp.tumble>0&&tumbleList.length<12&&rnd()<sp.tumble){   /* tumbleweed lăn trong ô cát */
@@ -829,9 +874,9 @@ gl_Position=projectionMatrix*mvPosition;`);
     }
 
     /* đá: mỗi biến thể một InstancedMesh (tối đa 3 draw call cho cả bàn), màu riêng từng khối qua instanceColor */
-    stoneList.forEach((lst,vi)=>{
+    for(const[lists,geoSet]of[[stoneList,K.stoneGeos],[lowList,K.lowGeos]])lists.forEach((lst,vi)=>{
       if(!lst.length)return;
-      const im=new THREE.InstancedMesh(K.stoneGeos[vi],K.stone,lst.length);
+      const im=new THREE.InstancedMesh(geoSet[vi],K.stone,lst.length);
       lst.forEach((s,j)=>{
         dm.position.set(s.x,-TP,s.z);dm.rotation.set(0,s.rot,0);dm.scale.set(1,s.sy,1);dm.updateMatrix();
         im.setMatrixAt(j,dm.matrix);im.setColorAt(j,col.setRGB(s.l*(1+s.s),s.l,s.l*(1-s.s)));
@@ -1078,7 +1123,13 @@ gl_Position=projectionMatrix*mvPosition;`);
     for(const g of geos)g.dispose();
     grass=[];stones=[];geos=[];flowerMesh=null;flowerCols=[];tumbles=[];tumbleMesh=null;
     if(root&&root.parent)root.parent.remove(root);
-    root=null;
+    root=null;curTerr=null;stoneAt.clear();
+  }
+
+  /* Độ cao mặt ô (so với mặt ô thường): 0 / lowH / stoneH, theo terr đang dựng. Ngoài bàn hoặc không có địa hình = 0. Hàm thuần theo terr. */
+  function heightAt(r,c){
+    if(!curTerr||r<0||r>=N||c<0||c>=N)return 0;
+    const v=curTerr[r*N+c],cf=cfg();return v===T.STONE?cf.stoneH:v===T.LOW?cf.lowH:0;
   }
 
   /* Gọi mỗi khung hình. Trả true khi còn chuyển động (để vòng lặp tiếp tục vẽ). */
@@ -1120,5 +1171,5 @@ gl_Position=projectionMatrix*mvPosition;`);
     return busy;
   }
 
-  return Object.assign(api,{build,clear,update,setTraps,fireTrap,setGateBlocked,flashGate,setBiome,setGust,setPieces,openChest,syncChests,chestTime:CHEST_T,biomes:BIOMES,T});
+  return Object.assign(api,{build,clear,update,heightAt,surfaceAt,topAt,topMaxAt,_stoneAt:stoneAt,setTraps,fireTrap,setGateBlocked,flashGate,setBiome,setGust,setPieces,openChest,syncChests,chestTime:CHEST_T,biomes:BIOMES,T});
 })();

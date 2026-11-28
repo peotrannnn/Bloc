@@ -1,3 +1,4 @@
+import __Core from '../../js/core.js';const HELLO_V=__Core.PROTO;   /* số phiên bản giao thức, như client thật gửi */
 /* Kiểm tra tạo phòng & vào bằng mã (Giai đoạn 3) với server đang chạy:
      node test/rooms.mjs                                  (mặc định ws://localhost:8787)
      node test/rooms.mjs wss://bloc-online.<tên>.workers.dev
@@ -33,22 +34,22 @@ try{
 
   console.log('2. Vào phòng bằng mã');
   const A=conn(j.code),B=conn(j.code);
-  A.send({t:'hello',token:tok('A')});
+  A.send({t:'hello',v:HELLO_V,token:tok('A')});
   const wa=await A.next('welcome');
   check(wa.slot===0&&wa.players===1&&wa.visibility==='public'&&wa.mode==='classic','người đầu vào ghế 0, thấy mode/visibility');
-  B.send({t:'hello',token:tok('B')});
+  B.send({t:'hello',v:HELLO_V,token:tok('B')});
   const wb=await B.next('welcome');
   check(wb.slot===1&&wb.players===2,'người thứ hai vào ghế 1');
   const sa=await A.next('started'),sb=await B.next('started');
   check(sa.you!==sb.you&&(sa.you===0||sa.you===1),'bốc thăm: hai phe khác nhau ('+sa.you+'/'+sb.you+')');
 
   console.log('3. Phòng đầy');
-  const C=conn(j.code);C.send({t:'hello',token:tok('C')});
+  const C=conn(j.code);C.send({t:'hello',v:HELLO_V,token:tok('C')});
   check((await C.next('full')).t==='full','người thứ ba nhận full');
   check(await C.closed===4001,'và bị đóng với mã 4001');
 
   console.log('4. Mã sai');
-  const bogus=conn('AAAAAA');bogus.send({t:'hello',token:tok('X')});
+  const bogus=conn('AAAAAA');bogus.send({t:'hello',v:HELLO_V,token:tok('X')});
   check((await bogus.next('error')).reason==='noroom','mã đúng định dạng nhưng chưa tạo → noroom');
   check(await bogus.closed===4004,'và bị đóng với mã 4004');
   const badfmt=conn('ab0');
@@ -66,7 +67,7 @@ try{
   check(q3.code!==q1.code&&q3.code!==q2.code||!q1.created,'người 3 không bị ghép vào phòng đang giữ chỗ');
   if(q1.created){
     const P=conn(q1.code),Q=conn(q1.code);
-    P.send({t:'hello',token:tok('P')});Q.send({t:'hello',token:tok('Q')});
+    P.send({t:'hello',v:HELLO_V,token:tok('P')});Q.send({t:'hello',v:HELLO_V,token:tok('Q')});
     const sp=await P.next('started'),sq=await Q.next('started');
     check(sp.you!==sq.you,'hai người được ghép bắt đầu ván, hai phe khác nhau');
     const after=await quick();
@@ -77,12 +78,12 @@ try{
   console.log('6. Rớt mạng và nối lại cùng token');
   const rc=await (await create({mode:'classic',visibility:'private'})).json();
   const tA=tok('RA'),tB=tok('RB'),X=conn(rc.code),Y=conn(rc.code);
-  X.send({t:'hello',token:tA});Y.send({t:'hello',token:tB});
+  X.send({t:'hello',v:HELLO_V,token:tA});Y.send({t:'hello',v:HELLO_V,token:tB});
   const xs=await X.next('started');await Y.next('started');
   await sleep(400);Y.clear();
   X.ws.close();
   check((await Y.next('opponentStatus')).online===false,'một bên rớt mạng: đối thủ nhận "mất kết nối"');
-  const X2=conn(rc.code);X2.send({t:'hello',token:tA});
+  const X2=conn(rc.code);X2.send({t:'hello',v:HELLO_V,token:tA});
   const w2=await X2.next('welcome'),s2=await X2.next('state');
   check(w2.started===true,'nối lại bằng cùng token: welcome started=true');
   check(s2.you===xs.you&&s2.snapshot.ply===0&&Array.isArray(s2.log),'nhận lại state: đúng phe, đúng ván, có nhật ký nước đi');
@@ -92,7 +93,7 @@ try{
   console.log('7. Đồng hồ lượt và đấu lại');
   const rr=await (await create({mode:'classic',visibility:'private'})).json();
   const R1=conn(rr.code),R2=conn(rr.code);
-  R1.send({t:'hello',token:tok('R1')});R2.send({t:'hello',token:tok('R2')});
+  R1.send({t:'hello',v:HELLO_V,token:tok('R1')});R2.send({t:'hello',v:HELLO_V,token:tok('R2')});
   const a1=await R1.next('started');await R2.next('started');
   check(a1.turnLeft>0&&a1.turnLeft<=90000,'started kèm đồng hồ lượt (turnLeft='+a1.turnLeft+' ms)');
   await sleep(400);R1.clear();R2.clear();
@@ -110,7 +111,7 @@ try{
     console.log('8. Quá hạn nối lại bị xử thua (chờ 47 giây)');
     const rs=await (await create({mode:'classic',visibility:'private'})).json();
     const U=conn(rs.code),V=conn(rs.code),tU=tok('SU');
-    U.send({t:'hello',token:tU});V.send({t:'hello',token:tok('SV')});
+    U.send({t:'hello',v:HELLO_V,token:tU});V.send({t:'hello',v:HELLO_V,token:tok('SV')});
     const us=await U.next('started');await V.next('started');
     await sleep(400);V.clear();U.ws.close();
     const ov=await V.next('over',60000);

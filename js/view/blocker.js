@@ -174,7 +174,7 @@ const Blocker={
   okCell(r,c){
     if(r<1||r>N-2||c<0||c>=N)return false;   /* hàng đích (0 và N-1) không bị chặn */
     const k=r*N+c;
-    if(!R.open(S,r,c)||S.blocker===k)return false;
+    if(!R.ground(S,r,c)||S.blocker===k)return false;   /* ô thường: người chặn không bao giờ lên đá */
     if(S.terr&&S.terr[k]!==0)return false;   /* cỏ/băng/bẫy/rương/cổng/nước/cát: để nguyên */
     return !S.pl.some(p=>p.r===r&&p.c===c);
   },
@@ -240,7 +240,7 @@ const Blocker={
       const k=q[h],r=(k/N)|0,c=k%N;
       for(const[dr,dc]of D){
         const r2=r+dr,c2=c+dc,k2=r2*N+c2;
-        if(r2<0||r2>=N||c2<0||c2>=N||!R.open(S,r2,c2)||par[k2]!==-2||blk(r,c,dr,dc)||occ.has(k2))continue;
+        if(r2<0||r2>=N||c2<0||c2>=N||!R.ground(S,r2,c2)||par[k2]!==-2||blk(r,c,dr,dc)||occ.has(k2))continue;   /* đường chạy ra mép chỉ qua ô thường (không chạy lên đá thấp) */
         par[k2]=k;dd[k2]=dd[k]+1;q.push(k2);
       }
     }

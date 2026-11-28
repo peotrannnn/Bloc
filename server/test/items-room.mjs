@@ -1,3 +1,4 @@
+import __Core from '../../js/core.js';const HELLO_V=__Core.PROTO;   /* số phiên bản giao thức, như client thật gửi */
 /* Kiểm tra phía server của rương và vật phẩm (Hỗn Loạn), không cần Cloudflare, không cần mạng:   cd server && node test/items-room.mjs
    Phủ: mở rương → fx chest gửi cả hai bên + túi đồ công khai; giày miễn phí (không đổi ply/lượt, không làm mới đồng hồ) rồi lượt thêm chỉ đi quân;
    găng / búa / cuốc chim (tường của đối thủ, trả tường, ô chết); hành động sai bị từ chối đúng lý do; Classic từ chối item; nối lại (state) giữ chủ tường, ô chết, túi. */
@@ -27,7 +28,7 @@ async function start(mode){
   const rm=makeRoom();
   await rm.logic.init({mode,visibility:'private',code:'ABCDEF',biome:mode==='chaos'?'forest':undefined});
   const A=rm.connect(),B=rm.connect();
-  await rm.say(A,{t:'hello',token:tok('A')});await rm.say(B,{t:'hello',token:tok('B')});
+  await rm.say(A,{t:'hello',v:HELLO_V,token:tok('A')});await rm.say(B,{t:'hello',v:HELLO_V,token:tok('B')});
   const sA=rm.take(A,'started'),sB=rm.take(B,'started');
   const white=sA.you===0?A:B,black=white===A?B:A;
   return{rm,white,black};
@@ -83,8 +84,10 @@ try{
     r=await act(g,'w',2,{item:{use:'hammer'}});ck(r.rej&&r.rej.reason==='format','búa thiếu tọa độ');
     r=await act(g,'w',2,{item:{use:'pick',o:'v',r:5,c:5}});ck(r.rej&&r.rej.reason==='noitem','không có cuốc chim thì không dùng');
     r=await act(g,'w',2,{item:{use:'hammer',o:'v',r:5,c:5}});
-    ck(r.a&&r.a.action.item.use==='hammer'&&r.a.left[1]===10&&r.a.turn===1&&r.a.ply===3,'búa: tháo tường Đen, trả lại cho Đen, tốn một lượt');
+    ck(r.a&&r.a.action.item.use==='hammer'&&r.a.left[1]===10&&r.a.turn===0&&r.a.ply===2&&r.a.free===true,'búa: tháo tường Đen, trả lại cho Đen, MIỄN PHÍ (vẫn lượt Trắng, ply giữ nguyên, free:true)');
     ck((r.a.fx||[]).some(e=>e.t==='hammer'&&e.o==='v'&&e.r===5&&e.c===5)&&!!r.b,'fx hammer cho cả hai bên');
+    r=await act(g,'b',3,{move:[1,4]});ck(r.rej&&r.rej.reason==='turn','sau búa vẫn là lượt Trắng: Đen chưa được đi');
+    r=await act(g,'w',2,{move:[7,4]});ck(r.a&&r.a.turn===1&&r.a.ply===3&&!r.a.free,'búa xong Trắng đi quân: hết lượt, sang Đen');
     r=await act(g,'b',3,{move:[1,4]});ck(r.a&&r.a.turn===0,'Đen đi');
     r=await act(g,'w',4,{item:{use:'glove'}});
     ck(r.a&&r.a.left[0]===10&&r.a.left[1]===9&&r.a.inv[0].length===0,'găng: cướp 1 tường của Đen');

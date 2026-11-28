@@ -1,3 +1,4 @@
+import __Core from '../../js/core.js';const HELLO_V=__Core.PROTO;   /* số phiên bản giao thức, như client thật gửi */
 /* Kiểm tra logic phòng (RoomLogic) bằng io giả trong bộ nhớ, đồng hồ giả: không cần Cloudflare, không cần mạng.
      cd server && node test/room-logic.mjs
    Phủ: vào phòng, bắt đầu, nước đi, rớt mạng và nối lại, quá hạn nối lại bị xử thua, hết hạn phòng, hibernate (tạo lại RoomLogic từ storage). */
@@ -41,9 +42,9 @@ try{
   ck(await rm.logic.init({mode:'classic',visibility:'public',code:'ABCDEF'})===true,'init tạo phòng');
   ck(rm.alarmAt===now+60*60e3,'phòng mới hẹn hết hạn sau 1 giờ');
   const A=rm.connect(),B=rm.connect();
-  await rm.say(A,{t:'hello',token:tok('A')});
+  await rm.say(A,{t:'hello',v:HELLO_V,token:tok('A')});
   ck(rm.take(A,'welcome').slot===0&&rm.lobby.includes('add'),'người đầu vào, phòng công khai báo Lobby add');
-  await rm.say(B,{t:'hello',token:tok('B')});
+  await rm.say(B,{t:'hello',v:HELLO_V,token:tok('B')});
   const stA=rm.take(A,'started'),stB=rm.take(B,'started');
   ck(stA&&stB&&stA.you!==stB.you,'đủ người thì bắt đầu, hai phe khác nhau');
   ck(rm.lobby.includes('remove'),'đủ người thì gỡ khỏi Lobby');
@@ -70,7 +71,7 @@ try{
   rm.restart();                                         /* hibernate giữa chừng */
   B.inbox.length=0;
   const A2=rm.connect();
-  await rm.say(A2,{t:'hello',token:tok('A')});
+  await rm.say(A2,{t:'hello',v:HELLO_V,token:tok('A')});
   const w=rm.take(A2,'welcome'),state=rm.take(A2,'state');
   ck(w.started===true&&w.slot===(A===white?0:1)||w.started===true,'nối lại cùng token: welcome started=true');
   ck(state&&state.snapshot.ply===2&&state.log.length===2&&state.you===(A===white?stA.you:stB.you),'nhận state đủ: ply, nhật ký, phe của mình');
@@ -88,33 +89,44 @@ try{
   now+=2e3;await rm.alarm();
   const ov=rm.take(B,'over');
   ck(ov&&ov.reason==='timeout'&&ov.winner===(B===white?0:1),'quá 45 giây: người ở lại thắng, lý do timeout');
-  const A3=rm.connect();await rm.say(A3,{t:'hello',token:tok('A')});
+  const A3=rm.connect();await rm.say(A3,{t:'hello',v:HELLO_V,token:tok('A')});
   rm.take(A3,'welcome');const late=rm.take(A3,'state');
   ck(late&&late.over===true&&late.reason==='timeout','nối lại sau khi bị xử: thấy ván đã kết thúc (timeout)');
   await rm.say(A3,{t:'action',seq:2,move:[0,0]});
   ck(rm.take(A3,'rejected').reason==='over','không đi được nữa');
 
+  console.log('4b. Số phiên bản giao thức');
+  {
+    const rv=makeRoom();await rv.logic.init({mode:'classic',visibility:'private',code:'VWXYZ2'});
+    const O=rv.connect();await rv.say(O,{t:'hello',token:tok('O')});   /* client cũ: không gửi v */
+    ck(rv.take(O,'error').reason==='version'&&O.closeCode===4005,'không có v: bị từ chối, đóng 4005');
+    const O2=rv.connect();await rv.say(O2,{t:'hello',v:HELLO_V+1,token:tok('O2')});
+    const e2=rv.take(O2,'error');ck(e2&&e2.reason==='version'&&e2.v===HELLO_V&&O2.closeCode===4005,'v lệch: bị từ chối, báo v của server');
+    const O3=rv.connect();await rv.say(O3,{t:'hello',v:HELLO_V,token:tok('O3')});
+    ck(rv.take(O3,'welcome').v===HELLO_V,'v đúng: vào được, welcome kèm v');
+  }
+
   console.log('5. Hết hạn phòng');
   now+=31*60e3;await rm.alarm();
   ck(rm.wiped&&A3.closeCode===4002,'quá hạn: dọn phòng, đóng kết nối 4002');
-  const Z=rm.connect();await rm.say(Z,{t:'hello',token:tok('Z')});
+  const Z=rm.connect();await rm.say(Z,{t:'hello',v:HELLO_V,token:tok('Z')});
   ck(rm.take(Z,'error').reason==='noroom','vào lại phòng đã dọn: noroom');
 
   console.log('6. Cả hai cùng rớt: ai rớt trước thua');
   const r2=makeRoom();await r2.logic.init({mode:'classic',visibility:'private',code:'GHJKMN'});
   const P=r2.connect(),Q=r2.connect();
-  await r2.say(P,{t:'hello',token:tok('P')});await r2.say(Q,{t:'hello',token:tok('Q')});
+  await r2.say(P,{t:'hello',v:HELLO_V,token:tok('P')});await r2.say(Q,{t:'hello',v:HELLO_V,token:tok('Q')});
   const sp=r2.take(P,'started');
   await r2.drop(Q);now+=5e3;await r2.drop(P);
   now+=46e3;await r2.alarm();
-  const P2=r2.connect();await r2.say(P2,{t:'hello',token:tok('P')});r2.take(P2,'welcome');
+  const P2=r2.connect();await r2.say(P2,{t:'hello',v:HELLO_V,token:tok('P')});r2.take(P2,'welcome');
   const sx=r2.take(P2,'state');
   ck(sx.over&&sx.winner===sp.you,'Q rớt trước nên Q thua, P thắng');
 
   console.log('7. Đầu hàng và thắng bằng đích dọn hạn nối lại');
   const r3=makeRoom();await r3.logic.init({mode:'classic',visibility:'private',code:'PQRSTU'});
   const X=r3.connect(),Y=r3.connect();
-  await r3.say(X,{t:'hello',token:tok('X')});await r3.say(Y,{t:'hello',token:tok('Y')});
+  await r3.say(X,{t:'hello',v:HELLO_V,token:tok('X')});await r3.say(Y,{t:'hello',v:HELLO_V,token:tok('Y')});
   r3.take(X,'started');r3.take(Y,'started');
   await r3.say(X,{t:'resign'});
   const o3=r3.take(Y,'over');
@@ -124,7 +136,7 @@ try{
   console.log('8. Đồng hồ lượt');
   const r4=makeRoom();await r4.logic.init({mode:'classic',visibility:'private',code:'AAAAAB'});
   const K=r4.connect(),L=r4.connect();
-  await r4.say(K,{t:'hello',token:tok('K')});await r4.say(L,{t:'hello',token:tok('L')});
+  await r4.say(K,{t:'hello',v:HELLO_V,token:tok('K')});await r4.say(L,{t:'hello',v:HELLO_V,token:tok('L')});
   const sk=r4.take(K,'started');r4.take(L,'started');
   ck(sk.turnLeft===90e3&&r4.alarmAt===now+90e3,'ván bắt đầu: turnLeft 90 giây, alarm hẹn theo hạn lượt');
   now+=89e3;await r4.alarm();
@@ -136,7 +148,7 @@ try{
 
   const r5=makeRoom();await r5.logic.init({mode:'classic',visibility:'private',code:'AAAAAC'});
   const M=r5.connect(),N=r5.connect();
-  await r5.say(M,{t:'hello',token:tok('M')});await r5.say(N,{t:'hello',token:tok('N')});
+  await r5.say(M,{t:'hello',v:HELLO_V,token:tok('M')});await r5.say(N,{t:'hello',v:HELLO_V,token:tok('N')});
   const sm=r5.take(M,'started');r5.take(N,'started');
   const wh=sm.you===0?M:N,bl=wh===M?N:M;
   now+=60e3;await r5.say(wh,{t:'action',seq:0,move:legalMove(R.newState(),0)});
@@ -151,7 +163,7 @@ try{
   console.log('9. Đấu lại');
   const r6=makeRoom();await r6.logic.init({mode:'classic',visibility:'private',code:'AAAAAD'});
   const XA=r6.connect(),YA=r6.connect();
-  await r6.say(XA,{t:'hello',token:tok('XA')});await r6.say(YA,{t:'hello',token:tok('YA')});
+  await r6.say(XA,{t:'hello',v:HELLO_V,token:tok('XA')});await r6.say(YA,{t:'hello',v:HELLO_V,token:tok('YA')});
   const sx1=r6.take(XA,'started'),sy1=r6.take(YA,'started');
   await r6.say(YA,{t:'rematch'});
   ck(!r6.has(XA,'rematchStatus'),'chưa xong ván thì phiếu đấu lại bị bỏ qua');
@@ -176,13 +188,13 @@ try{
   console.log('10. Nối lại khi đang chờ phiếu đấu lại');
   const r7=makeRoom();await r7.logic.init({mode:'classic',visibility:'private',code:'AAAAAE'});
   const E=r7.connect(),F=r7.connect();
-  await r7.say(E,{t:'hello',token:tok('E')});await r7.say(F,{t:'hello',token:tok('F')});
+  await r7.say(E,{t:'hello',v:HELLO_V,token:tok('E')});await r7.say(F,{t:'hello',v:HELLO_V,token:tok('F')});
   r7.take(E,'started');r7.take(F,'started');
   await r7.say(E,{t:'resign'});
   await r7.say(F,{t:'rematch'});
   await r7.drop(E);
   ck(r7.store.away[0]===0&&r7.store.away[1]===0,'ván đã xong thì rớt mạng không bị tính hạn xử thua');
-  const E2=r7.connect();await r7.say(E2,{t:'hello',token:tok('E')});
+  const E2=r7.connect();await r7.say(E2,{t:'hello',v:HELLO_V,token:tok('E')});
   r7.take(E2,'welcome');const se=r7.take(E2,'state');
   ck(se.over===true&&se.rematch.opp===true&&se.rematch.me===false,'nối lại: thấy đối thủ đã đồng ý đấu lại');
   await r7.say(E2,{t:'rematch'});
@@ -191,7 +203,7 @@ try{
   console.log('11. Đấu lại khi một bên rớt mạng sau khi bấm');
   const r8=makeRoom();await r8.logic.init({mode:'classic',visibility:'private',code:'AAAAAF'});
   const G=r8.connect(),H=r8.connect();
-  await r8.say(G,{t:'hello',token:tok('G')});await r8.say(H,{t:'hello',token:tok('H')});
+  await r8.say(G,{t:'hello',v:HELLO_V,token:tok('G')});await r8.say(H,{t:'hello',v:HELLO_V,token:tok('H')});
   r8.take(G,'started');r8.take(H,'started');
   await r8.say(G,{t:'resign'});
   await r8.say(G,{t:'rematch'});await r8.drop(G);

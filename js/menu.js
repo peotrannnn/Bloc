@@ -44,7 +44,7 @@ const Menu={
     const box=$('pveList');box.textContent='';
     for(const a of AIs.list){
       const b=document.createElement('button');
-      b.textContent=a.name;b.title=a.desc||'';b.setAttribute('role','radio');
+      b.textContent=a.name;if(a.desc){b.dataset.tn=a.name;b.dataset.tip=a.desc;}b.setAttribute('role','radio');
       b.onclick=()=>{this.pveId=a.id;this.markPve();};
       b.dataset.id=a.id;box.appendChild(b);
     }
@@ -124,7 +124,7 @@ const Menu={
     if(!this.started){
       if(t==='full')this.fail('Phòng đã đủ người.');
       else if(t==='error'&&m.reason==='noroom'&&this.quick&&this.tries<2){this.tries++;this.leaveRoom();this.quickJoin(true);}   /* phòng trong danh sách vừa hết hạn: xin phòng khác */
-      else if(t==='error')this.fail(m.reason==='noroom'?'Mã phòng không tồn tại hoặc đã hết hạn.':'Lỗi kết nối. Thử lại nhé.');
+      else if(t==='error')this.fail(m.reason==='noroom'?'Mã phòng không tồn tại hoặc đã hết hạn.':m.reason==='version'?'Game vừa được cập nhật. Hãy tải lại trang (Ctrl+F5) rồi thử lại.':'Lỗi kết nối. Thử lại nhé.');
       else if(t==='replaced')this.fail('Phòng này vừa được mở ở tab khác.');
       else if(t==='close')this.fail('Mất kết nối với server. Kiểm tra mạng rồi thử lại.');
       return;

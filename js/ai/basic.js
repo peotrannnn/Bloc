@@ -11,7 +11,7 @@ const SLIP=.08,BLOCK=.7,DANGER=3,NEED=1;
 AIs.register({
   id:'basic',
   name:'Cơ bản',
-  desc:'Đi đường ngắn nhất, biết chặn khi bị dẫn hoặc đối thủ sắp về đích, thỉnh thoảng đi sai',
+  desc:'Aka Mr. Boring',
 
   decide(p){
     const op=1-p,myD=dist(p,S.pl[p]),opD=dist(op,S.pl[op]);

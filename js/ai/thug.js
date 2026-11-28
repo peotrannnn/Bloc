@@ -35,7 +35,7 @@
   AIs.register({
     id:'thug',
     name:'Mr. Lưu Manh',
-    desc:'Hợm hĩnh, hay chọc: dựng tường sát mặt, thỉnh thoảng đi dạo cho đối thủ tức, mỗi ván một kiểu mở màn',
+    desc:'Thằng này láo',
 
     decide(p){
       const op=1-p,o=S.pl[op];

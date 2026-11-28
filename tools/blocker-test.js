@@ -369,5 +369,30 @@ console.log('AI');
   }
 }
 
+/* Đá thấp / đá cao: người chặn chỉ đứng và chạy trên ô thường, cả bản client (Blocker.pick/exitRoute) lẫn bản server (BlockerPick.pick) */
+{
+  const BP=require('../js/blocker-pick.js'),Core=require('../js/core.js'),RC=Core.make(Core.ruleset('chaos'));
+  let seed=99;const rnd=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;},ri=(a,b)=>a+Math.floor(rnd()*(b-a+1));
+  let picked=0,routes=0,badPick=0,badRoute=0,badSrv=0;
+  for(let t=0;t<60;t++){
+    const terr=Array(81).fill(0);
+    for(let i=0,n=ri(3,9);i<n;i++)terr[ri(2,6)*9+ri(0,8)]=rnd()<.5?9:1;
+    const pl=[[ri(6,8),ri(0,8)],[ri(0,2),ri(0,8)]];
+    setup({pl,terr});
+    const idx=get('Blocker.pick()');
+    if(idx>=0){picked++;if(terr[idx]!==0)badPick++;
+      run(`S.blocker=${idx}`);
+      const route=JSON.parse(run(`JSON.stringify(Blocker.exitRoute(${idx}))`));
+      if(route){routes++;for(const k of route)if(k!==idx&&terr[k]!==0)badRoute++;}
+    }
+    const st=RC.newState({spawn:[pl[0][1],pl[1][1]],terr:Uint8Array.from(terr),seed:t});st.pl=[{r:pl[0][0],c:pl[0][1]},{r:pl[1][0],c:pl[1][1]}];
+    const k=BP.pick(RC,st,rnd);if(k>=0&&terr[k]!==0)badSrv++;
+  }
+  ok(picked>=30,'đủ thế để thử người chặn trên bàn có đá ('+picked+')');
+  ok(badPick===0,'client: người chặn không bao giờ chọn ô đá ('+badPick+' sai)');
+  ok(routes>=20&&badRoute===0,'client: đường chạy ra mép không đi qua ô đá ('+routes+' đường, '+badRoute+' ô sai)');
+  ok(badSrv===0,'server (blocker-pick): không chọn ô đá ('+badSrv+' sai)');
+}
+
 console.log(fails?'\n'+fails+' / '+checks+' kiểm tra SAI':'\nTất cả '+checks+' kiểm tra đạt');
 process.exit(fails?1:0);

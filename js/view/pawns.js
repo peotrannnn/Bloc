@@ -16,6 +16,7 @@
 const WATER_CODE=(typeof Core!=='undefined'&&Core.TERR&&Core.TERR.WATER)||7;
 const SAND_CODE=(typeof Core!=='undefined'&&Core.TERR&&Core.TERR.SAND)||8;
 const JUMP_K=1.15,JUMP_F=.8/JUMP_K,JUMP_L=.2+JUMP_F;   /* nhảy: t∈[0,.2] nén lấy lực · [.2,JUMP_L] bay (cùng thời gian thật như trước) · [JUMP_L,1] đáp + nhún */
+const GROUND_FALL=2.5,FOOT_R=()=>CFG.PAWN.R*CFG.PAWN.scale*1.2;   /* tốc độ tối đa (đơn vị/giây) quân hạ theo mặt đá thấp dần; bán kính vòng chân lấy mẫu mặt đá */
 const landSq=(w,A,e)=>1-A*Math.sin(Math.PI*Math.pow(w,e||.8));   /* hệ số cao khi nhún lúc đáp, w∈[0,1]: ép xuống nhanh rồi bật lại chậm (e=1: đối xứng, êm); =1 ở hai đầu */
 const Pawns={
   list:[],
@@ -81,13 +82,35 @@ const Pawns={
     });
   },
 
+  /* Độ cao đứng của quân ở ô (r,c): mặt ô thường (TOP) + độ cao đá (Terrain.heightAt: 0 / đá thấp / đá cao). Không có địa hình thì luôn TOP. */
+  floorY(r,c){
+    if(typeof Terrain==='undefined')return TOP;
+    if(Terrain.surfaceAt)return this.groundY(cellX(c),cellZ(r));   /* quân đứng ở chỗ cao nhất dưới cả vòng chân, không chỉ ngay tâm ô */
+    return TOP+(Terrain.heightAt?Terrain.heightAt(r,c):0);
+  },
+  /* Mặt đá thấp nhất mà quân được phép đứng tại (x,z): lấy chỗ CAO NHẤT dưới cả VÒNG chân/thân (tâm + 8 điểm quanh bán kính FOOT_R: thân Lathe rộng .4·scale, chân còn đung đưa
+     ra trước/sau tới .12) chứ không chỉ ba điểm như trước. Mặt đá có vết lồi/lõm/sứt góc sắc (±.1) nên ba điểm vẫn để thân và chân cắt vào chỗ lồi nằm giữa các điểm lấy mẫu
+     (lỗi chủ dự án báo: quân đi trên đá bị cắt nhau). Hàm liên tục theo (x,z) trừ chỗ có vách đá thẳng đứng, nên không giật. Không có đá ở đó thì đúng là TOP. */
+  groundY(x,z){
+    if(typeof Terrain==='undefined'||!Terrain.surfaceAt)return TOP;
+    const R=FOOT_R();let m=Terrain.surfaceAt(x,z);
+    for(let i=0;i<8;i++){const a=i*Math.PI/4,h=Terrain.surfaceAt(x+Math.cos(a)*R,z+Math.sin(a)*R);if(h>m)m=h;}
+    return TOP+m;
+  },
+  /* Phân loại bước từ ô (r1,c1) tới (r2,c2) cho hoạt ảnh: R.stepInfo của lõi → {k:'walk'|'climb'|'hop'|'jump',dh}. Chỉ có ý nghĩa khi bàn có địa hình;
+     gọi LÚC ĐẨY VÀO HÀNG CHỜ (tường đặt sau đó không làm đổi kiểu hoạt ảnh của nước đã đi). */
+  classify(r1,c1,r2,c2){
+    if(!S.terr||r1<0||c1<0)return null;
+    return R.stepInfo(S,r1,c1,r2,c2);
+  },
+
   /* Đặt lại hai quân về ô xuất phát (ván mới) */
   reset(){for(let i=0;i<2;i++)this.place(i);},
   /* Đặt quân i đứng yên ngay tại S.pl[i], bỏ hàng chờ (ván mới, dựng lại ván, hoặc quân vừa lộ ra từ trong cỏ). Quân bị cỏ che (S.hid) thì ẩn mesh. */
   place(i){
     const s=this.list[i],p=S.pl[i];
-    s.g.position.set(cellX(p.c),TOP,cellZ(p.r));
-    s.r=s.lr=p.r;s.c=s.lc=p.c;s.q.length=0;s.t=1;s.jump=false;s.win=false;s.cel=null;s.an=null;s.hide=false;s.fire=null;s.shown=!(S.hid&&S.hid[i]);s.gk=s.shown?1:0;
+    s.g.position.set(cellX(p.c),this.floorY(p.r,p.c),cellZ(p.r));
+    s.gy=undefined;s.r=s.lr=p.r;s.c=s.lc=p.c;s.q.length=0;s.t=1;s.jump=false;s.win=false;s.cel=null;s.an=null;s.hide=false;s.fire=null;s.shown=!(S.hid&&S.hid[i]);s.gk=s.shown?1:0;
     s.yaw=s.tyaw=s.y0;s.g.rotation.y=s.y0;s.g.scale.set(1,1,1);
     this.settle(s);this.snapSink(s);
     s.g.visible=s.shown&&!s.hide;
@@ -105,6 +128,8 @@ const Pawns={
     const g=s.g,cfg=CFG.PAWN;
     s.r=p.r;s.c=p.c;
     s.fx=g.position.x;s.fy=g.position.y;s.fz=g.position.z;
+    s.gy=undefined;s.ty=this.floorY(p.r,p.c);                                          /* độ cao đứng ở ô đích (đá thấp/đá cao cao hơn mặt ô thường) */
+    const sm=p.m&&p.m.k!=='jump'?p.m:null;s.stp=sm?sm.k:'walk';s.dh=sm?sm.dh:0;s.sc=0;   /* kiểu bước (walk/climb/hop) và chênh bậc, do script/update phân loại */
     const dx=cellX(p.c)+rand(-cfg.landJitter,cfg.landJitter)-s.fx;   /* đáp lệch tâm ô một chút */
     const dz=cellZ(p.r)+rand(-cfg.landJitter,cfg.landJitter)-s.fz;
     const dl=Math.hypot(dx,dz),len=dl/CFG.PITCH;
@@ -126,6 +151,14 @@ const Pawns={
       s.roll=rand(-.5,.5);s.ez=rand(.2,.5);s.lat=rsign()*rand(.1,.3);
       s.cyc=4;
     }
+    if(s.stp==='climb')s.cyc*=1.3;                                      /* leo: chân bước nhanh hơn */
+    if(s.stp==='hop'&&mode!=='launch'){   /* nhảy qua tường giữa hai đá thấp: tái dùng khung nhảy, không lộn, cung thấp (đỉnh tường cao hơn mặt đá thấp .15), ngắn, đáp nhẹ */
+      s.jump=true;s.flips=0;s.roll*=.3;s.air=.2*rand(.9,1.1);s.dur=this.moveDur()*.85*rand(.9,1.1);s.ez=rand(.2,.5);s.lat*=.4;s.cyc=2;
+    }else if(s.jump&&mode!=='launch'){   /* nhảy qua đối thủ: cung phải đủ cao để không xuyên qua quân đứng trên đá cao hơn */
+      const r0=Math.round(s.fz/CFG.PITCH+HALF),c0=Math.round(s.fx/CFG.PITCH+HALF),hT=typeof Terrain!=='undefined'&&Terrain.heightAt?Terrain.heightAt:null;
+      const hm=hT?hT(Math.round((r0+p.r)/2),Math.round((c0+p.c)/2)):0,hs=(s.fy-TOP+(s.ty-TOP))/2;   /* độ cao ô đối thủ đứng; độ cao trung bình hai đầu (đường nội suy y đi qua đó ở giữa cung) */
+      s.air=Math.max(s.air,hm+.25-hs);
+    }
     if(s.jump){s.dur*=JUMP_K;const L=cfg.land;s.sq=Math.min(L.max,L.squash+L.per*s.air);}   /* thêm một đoạn cuối để đáp + nhún (thời gian bay giữ nguyên) */
   },
 
@@ -137,10 +170,11 @@ const Pawns={
     if(Sfx.ok()&&this.aud(s)){
       const px=g.position.x,pz=g.position.z,code=Sfx.codeAt(px,pz);
       if(s.jump){
-        if(s.sj<1&&s.t>=.2){s.sj=1;Sfx.play(s.lm?'whoosh':'jump',{x:px,z:pz,v:s.lm?1:.8});}
+        if(s.sj<1&&s.t>=.2){s.sj=1;Sfx.play(s.lm?'whoosh':s.stp==='hop'?'hop':'jump',{x:px,z:pz,v:s.lm?1:s.stp==='hop'?.8:.8});}
         if(s.sj<2&&s.t>=JUMP_L){s.sj=2;Sfx.play('land',{x:px,z:pz,v:clamp(.5+s.air*.35,.5,1.2)*(s.lm?1.25:1),mat:Sfx.matName[Sfx.matOf(code)]});}
       }else{
         const k=Math.floor(s.t*s.cyc*2);
+        if(s.stp==='climb'&&s.dh>0&&!s.sc&&s.t>=.35){s.sc=1;Sfx.play('climb',{x:px,z:pz,v:.8});}   /* leo lên: cọ đá + thở nhẹ, một lần giữa bước */
         if(k>s.sk2&&s.t<1){s.sk2=k;Sfx.step(code,px,pz,allAI()?.4:.8,1+rand(-.04,.04));}
       }
     }
@@ -148,7 +182,11 @@ const Pawns={
     const e=u+(smooth(u)-u)*s.ez,sn=Math.sin(PI*e);
     g.position.x=s.fx+s.dx*e+s.px*s.lat*sn;                             /* đường đi cong nhẹ thay vì thẳng tắp */
     g.position.z=s.fz+s.dz*e+s.pz*s.lat*sn;
-    let y=s.fy+(TOP-s.fy)*e;
+    let y=s.fy+(s.ty-s.fy)*e;                                           /* nội suy tới độ cao ô đích (đá thấp/cao cao hơn mặt ô thường) */
+    if(s.stp==='climb'&&!s.jump){   /* sườn đá thẳng đứng: leo lên thì NHẤC TRƯỚC rồi mới bước vào (xong trước khi chạm mép đá, e≈.5), xuống thì bước ra khỏi mép rồi mới HẠ; nội suy đều làm quân xuyên qua vách đá */
+      const f=s.ty>s.fy?smooth(clamp((e-.05)/.45,0,1)):smooth(clamp((e-.5)/.45,0,1));
+      y=s.fy+(s.ty-s.fy)*f;
+    }
     const cs=Math.cos(PI*e)*PI*s.lat;                                   /* mặt quay theo tiếp tuyến đường cong nên hơi xéo */
     s.tyaw=s.t>=1?s.fyaw:Math.atan2(s.dx+s.px*cs,s.dz+s.pz*cs);
     if(s.jump){   /* bay theo cung parabol, lộn một vòng, hơi nghiêng ngang */
@@ -163,8 +201,15 @@ const Pawns={
       fl.rotation.z=th;
       fl.position.x=-this.feet*Math.sin(th)*cfg.plant;
       y+=Math.abs(Math.sin(ph))*cfg.bob*sn;
+      if(s.stp==='climb'){   /* leo lên: nhấc chân cao hơn, người nén rồi duỗi · leo xuống: hạ chân, nhún nhẹ khi chạm */
+        y+=Math.sin(PI*e)*(s.dh>0?.08:.03);
+        const q=s.dh>0?(u<.5?1-.07*Math.sin(PI*u*2):1+.04*Math.sin(PI*(u-.5)*2)):landSq(clamp((u-.7)/.3,0,1),.06);
+        g.scale.set(1+(1-q)*.4,q,1+(1-q)*.4);
+      }
     }
-    g.position.y=y;
+    const gy=this.groundY(g.position.x,g.position.z);
+    s.gy=s.gy===undefined||gy>=s.gy?gy:Math.max(gy,s.gy-dt*GROUND_FALL);   /* mặt đá dâng lên thì theo NGAY (không cắt vào đá); hạ xuống thì theo từ từ để quân không giật lên xuống qua từng vết lõm */
+    g.position.y=Math.max(y,s.gy);   /* chân không bao giờ thấp hơn mặt đá thật (chỗ lồi, mép vát, đá cao thấp không đều) */
     const a=Math.sin(PI*u)*Math.sin(u*s.cyc*TAU)*PI/4;                  /* chân đung đưa tối đa 45°, về 0 lúc đứng yên */
     s.legs[0].rotation.x=a;s.legs[1].rotation.x=-a;
   },
@@ -176,20 +221,27 @@ const Pawns={
 
   celStart(s){
     const C=CFG.CELEB,p=s.g.position,dx=p.x-cellX(s.c),dz=p.z-cellZ(s.r),kind=C.force||pick1(C.kinds),dir=rsign(),a0=Math.atan2(dz,dx);
-    s.win=false;
+    s.win=false;s.gy=undefined;   /* độ cao nền ăn mừng tính lại từ mặt đá thật ngay khung đầu (không thừa giá trị cũ của lần đi trước) */
     s.cel={kind,t:0,dur:C.dur[kind],dir,a0,r0:Math.hypot(dx,dz),off:0,last:0,exit:null};
     if(kind==='run'){const th0=dir>0?-a0:Math.PI-a0;s.cel.off=angDiff(th0,s.yaw)-th0;}   /* hướng mặt khi chạy, quy về liên tục so với s.yaw */
   },
 
+  /* Độ cao NỀN của quân khi ăn mừng = mặt đá THẬT dưới chân, cùng cách đi bộ tính (xem step: dâng thì theo ngay, hạ thì theo từ từ).
+     Mọi kiểu ăn mừng cộng độ nảy/lộn LÊN TRÊN nền này; không được lấy TOP (mặt ô thường) làm nền, nếu không quân đứng trên đá sẽ ăn mừng lún trong đá. */
+  celBase(s,dt){
+    const g=s.g,gy=this.groundY(g.position.x,g.position.z);
+    s.gy=s.gy===undefined||gy>=s.gy?gy:Math.max(gy,s.gy-dt*GROUND_FALL);
+    return s.gy;
+  },
   celStep(s,dt){
     const c=s.cel,C=CFG.CELEB,g=s.g,fl=s.fl,L0=s.legs[0],L1=s.legs[1],PI=Math.PI,pv=CFG.PAWN.pivot;
     c.t=Math.min(c.dur,c.t+dt);const t=c.t,u=t/c.dur;
-    fl.rotation.set(0,0,0);fl.position.set(0,pv,0);g.scale.set(1,1,1);L0.rotation.set(0,0,0);L1.rotation.set(0,0,0);g.position.y=TOP;   /* về tư thế gốc rồi mỗi kiểu tự thêm phần của mình */
+    fl.rotation.set(0,0,0);fl.position.set(0,pv,0);g.scale.set(1,1,1);L0.rotation.set(0,0,0);L1.rotation.set(0,0,0);let gb=this.celBase(s,dt);g.position.y=gb;   /* về tư thế gốc rồi mỗi kiểu tự thêm phần của mình */
     let a=0;
     switch(c.kind){
       case 'flip':{   /* nén xuống, búng lên, lộn một vòng, đáp: cùng kiểu với cú nhảy qua đầu đối thủ */
         const uu=clamp((u-.2)/.7,0,1),w=Math.min(1,u/.2);   /* 20% nén · 70% bay · 10% đáp + nhún */
-        g.position.y=TOP+Math.sin(PI*uu)*C.flip.air;
+        g.position.y=gb+Math.sin(PI*uu)*C.flip.air;
         fl.rotation.x=TAU*smooth(clamp((uu-.1)/.8,0,1));
         const q=u<.2?1-.3*smooth(w):u<.3?.7+3*(u-.2):u>.9?landSq((u-.9)/.1,.22):1;
         g.scale.set(1+(1-q)*.4,q,1+(1-q)*.4);
@@ -202,7 +254,7 @@ const Pawns={
       case 'bounce':{   /* nảy cà tưng: bẹp xuống lúc chạm đất, vươn dài lúc lên cao, hơi nghiêng qua lại */
         const B=C.bounce,ph=u*B.hops,f=ph-Math.floor(ph),env=smooth(clamp(t/.2,0,1))*smooth(clamp((c.dur-t)/.4,0,1));
         const hp=Math.floor(ph);if(hp!==c.hp){c.hp=hp;Sfx.play('bounce',{x:g.position.x,z:g.position.z,v:.7*env+.1});}
-        g.position.y=TOP+4*f*(1-f)*B.h*env;
+        g.position.y=gb+4*f*(1-f)*B.h*env;
         const q=1-B.squash*(1-clamp(Math.min(f,1-f)/.12,0,1))*env+.1*Math.sin(PI*f)*env;
         g.scale.set(1+(1-q)*.4,q,1+(1-q)*.4);
         fl.rotation.z=.12*Math.sin(ph*TAU)*env;
@@ -211,14 +263,15 @@ const Pawns={
         const R=C.run,inn=smooth(clamp(t/.4,0,1)),out=smooth(clamp((c.dur-t)/.45,0,1));
         const ang=c.a0+c.dir*TAU*R.laps*(u+(smooth(u)-u)*.5),rad=(c.r0+(R.radius-c.r0)*inn)*out;
         g.position.x=cellX(s.c)+rad*Math.cos(ang);g.position.z=cellZ(s.r)+rad*Math.sin(ang);
+        gb=this.celBase(s,0);   /* quân vừa dời x/z: lấy lại nền ở chỗ MỚI (dt=0: chỉ dâng theo ngay, việc hạ dần đã tính ở lần gọi đầu khung) */
         if(out>=1){c.last=(c.dir>0?-ang:PI-ang)+c.off;c.last*=inn;fl.rotation.y=c.last;}
         else{if(c.exit===null)c.exit=angDiff(c.last,0);fl.rotation.y=c.exit*out;}       /* ra: quay mặt về hướng ban đầu theo đường ngắn nhất */
         fl.rotation.z=R.lean*c.dir*inn*out;
         const ph=t*R.cadence;a=Math.sin(ph)*PI/4;L0.rotation.x=a;L1.rotation.x=-a;
-        g.position.y=TOP+Math.abs(Math.sin(ph))*.05*inn*out;break;}
+        g.position.y=gb+Math.abs(Math.sin(ph))*.05*inn*out;break;}
     }
     if(t>=c.dur){   /* xong: trả về tư thế đứng yên */
-      s.cel=null;g.position.y=TOP;g.scale.set(1,1,1);fl.rotation.set(0,0,0);fl.position.set(0,pv,0);L0.rotation.set(0,0,0);L1.rotation.set(0,0,0);
+      s.cel=null;g.position.y=this.floorY(s.r,s.c);s.gy=undefined;g.scale.set(1,1,1);fl.rotation.set(0,0,0);fl.position.set(0,pv,0);L0.rotation.set(0,0,0);L1.rotation.set(0,0,0);
     }
   },
 
@@ -232,8 +285,13 @@ const Pawns={
   },
   /* Nạp một chuỗi đoạn chuyển động cho quân i; final = {r,c} ô cuối cùng (khớp S.pl[i]) */
   script(i,segs,final){
-    const s=this.list[i];
-    for(const g of segs)s.q.push(g);
+    const s=this.list[i];let pr=s.lr,pc=s.lc;   /* (pr,pc) = ô logic ngay trước đoạn đang xét: để phân loại bước đi bộ ngay lúc xếp hàng */
+    for(const g of segs){
+      if(!g.k||g.k==='walk'){g.m=this.classify(pr,pc,g.r,g.c);pr=g.r;pc=g.c;}
+      else if(g.k==='slide'){const e=g.path[g.path.length-1];pr=e[0];pc=e[1];}
+      else if(g.k==='launch'||g.k==='blink'){pr=g.to[0];pc=g.to[1];}
+      s.q.push(g);
+    }
     s.lr=final.r;s.lc=final.c;
   },
   /* Bắt đầu một đoạn (quân đang đứng yên hẳn, đã settle) */
@@ -463,7 +521,7 @@ const Pawns={
       if(!s.an&&!s.q.length&&s.t>=1&&s.shown===!!(S.hid&&S.hid[i]))s.shown=!S.hid[i];   /* không có hoạt ảnh nào lo: bám theo S.hid (vd dựng lại ván) */
       const vis=s.shown&&!s.hide;if(s.g.visible!==vis){s.g.visible=vis;busy=true;}   /* quân bị cỏ che (Hỗn Loạn): ẩn; S.pl[i] khi đó là vị trí thấy lần cuối nên không có hoạt ảnh */
       /* Nước mới vào hàng chờ; chỉ bắt đầu đi khi nước trước ĐÃ ĐÁP XUỐNG XONG (không cắt ngang giữa lúc đang nhảy/lộn) */
-      if(s.lr!==p.r||s.lc!==p.c){s.lr=p.r;s.lc=p.c;s.q.push({r:p.r,c:p.c});}
+      if(s.lr!==p.r||s.lc!==p.c){const m=this.classify(s.lr,s.lc,p.r,p.c);s.lr=p.r;s.lc=p.c;s.q.push({r:p.r,c:p.c,m});}
       while(!s.an&&s.t>=1&&s.q.length){   /* đoạn hide/show xong ngay trong khung này nên vòng lặp lấy tiếp đoạn sau */
         const nx=s.q[0];
         if(nx.wait!==undefined&&!this.idle(nx.wait)){busy=true;break;}   /* wait: đợi quân kia đi xong (dịch chuyển trễ xảy ra SAU khi người chặn đã rời cổng) */

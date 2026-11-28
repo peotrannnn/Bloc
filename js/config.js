@@ -38,6 +38,7 @@ const CFG={
   /* Địa hình chế độ Hỗn Loạn (view/terrain.js). Thiếu khóa nào thì dùng mặc định trong terrain.js. */
   TERRAIN:{
     stoneH:.7,                 /* cao khối đá trên mặt ô; quân cờ cao ≈ .7 */
+    lowH:.35,                  /* cao khối đá thấp (mã 9, biome núi) = một nửa đá cao; tường cao .5 nên nhô .15 trên đá thấp */
     tufts:7,tuftBlades:5,      /* số cụm cỏ mỗi ô và số lưỡi mỗi cụm (±1) */
     bladeH:[.4,.75],           /* khoảng cao lưỡi cỏ */
     sway:.34,swaySpeed:1.2,    /* biên độ ngọn cỏ khi gió thổi và tốc độ */
@@ -147,7 +148,7 @@ const CFG={
     brick:{icon:'🧱',name:'Cục gạch',tip:'+1 tường'},
     boots:{icon:'👟',name:'Đôi giày',tip:'Thêm một lượt, chỉ để đi quân (miễn phí, không tốn lượt)'},
     glove:{icon:'🧤',name:'Găng tay',tip:'Cướp 1 tường của đối thủ (khi họ còn ít nhất 2 tường). Tốn một lượt'},
-    hammer:{icon:'🔨',name:'Búa',tip:'Tháo một tường của đối thủ, trả lại cho họ. Tốn một lượt'},
+    hammer:{icon:'🔨',name:'Búa',tip:'Tháo một tường của đối thủ và trả lại cho họ. Miễn phí, không tốn lượt: dùng xong bạn vẫn được đi quân hoặc đặt tường'},
     pick:{icon:'⛏️',name:'Cuốc chim',tip:'Phá hẳn một tường của đối thủ: khe đó không ai xây lại được. Tốn một lượt'}
   },
   CHEST:{wait:1.55,reveal:.5,popHold:1.0},

@@ -19,7 +19,7 @@
 AIs.register({
   id:  'dumb',
   name:'Bé khờ',
-  desc:'Đi loanh quanh, ít đặt tường, hay mắc sai lầm',
+  desc:'Khờ ~ (chưa có bồ)',
 
   decide(p){
     const op  = 1 - p;
@@ -32,7 +32,15 @@ AIs.register({
         for(let r = 0; r < WN; r++)
           for(let c = 0; c < WN; c++)
             if(wallFree(o, r, c)) walls.push({ o, r, c });
-      if(walls.length) return { wall: pick1(walls) };  // đặt ĐẠI, không suy nghĩ
+      // đặt ĐẠI, không suy nghĩ — nhưng vẫn phải đúng luật: wallFree chỉ kiểm "ô còn trống",
+      // còn canWall mới kiểm "không bịt kín đường về đích của MỘT bên nào". Trước đây bé chỉ dùng
+      // wallFree nên có thể dựng vòng tường kín nhốt cả hai quân → hết đường thắng.
+      // Bốc ngẫu nhiên từng tường, gặp tường bất hợp lệ thì bỏ và bốc tiếp (chỉ tốn BFS cho vài tường).
+      while(walls.length){
+        const w = walls.splice(Math.floor(Math.random() * walls.length), 1)[0];
+        if(canWall(w.o, w.r, w.c)) return { wall: w };
+      }
+      // hết tường hợp lệ → rơi xuống đi quân bình thường
     }
 
     // (2) 60%: đi về ô gần đích nhất (hoà thì random — vẫn ngơ ngác)

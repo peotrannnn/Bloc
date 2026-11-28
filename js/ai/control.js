@@ -28,7 +28,7 @@
   AIs.register({
     id:'control',
     name:'Mr. Kiểm Soát',
-    desc:'Chiếm trung tâm: dựng cụm tường giữa bàn trước để lấy thế, rồi từ từ ứng biến',
+    desc:'Thằng này thích kiểm soát map',
 
     decide(p){
       if(!mem[p]||S.ply<2)mem[p]=roll();

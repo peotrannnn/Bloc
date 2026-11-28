@@ -165,11 +165,34 @@ console.log('Búa và cuốc chim');
     const sn=JSON.stringify(R.snapshot(st)),v=R.apply(st,{item:{use:'hammer',...t}});
     ok(!v.ok&&JSON.stringify(R.snapshot(st))===sn,'búa từ chối mục tiêu '+JSON.stringify(t));
   }
-  const L1=st.left[1];
+  const L1=st.left[1],ply0=st.ply;
   let r=R.apply(st,{item:{use:'hammer',o:'v',r:5,c:6}});
-  ok(r.ok&&st.ws.v[5*8+6]===0&&st.wo.v[5*8+6]===0&&st.left[1]===L1+1&&st.turn===1,'búa: tháo tường đối thủ, trả lại cho đối thủ, tốn lượt');
+  ok(r.ok&&st.ws.v[5*8+6]===0&&st.wo.v[5*8+6]===0&&st.left[1]===L1+1,'búa: tháo tường đối thủ, trả lại cho đối thủ');
+  ok(r.free===true&&st.turn===0&&st.ply===ply0&&!r.skipped&&st.inv[0].length===0,'búa MIỄN PHÍ: không tốn lượt, ply giữ nguyên, vẫn là lượt mình, búa mất khỏi túi');
   ok(r.fx[0].t==='hammer'&&r.fx[0].o==='v'&&st.dead.v[5*8+6]===0,'fx hammer, khe không bị chiếm');
   ok(R.canWall(st,'v',5,6),'khe đã tháo đặt lại được');
+  {  /* dùng búa xong vẫn đi quân hoặc đặt tường được, rồi mới tới lượt đối thủ */
+    let s2=setup([['hammer'],[]]);R.apply(s2,{item:{use:'hammer',o:'v',r:5,c:6}});
+    const mv=R.moves(s2,0);
+    ok(mv.length>0&&R.apply(s2,{move:mv[0]}).ok&&s2.turn===1&&s2.ply===ply0+1,'búa rồi đi quân: một lượt trọn vẹn, sau đó tới đối thủ');
+    s2=setup([['hammer'],[]]);R.apply(s2,{item:{use:'hammer',o:'v',r:5,c:6}});
+    const w0=s2.left[0];
+    ok(R.apply(s2,{wall:{o:'v',r:5,c:6}}).ok&&s2.left[0]===w0-1&&s2.turn===1,'búa rồi đặt tường (kể cả đúng khe vừa tháo): hợp lệ');
+    /* tháo tường mở đường thật: quân bị tường chắn trước mặt thì sau búa đi được ô đó */
+    const sb=mk(R,null,{pl:[[6,4],[2,4]],inv:[['hammer'],[]]});
+    R.apply(sb,{wall:{o:'h',r:2,c:0}});R.apply(sb,{wall:{o:'h',r:5,c:4}});   /* Đen chắn h(5,4): giữa hàng 5-6, cột 4-5 → Trắng ở (6,4) không lên (5,4) được */
+    ok(!R.moves(sb,0).some(m=>m[0]===5&&m[1]===4),'trước búa: tường Đen chắn lối lên');
+    R.apply(sb,{item:{use:'hammer',o:'h',r:5,c:4}});
+    ok(R.moves(sb,0).some(m=>m[0]===5&&m[1]===4)&&R.apply(sb,{move:[5,4]}).ok,'sau búa: đi được ngay trong cùng lượt');
+    /* hai búa liền: túi 2 búa dùng được cả hai trong một lượt, vẫn miễn phí */
+    const s3=mk(R,null,{pl:[[6,4],[2,4]],inv:[['hammer','hammer'],[]]});
+    R.apply(s3,{wall:{o:'h',r:2,c:0}});R.apply(s3,{wall:{o:'v',r:5,c:6}});
+    R.apply(s3,{wall:{o:'h',r:1,c:5}});R.apply(s3,{wall:{o:'v',r:3,c:6}});
+    const pl3=s3.ply;
+    ok(R.apply(s3,{item:{use:'hammer',o:'v',r:5,c:6}}).ok&&R.apply(s3,{item:{use:'hammer',o:'v',r:3,c:6}}).ok&&s3.turn===0&&s3.ply===pl3&&s3.inv[0].length===0,'hai búa liền trong một lượt, đều miễn phí');
+    /* không có búa thì không dùng được; mục tiêu sai không đổi gì (đã kiểm ở trên) */
+    ok(!R.apply(setup([[],[]]),{item:{use:'hammer',o:'v',r:5,c:6}}).ok,'không có búa trong túi: từ chối');
+  }
   /* cuốc chim */
   st=setup([['pick'],[]]);
   const L1b=st.left[1];
@@ -190,6 +213,25 @@ console.log('Búa và cuốc chim');
   R.apply(st,{wall:{o:'h',r:2,c:0}});R.apply(st,{wall:{o:'v',r:5,c:6}});
   st.left[0]=0;st.stuck[0]=true;st.turn=0;
   ok(R.hasPaidItem(st,0)&&R.check(st,{item:{use:'hammer',o:'v',r:5,c:6}}).ok,'đứng yên, hết tường: vẫn dùng được búa');
+  {  /* búa MIỄN PHÍ nhưng nếu dùng xong p vẫn hết hành động (đứng yên, hết tường, hết đồ) thì mất lượt như mọi lượt bí khác, không kẹt ván */
+    const r2=R.apply(st,{item:{use:'hammer',o:'v',r:5,c:6}});
+    ok(r2.ok&&r2.free===false&&r2.skipped&&r2.skipped[0]===0&&st.turn===1&&st.stuck[0]===false,'đứng yên + hết tường: búa xong vẫn bí → mất lượt, chuyển cho đối thủ');
+  }
+  /* trong lượt thêm của giày (chỉ được đi quân) thì búa bị từ chối */
+  {
+    const sg=mk(R,null,{pl:[[6,4],[2,4]],inv:[['boots','hammer'],[]]});
+    R.apply(sg,{wall:{o:'h',r:2,c:0}});R.apply(sg,{wall:{o:'v',r:5,c:6}});
+    R.apply(sg,{item:{use:'boots'}});R.apply(sg,{move:[5,4]});   /* giày + một nước đi → lượt thêm */
+    ok(sg.bonus[0]===2&&sg.turn===0&&R.apply(sg,{item:{use:'hammer',o:'v',r:5,c:6}}).reason==='moveonly','lượt thêm của giày: không dùng búa (chỉ đi quân)');
+  }
+  {  /* giày chờ rồi búa: búa không phá giày chờ, lượt thêm vẫn tới */
+    const sg=mk(R,null,{pl:[[6,4],[2,4]],inv:[['boots','hammer'],[]]});
+    R.apply(sg,{wall:{o:'h',r:2,c:0}});R.apply(sg,{wall:{o:'v',r:5,c:6}});
+    R.apply(sg,{item:{use:'boots'}});R.apply(sg,{item:{use:'hammer',o:'v',r:5,c:6}});
+    ok(sg.bonus[0]===1&&sg.turn===0,'giày chờ + búa: cả hai miễn phí, giày vẫn chờ');
+    R.apply(sg,{move:[5,4]});
+    ok(sg.bonus[0]===2&&sg.turn===0,'...rồi đi quân: vẫn được lượt thêm của giày');
+  }
 }
 
 /* ---------- 5. Snapshot ---------- */

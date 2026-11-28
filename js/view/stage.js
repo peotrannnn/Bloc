@@ -32,7 +32,7 @@ const Stage={
   invalidate(shadows){this.need=3;if(shadows)this.shadowDirty=true;},
 
   /* Chế độ Hỗn Loạn: dựng địa hình 3D từ mảng terr (xem view/terrain.js). terr rỗng/null = bàn Classic. */
-  setTerrain(terr,seed){if(typeof Terrain!=='undefined')Terrain.build(this,terr,seed);this.invalidate(true);}   /* biên dịch shader do prewarm() lo (App.newGame, sau màn hình tải) */,
+  setTerrain(terr,seed){if(typeof Terrain!=='undefined')Terrain.build(this,terr,seed);this.liftHints();this.invalidate(true);}   /* biên dịch shader do prewarm() lo (App.newGame, sau màn hình tải) */,
 
   init(host){
     this.scene=new THREE.Scene();
@@ -115,6 +115,22 @@ const Stage={
     }
   },
 
+  /* Độ cao mặt ô (0 / đá thấp / đá cao) để đặt lớp gợi ý, mũi tên, nhãn lên đúng mặt đá. Không có địa hình → 0. */
+  heightAt(r,c){return typeof Terrain!=='undefined'&&Terrain.heightAt?Terrain.heightAt(r,c):0;},
+  /* Độ cao mặt đá THẬT (để đặt thứ nhìn thấy: gợi ý, mũi tên, nhãn). heightAt chỉ là bậc danh nghĩa (luật, chọn ô bằng chuột); mặt vẽ lệch tới ±.1 nên gợi ý đặt theo heightAt bị chìm vào đá.
+     max=true: chỗ cao nhất giữa ô (tấm phẳng không chìm vào chỗ lồi). */
+  visualAt(r,c,max){
+    if(typeof Terrain==='undefined')return 0;
+    const f=max?Terrain.topMaxAt:Terrain.topAt;
+    return f?f(r,c):(Terrain.heightAt?Terrain.heightAt(r,c):0);
+  },
+  /* Đặt lại độ cao lớp gợi ý và mũi tên theo địa hình hiện tại (gọi sau mỗi lần dựng địa hình); nếu không thì chúng chìm trong khối đá */
+  liftHints(){
+    for(let r=0;r<this.hints.length;r++)for(let c=0;c<this.hints[r].length;c++){
+      const h=this.hints[r][c],y=TOP+this.visualAt(r,c,true);h.m.position.y=y+.003;h.ar.position.y=y+.006;
+    }
+  },
+
   /* Nhãn chữ (Up/Down/Left/Right) lơ lửng phía trên ô đi đặc biệt. Chỉ cần tối đa 3 nhãn nên dùng sẵn một bể sprite. */
   labelTex(text){
     this.ltex=this.ltex||{};
@@ -134,7 +150,7 @@ const Stage={
     }
     this.labels.forEach((sp,i)=>{
       const l=list[i];sp.visible=!!l;
-      if(l){const tx=this.labelTex(l.t);sp.material.map=tx;sp.material.needsUpdate=true;sp.scale.set(CFG.CELL*.22*tx.aspect,CFG.CELL*.22,1);sp.position.set(cellX(l.c),TOP+.2,cellZ(l.r));}
+      if(l){const tx=this.labelTex(l.t);sp.material.map=tx;sp.material.needsUpdate=true;sp.scale.set(CFG.CELL*.22*tx.aspect,CFG.CELL*.22,1);sp.position.set(cellX(l.c),TOP+this.visualAt(l.r,l.c)+.2,cellZ(l.r));}
     });
     this.invalidate();
   },

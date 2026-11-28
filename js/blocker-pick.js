@@ -1,7 +1,7 @@
 'use strict';
 /* [BLOCKER-PICK] Chọn ô cho người chặn đường. THUẦN LOGIC (không 3D, không S): nhận bộ luật R (Core.make) + trạng thái st, nên SERVER dùng được y nguyên.
    Cùng thuật toán với Blocker.pick() ở view/blocker.js (client offline dùng bản có sẵn); sửa luật chọn thì sửa cả hai.
-   Ô hợp lệ = ô thường (terr = 0), không phải hàng đích, không có quân, và sau khi chặn hai bên VẪN còn đường về đích.
+   Ô hợp lệ = ô thường (terr = 0, bậc 0: không phải đá thấp/cao), không phải hàng đích, không có quân, và sau khi chặn hai bên VẪN còn đường về đích.
    Điểm của ô = số bước hai bên phải đi THÊM nếu ô bị chặn + .25 × số cạnh ô đã bị tường/đá bịt. Bốc ngẫu nhiên trong các ô điểm cao nhất.
    Ván thoáng (chặn ô nào cũng không làm ai đi thêm): ô nằm 2-4 bước trước bên đang dẫn. Trả về chỉ số ô r*N+c, -1 nếu không có chỗ.
    Chỉ dùng cho chế độ Hỗn Loạn: Classic không bao giờ có người chặn đường. */
@@ -11,7 +11,7 @@ const BlockerPick=(function(){
     const N=R.N;
     if(r<1||r>N-2||c<0||c>=N)return false;
     const k=r*N+c;
-    if(!R.open(st,r,c)||st.blocker===k)return false;
+    if(!R.ground(st,r,c)||st.blocker===k)return false;   /* ground = ô mở và bậc 0: người chặn không bao giờ lên đá */
     if(st.terr&&st.terr[k]!==0)return false;
     return !st.pl.some(p=>p.r===r&&p.c===c);
   }

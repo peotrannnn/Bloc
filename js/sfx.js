@@ -135,6 +135,8 @@ const Sfx=(function(){
     land:(d,t,v,o)=>{osc(d,'sine',130*o.r,62*o.r,t,.18,.5*v,.004,900);nz(d,'bandpass',800,500,.9,t,.05,.18*v,.002);
       if(o.mat==='grass')nz(d,'bandpass',2000,1100,.7,t,.16,.12*v,.02,true);else if(o.mat==='sand')nz(d,'bandpass',2500,1500,.5,t,.2,.12*v,.02);
       else if(o.mat==='water')nz(d,'bandpass',800,300,1,t,.3,.2*v,.01);},
+    climb:(d,t,v,o)=>{nz(d,'bandpass',1400,700,1.2,t,.13,.14*v,.02);LIB.stepStone(d,t+.05,v*.9,{r:.9});nz(d,'bandpass',550,320,.8,t+.02,.16,.04*v,.05);},   /* leo lên đá: cọ đá + bước + hơi thở nhẹ */
+    hop:(d,t,v,o)=>{LIB.jump(d,t,v*.6,o);},   /* nhảy qua tường giữa hai đá thấp: tiếng nhảy ngắn, nhỏ hơn nhảy qua đối thủ */
     whoosh:(d,t,v,o)=>{nz(d,'bandpass',300,1800,.7,t,.4,.12*v,.1);nz(d,'bandpass',1800,400,.7,t+.25,.35,.07*v,.1);},
     slipFall:(d,t,v,o)=>{osc(d,'sine',900,310,t,.2,.1*v,.01,2500);},
     body:(d,t,v,o)=>{osc(d,'sine',95,48,t,.18,.4*v,.004,500);nz(d,'lowpass',700,400,.6,t,.09,.22*v,.003,true);},
@@ -213,7 +215,7 @@ const Sfx=(function(){
 
   /* ---- Bước chân theo chất liệu ---- */
   function matOf(code){
-    switch(code){case 2:return'Grass';case 8:return'Sand';case 7:return'Water';case 4:return'Plate';case 1:return'Stone';default:return'Wood';}
+    switch(code){case 2:return'Grass';case 8:return'Sand';case 7:return'Water';case 4:return'Plate';case 1:case 9:return'Stone';default:return'Wood';}
   }
   const matName={Grass:'grass',Sand:'sand',Water:'water',Plate:'wood',Stone:'wood',Wood:'wood'};
   /* Mã ô dưới toạ độ thế giới (x,z); 0 nếu Classic */

@@ -42,7 +42,7 @@
   AIs.register({
     id:'mirror',
     name:'Mr. Bắt Chước',
-    desc:'Cái bóng: bạn đi sao nó đi y vậy (đối xứng qua tâm bàn), chỉ ra đòn thật khi thấy sơ hở',
+    desc:'Người không chính kiến',
 
     decide(p){
       const op=1-p,C=CFG.AI.mirror;

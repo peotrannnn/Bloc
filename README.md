@@ -15,7 +15,8 @@ Game cờ 3D chạy trên trình duyệt (biến thể Quoridor), giao diện ti
 | `js/blocker-plan.js`, `js/blocker-pick.js` | Lịch + cách chọn ô của người chặn đường (thuần logic, server dùng chung; chỉ Hỗn Loạn) |
 | `js/rules.js` | Lớp mỏng nối lõi luật với trạng thái `S` của client (giữ tên hàm cũ cho AI/giao diện) |
 | `js/ai/` | Các AI (mỗi file một AI, đăng ký qua `registry.js`), worker chạy AI nặng |
-| `js/view/` | Phần 3D: bàn cờ, quân, tường, camera, pháo bông |
+| `js/view/` | Phần 3D: bàn cờ, quân, tường, camera, pháo bông; `terrain.js` dựng đá thấp/cao (`Terrain.heightAt`), `pawns.js` leo/nhảy theo độ cao |
+| `js/tooltip.js` | Khung mô tả khi rê chuột (thay `title` mặc định): đặt `data-tip` / `data-tn` / `data-tk` lên phần tử |
 | `js/sfx.js` | **Âm thanh** (WebAudio, tổng hợp, không cần file): hover/click, bước chân theo mặt đất, trượt băng, bẫy lò xo, cổng, rương, tường, người chặn đường, pháo bông, môi trường theo biome |
 | `js/app.js`, `ui.js`, `menu.js`, `input.js` | Điều phối ván, giao diện, menu, chuột/phím |
 | `server/` | Server online (Cloudflare Worker + Durable Object), xem `server/README.md` |
@@ -28,11 +29,15 @@ node tools/core-test.js                       # kiểm thử lõi luật
 node tools/items-test.js                      # kiểm thử rương và vật phẩm của lõi luật (kèm hàng trăm ván ngẫu nhiên kiểm các bất biến)
 node tools/view-test.js                       # kiểm thử logic hoạt ảnh Hỗn Loạn phía client (không cần trình duyệt)
 node tools/blocker-test.js                    # kiểm thử sự kiện người chặn đường: chọn ô, đường chạy, tạm dừng hai bên, camera, mọi AI né người chặn
-node tools/chaos-client-test.mjs              # client thật ↔ server thật: so sánh trạng thái sau MỖI tin (kể cả túi đồ, chủ tường, rương)
+node tools/chaos-client-test.mjs              # client thật ↔ server thật: so sánh trạng thái sau MỖI tin (kể cả túi đồ, chủ tường, rương, quân leo đá)
+node tools/stone-surface-test.js              # mặt đá thật (độ cao quân/ô gợi ý đứng trên đá) khớp hình học khối đá
+node tools/lowstone-test.js                   # đá thấp/đá cao: tham chiếu độc lập (BFS riêng), bảng tường, nhảy qua đối thủ, chống kẹt, property test (~3,2 triệu kiểm tra, gồm luật cổng)
+node tools/golden-test.js                     # Classic và Hỗn Loạn không đá thấp phải trùng bản cũ (--write CHỈ khi chủ dự án đồng ý đổi luật)
+node tools/mapgen-test.js                     # kiểm thử sinh map (kể cả đá thấp) và đối chiếu BFS mapgen ↔ Core
 node server/test/items-room.mjs               # kiểm thử vật phẩm ở phía server (không cần Cloudflare)
 node server/test/blocker-room.mjs             # kiểm thử người chặn đường ở phía server (lịch, chọn ô, gửi cho cả hai, nối lại, đấu lại) và chứng minh Classic không có người chặn
 node tools/tournament.js attacker defender 200   # đấu thử hai AI;  --all để đấu vòng tròn
-node server/test/room-logic.test.mjs          # kiểm thử server (không cần Cloudflare)
+node server/test/room-logic.mjs               # kiểm thử server (không cần Cloudflare)
 node tools/profile.js                         # đo "dấu vân tay" lối chơi của từng AI
 node tools/build-worker.js                    # PHẢI chạy lại sau khi sửa config/util/state/core/rules/ai/tools/biet
 ```
@@ -44,8 +49,22 @@ Luật nằm trong `js/core.js` (phần chú thích đầu file là bản đầy
 - Quân kết thúc nước **đi** trên ô rương (bước vào, nhảy qua đối thủ đáp xuống, hoặc trượt băng dừng đúng ô) thì rương mở rồi biến mất; dịch chuyển cổng / bẫy hất không mở rương. Quà bốc ngẫu nhiên ở server: cục gạch 30% · giày 20% · búa 20% · găng 15% · cuốc chim 15%.
 - **Cục gạch** +1 tường ngay (không chiếm túi). Các món còn lại vào túi (tối đa 2; đầy thì bỏ món cũ nhất). Túi đồ công khai cho cả hai bên. Bấm món trong thanh thông tin, hoặc phím `1` / `2`.
 - **Giày**: miễn phí, không tốn lượt; sau hành động kế tiếp bạn có thêm một lượt **chỉ được đi quân**.
-- **Găng**: cướp 1 tường của đối thủ (khi họ còn ≥ 2). **Búa**: tháo một tường của đối thủ và trả lại cho họ. **Cuốc chim**: phá hẳn một tường của đối thủ, khe đó bị chiếm vĩnh viễn. Cả ba tốn một lượt; búa / cuốc chim chọn tường bằng chuột (hoặc mũi tên + `Enter`, `Esc` để hủy).
+- **Găng**: cướp 1 tường của đối thủ (khi họ còn ≥ 2). **Búa**: tháo một tường của đối thủ và trả lại cho họ. **Cuốc chim**: phá hẳn một tường của đối thủ, khe đó bị chiếm vĩnh viễn. **Búa miễn phí, không tốn lượt** (như giày): tháo tường, trả lại cho đối thủ, rồi bạn vẫn được đi quân hoặc đặt tường ngay trong lượt đó (không dùng được trong lượt thêm của giày). Găng và cuốc chim tốn một lượt; búa / cuốc chim chọn tường bằng chuột (hoặc mũi tên + `Enter`, `Esc` để hủy).
 - Hoạt ảnh: quân khựng lại ở ô kề, rương mở nắp, quà nổi lên rồi rương biến mất, quân mới bước vào ô (`Pawns` đoạn `chest`, `Terrain.openChest`, `Marks.pop`).
+
+## Hỗn Loạn: đá thấp và đá cao (biome núi)
+
+Chi tiết và lý do thiết kế: `docs/PLAN-da-thap-da-cao.md`; bảng luật đầy đủ ở đầu `js/core.js` (mục "Độ cao").
+
+- **Độ cao:** ô thường = bậc 0 · **đá thấp** (mã 9, cao 0,35) = bậc 1 · **đá cao** (mã 1, cao 0,7) = bậc 2. Đá thấp chỉ sinh ở biome núi, 1-3 ô ở "chân" mỗi cụm đá cao (tối đa 6 ô cả bàn) và chỉ ở 5 hàng giữa.
+- **Đi bước:** giữa hai ô kề cạnh chênh tối đa 1 bậc. Thường ↔ thấp ↔ cao đi được, **thường ↔ cao thì không** (muốn lên đá cao phải leo qua đá thấp). Leo lên/xuống không tốn thêm nhịp: vẫn một nước đi = một lượt.
+- **Tường xét từng cạnh:** cạnh giữa hai ô **đều là đá** (cao–cao, thấp–thấp, thấp–cao) thì tường **không chặn** (tường vẫn đặt được và vẫn tính vào số tường; tường chìm trong đá cao, nhô 0,15 trên đá thấp nên quân "nhảy qua tường" giữa hai đá thấp). Cạnh có ít nhất một ô thường: tường chặn như bình thường. Một tường phủ 2 cạnh thì mỗi cạnh tự xét.
+- **Nhảy qua đối thủ (A qua B tới C):** hợp lệ khi A→B và B→C đi được **và** |bậc A − bậc C| ≤ 1; nếu không thì được né sang bên (cũng phải thỏa chênh ≤ 1).
+- **Hiệu ứng khác:** ô đá không có rương/bẫy/cổng/nước/cát/cỏ/băng. Băng chỉ trượt trên ô thường (không trượt lên đá). Bẫy hất, cổng, người chặn đường chỉ ở ô thường. **Bẫy chỉ hất quân về ô xuất phát còn đường về đích** (sửa lỗi cũ: trước đây có thể hất vào túi kín). **Cổng dịch chuyển:** chỉ dịch chuyển khi cổng đích còn đường về đích của quân đó (bị tường bịt kín thì quân đứng nguyên và phải đi bộ vòng qua bờ kia); tường **không được** làm cả hai cổng cùng mất đường về đích của cả hai bên (một cổng bị bịt thì được).
+- **Chống kẹt:** `canWall` từ chối tường làm MỘT BÊN (kể cả quân đang đứng trên núi) mất đường về đích, nên không ai bị nhốt trên núi. Giao diện báo "Không được nhốt người chơi trên núi" / "Đá quá cao, hãy leo từ đá thấp". Trường hợp **chấp nhận được**: đối thủ đứng đúng ô đá thấp là lối xuống duy nhất của quân trên đá cao thì quân đó tạm thời chỉ đặt được tường (không kẹt vĩnh viễn: đối thủ phải đi/đặt tường, hết thì phải rời ô; `maxPly` = 300).
+- **Hoạt ảnh:** đi bộ · leo lên (nhấc chân, nén rồi duỗi, tiếng cọ đá) · leo xuống (nhún nhẹ) · nhảy qua tường (đá thấp–đá thấp có tường, cung thấp, không lộn) · nhảy qua đối thủ (cung đủ cao để không xuyên quân đứng trên đá). Kiểu bước được phân loại bằng `R.stepInfo` **lúc xếp vào hàng chờ** (`Pawns.script/update`), không đổi giao thức mạng.
+- **Triển khai:** client và server import cùng `core.js`/`mapgen.js` nên phải **deploy cùng lúc**; để chặn lệch phiên bản có **số phiên bản giao thức** `Core.PROTO` (hiện là 3): client gửi `v` trong `hello`, server đối chiếu và gửi lại `v` trong `welcome`; lệch thì báo "Game vừa được cập nhật, hãy tải lại trang" (server đóng 4005). **Tăng `PROTO` mỗi khi `core.js`/`mapgen.js` đổi luật hay map.** Client cũ (trước PROTO) không gửi `v` nên bị từ chối ngay.
+- **Xem hình:** `tools/view-terrain.html` (3D, chọn biome núi; nút "Gợi ý" thử ô gợi ý trên mặt đá) và `tools/view-mountain.html` / `tools/mapgen-view.html` (sơ đồ 2D, đá thấp màu xám sáng) bằng `python3 -m http.server` trong thư mục dự án.
 
 ## Chế độ Classic = Quoridor truyền thống
 

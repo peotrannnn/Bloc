@@ -11,11 +11,11 @@
    Hỗn Loạn: rng của Core nằm riêng ở server (không bao giờ gửi đi); client chỉ nhận kết quả. Mỗi tin gửi RIÊNG từng người (snapshotFor): quân đối thủ
    bị cỏ che thì pl[đối thủ]=null, và nước đi/hiệu ứng của quân bị che không gửi (action:{hidden:true}). Hết ván thì lộ hết.
    Vật phẩm (chaos): action{seq,item:{use:'boots'|'glove'|'hammer'|'pick', o,r,c (búa/cuốc chim: tường của ĐỐI THỦ)}}; applied chaos thêm {inv:[[..],[..]],bonus:[0|1|2,0|1|2]} và fx{t:'chest'|'glove'|'hammer'|'pick'|'boots'};
-   snapshot.walls[i].p = chủ tường (0/1), snapshot.dead = khe bị cuốc chim phá, snapshot.inv/bonus. Giày là hành động MIỄN PHÍ: ply và lượt không đổi, applied{free:true} không làm mới đồng hồ lượt. Lý do rejected mới: noitem · moveonly · bootsbusy · glovefail · badtarget.
+   snapshot.walls[i].p = chủ tường (0/1), snapshot.dead = khe bị cuốc chim phá, snapshot.inv/bonus. Giày và búa là hành động MIỄN PHÍ: ply và lượt không đổi, applied{free:true} không làm mới đồng hồ lượt. Lý do rejected mới: noitem · moveonly · bootsbusy · glovefail · badtarget.
    Chaos thêm: started/state{map:{biome,seed}}
    (seed chỉ để dựng hình, không phải rng) · welcome{biome} · applied{pl,left,stuck,skipped?,fx?}.
    Giao thức (JSON):
-     client → server  hello{token} · action{seq, move:[r,c] | wall:{o,r,c}} · resign · rematch · sync · ping
+     client → server  hello{token,v} ·   (v = Core.PROTO; lệch → error{reason:'version',v} rồi đóng 4005)  · action{seq, move:[r,c] | wall:{o,r,c}} · resign · rematch · sync · ping
      server → client  welcome{slot,started,players,mode,visibility} · started{ruleset,you,snapshot,turnLeft} · state{you,snapshot,over,winner,reason,log,turnLeft,rematch} ·
                       applied{seq,by,action,ply,turn,over,winner,draw,turnLeft} · rematchStatus{me,opp} · rejected{seq,reason,ply} · over{winner,reason} ·
                       opponentStatus{online} · full · replaced · error{reason: badtoken|noroom} · pong
@@ -120,6 +120,7 @@ export class RoomLogic{
 
   async hello(conn,m){
     if(typeof m.token!=='string'||!TOKEN.test(m.token))return this.send(conn,{t:'error',reason:'badtoken'});
+    if(m.v!==Core.PROTO){this.send(conn,{t:'error',reason:'version',v:Core.PROTO});this.io.close(conn,4005,'version');return;}   /* client cũ/mới lệch luật: không cho vào (client cũ không gửi v) */
     if(!this.g.created){this.send(conn,{t:'error',reason:'noroom'});this.io.close(conn,4004,'noroom');return;}
     if(this.io.getSeat(conn)>=0)return;                        /* kết nối này đã có ghế */
     const g=this.g;
@@ -134,7 +135,7 @@ export class RoomLogic{
       this.send(old,{t:'replaced'});this.io.close(old,4000,'replaced');
     }
     const players=g.slots.filter(Boolean).length;
-    this.send(conn,{t:'welcome',slot,started:g.started,players,mode:g.mode,visibility:g.visibility,...(g.mode==='chaos'?{biome:g.biome}:{})});
+    this.send(conn,{t:'welcome',v:Core.PROTO,slot,started:g.started,players,mode:g.mode,visibility:g.visibility,...(g.mode==='chaos'?{biome:g.biome}:{})});
     if(joined){await this.persist();if(players===1)await this.expire(ALARM_WAITING);}
     if(g.away[slot]){g.away[slot]=0;await this.schedule();}      /* người rớt mạng đã nối lại kịp: hủy hạn xử thua */
     if(!g.started&&players===1)await this.lobby('add');          /* chủ phòng vào/nối lại: phòng công khai hiện trong danh sách chờ */

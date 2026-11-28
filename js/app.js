@@ -308,6 +308,7 @@ const App={
     const ss=(m.fx||[]).find(e=>e.t==='sunkskip'&&e.p===S.me);if(ss)S.net.note='Bạn bị lún cát: mất lượt';   /* lượt của mình vừa bị bỏ qua */
     else if((m.fx||[]).some(e=>e.t==='sunkskip'))S.net.note='Đối thủ lún cát: bị mất lượt';
     const dr=(m.fx||[]).find(e=>e.t==='chest'&&e.drop&&e.p===S.me);if(dr)S.net.note='Túi đầy: bỏ '+CFG.ITEMS[dr.drop].name;
+    if(a.item&&a.item.use==='hammer'&&m.free&&!m.over&&S.turn===S.me&&m.by===S.me)S.net.note='Búa không tốn lượt: hãy đi quân hoặc đặt tường';   /* búa miễn phí: nhắc là lượt vẫn của mình */
     if(m.over){
       S.over=true;S.draw=!!m.draw;S.winner=m.draw?-1:m.winner;S.net.deadline=0;
       if(S.winner>=0){Fireworks.play(S.pl[S.winner]);Pawns.win(S.winner);Camera.follow(S.winner,true);}
@@ -465,6 +466,12 @@ const App={
     let a=ai.worker?await AIWorker.decide(ai.id,p):null;
     if(tok!==this.aiTok)return;                   /* trong lúc chờ đã đổi ván / tạm dừng / về menu */
     if(!a)a=ai.decide(p);                         /* AI nhẹ, hoặc worker không dùng được: tính ngay trên luồng chính */
+    /* Lưới an toàn: chơi với máy ở client không có server làm trọng tài, nên AI nào trả tường bất hợp lệ (bịt kín đường về đích của một bên)
+       cũng không được làm hỏng ván — bỏ tường đó, đi quân về phía đích thay vào. */
+    if(a.wall&&!canWall(a.wall.o,a.wall.r,a.wall.c)){
+      const best=moves(p).map(m=>({m,d:dist(p,{r:m[0],c:m[1]})})).sort((x,y)=>x.d-y.d)[0];
+      if(best)a={move:best.m};
+    }
     if(a.wall)this.putWall(a.wall.o,a.wall.r,a.wall.c);else S.pl[S.turn]={r:a.move[0],c:a.move[1]};
     this.endTurn();
   },

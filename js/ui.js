@@ -17,12 +17,12 @@ const UI={
     const mine=!!S.net&&i===S.me,can=mine&&humanTurn()&&S.bonus[i]!==2;
     let h='';
     S.inv[i].forEach((u,k)=>{
-      const it=CFG.ITEMS[u],tip=it.name+': '+it.tip+(mine?' ['+(k+1)+']':'');
-      h+=mine?' <button type="button" class="it'+(S.mode==='item'&&S.use===u?' on':'')+'" data-use="'+u+'"'+(can?'':' disabled')+' title="'+tip+'">'+it.icon+'</button>'
-              :' <span class="it" title="'+tip+'">'+it.icon+'</span>';
+      const it=CFG.ITEMS[u],tg='data-tn="'+it.name+'"'+(mine?' data-tk="'+(k+1)+'"':'')+' data-tip="'+it.tip+'"';   /* mô tả hiện bằng Tip (js/tooltip.js); .itw bọc ngoài để nút bị khóa vẫn có tooltip */
+      h+=mine?' <span class="itw" '+tg+'><button type="button" class="it'+(S.mode==='item'&&S.use===u?' on':'')+'" data-use="'+u+'"'+(can?'':' disabled')+'>'+it.icon+'</button></span>'
+              :' <span class="it" '+tg+'>'+it.icon+'</span>';
     });
-    if(S.bonus[i]===1)h+=' <span class="itn">👟 +1 lượt</span>';
-    else if(S.bonus[i]===2)h+=' <span class="itn">👟 chỉ đi quân</span>';
+    if(S.bonus[i]===1)h+=' <span class="itn" data-tn="Giày đang chờ" data-tip="Sau hành động kế tiếp, bạn được thêm một lượt chỉ để đi quân.">👟 +1 lượt</span>';
+    else if(S.bonus[i]===2)h+=' <span class="itn" data-tn="Lượt thêm của giày" data-tip="Lượt này chỉ được đi quân (không đặt tường, không dùng vật phẩm).">👟 chỉ đi quân</span>';
     return h;
   },
 
@@ -62,7 +62,7 @@ const UI={
     const e=this.el,w=Math.round(Eval.whiteProb()*100);
     e.evW.style.height=w+'%';
     e.evWt.textContent=w;e.evBt.textContent=100-w;
-    e.evalbar.title='Trắng '+w+'% · Đen '+(100-w)+'%';
+    e.evalbar.dataset.tn='Khả năng thắng';e.evalbar.dataset.tip='Trắng '+w+'% · Đen '+(100-w)+'%';
   },
 
   /* Tên hiển thị của bên p: "Trắng" */
@@ -122,7 +122,7 @@ const UI={
     const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
     const P=this.statusParts(),html=P.map(x=>typeof x==='string'?esc(x):'<span class="tg '+x[0]+'">'+esc(x[1])+'</span>').join(' <i>·</i> ');
     if(html===this._sh)return;this._sh=html;
-    this.el.status.innerHTML=html;this.el.status.title=P.map(x=>typeof x==='string'?x:x[1]).join(' · ');
+    this.el.status.innerHTML=html;this.el.status.dataset.tip=P.map(x=>typeof x==='string'?x:x[1]).join(' · ');
   },
 
   /* Vẽ lại chữ và nút theo trạng thái S */
@@ -133,7 +133,7 @@ const UI={
     e.info.innerHTML=P.map((p,i)=>'<b>'+p.sym+' '+this.label(i)+'</b>: '+
       (S.net?(i===S.me?'Bạn':'Đối thủ'):isAI(i)?AIs.get(S.ai[i]).name:'Bạn')+' · '+S.left[i]+' tường'+this.bagHtml(i)).join('  |  ');
     e.bMove.hidden=e.bWall.hidden=e.bRot.hidden=auto;
-    e.bPause.hidden=!auto;e.bPause.textContent=(S.paused?'Tiếp':'Dừng')+' (Space)';e.bPause.disabled=S.over;
+    e.bPause.hidden=!auto;e.bPause.textContent=(S.paused?'Tiếp':'Dừng')+' (Space)';e.bPause.disabled=S.over;e.bPause.dataset.tn=S.paused?'Tiếp tục':'Tạm dừng';
     e.bMove.setAttribute('aria-pressed',S.mode==='move');
     e.bWall.setAttribute('aria-pressed',S.mode==='wall');
     e.bMove.disabled=!mine||!!(S.chaos&&S.stuck&&S.stuck[S.turn]);   /* đứng yên: khóa nút Đi */
@@ -152,6 +152,12 @@ const UI={
       const want=!!S.over&&!S.net.lost&&!rm.me,opp=!!S.over&&!S.net.lost&&!!rm.opp;
       e.bReset.classList.toggle('rm',want);e.bReset.classList.toggle('rm2',want&&opp);e.rmOpp.hidden=!opp;
     }else{e.bReset.classList.remove('rm','rm2');e.rmOpp.hidden=true;e.bReset.hidden=false;e.bReset.disabled=false;e.bReset.textContent=rs?'Đầu hàng (P)':'Mới (P)';}
+    {  /* mô tả (tooltip) của nút P đổi theo nhãn: Đầu hàng / Đấu lại / Chờ đối thủ / Ván mới */
+      const rm=S.net&&S.net.rematch,d=rs?['Đầu hàng',S.net?'Bạn thua ván này nhưng vẫn ở lại phòng để đấu lại.':'Bạn thua ván này.']
+        :S.net?(!S.over?['Đầu hàng','Bạn thua ván này nhưng vẫn ở lại phòng để đấu lại.']:rm.me?['Chờ đối thủ','Bạn đã xin đấu lại, đang đợi đối thủ đồng ý.']:rm.opp?['Đồng ý đấu lại','Đối thủ muốn đấu lại: bấm để bắt đầu ván mới.']:['Đấu lại','Mời đối thủ chơi ván mới trong cùng phòng.'])
+        :['Ván mới','Bắt đầu một ván mới.'];
+      e.bReset.dataset.tn=d[0];e.bReset.dataset.tip=d[1];
+    }
     e.bEval.hidden=S.analysisLock;e.bEval.setAttribute('aria-pressed',S.analysis);   /* chế độ khóa (online): ẩn luôn nút */
   }
 };

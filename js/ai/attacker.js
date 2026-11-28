@@ -25,7 +25,7 @@
   AIs.register({
     id:'attacker',
     name:'Mr. Lấn Ép',
-    desc:'Tấn công: dồn tường dựng hàng rào, ép đối thủ đi vòng thật xa',
+    desc:'Thằng này thích tấn công',
 
     decide(p){
       const C=CFG.AI.attacker,op=1-p;

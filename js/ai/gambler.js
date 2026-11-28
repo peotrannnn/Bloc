@@ -23,7 +23,7 @@
   AIs.register({
     id:'gambler',
     name:'Mr. Con Bạc',
-    desc:'Đặt cược mỗi ván: hoặc all-in ném tường sớm ép đối thủ, hoặc keo kiệt cắm đầu chạy rồi xả liều',
+    desc:'Ai biết nó làm gì...',
 
     decide(p){
       if(!mem[p]||S.ply<2)mem[p]=roll();

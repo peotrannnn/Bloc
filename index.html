@@ -20,21 +20,21 @@
   <div id="host"></div>
 </main>
 <footer>
-<button id="bMove" aria-pressed="true">Đi (Q)</button>
-<button id="bWall" aria-pressed="false">Tường (W)</button>
-<button id="bRot">Xoay (R)</button>
-<button id="bPause" hidden>Dừng</button>
-<button id="bView">Góc (E)</button>
-<button id="bEval" aria-pressed="true">Đánh giá (T)</button>
-<button id="bSet" title="Cài đặt (O)">Cài đặt (O)</button>
-<span class="rmgrp"><button id="bReset">Mới (P)</button><span id="rmOpp" class="rmopp" role="status" aria-live="polite" hidden><i></i>Đối thủ sẵn sàng</span></span>
-<button id="bMenu">Menu (Esc)</button>
+<button id="bMove" aria-pressed="true" data-tn="Đi quân" data-tk="Q" data-tip="Chọn một ô sáng để bước tới. Có thể nhảy qua đối thủ đứng kề.">Đi (Q)</button>
+<button id="bWall" aria-pressed="false" data-tn="Đặt tường" data-tk="W" data-tip="Dựng tường chặn đường đối thủ (phủ 2 cạnh ô). Không được bịt kín hẳn đường về đích.">Tường (W)</button>
+<button id="bRot" data-tn="Xoay tường" data-tk="R" data-tip="Đổi tường đang đặt giữa ngang và dọc.">Xoay (R)</button>
+<button id="bPause" hidden data-tn="Tạm dừng" data-tk="Space" data-tip="Dừng hoặc tiếp tục ván máy đấu máy.">Dừng</button>
+<button id="bView" data-tn="Góc nhìn" data-tk="E" data-tip="Đổi góc camera: tự do hoặc bám theo từng quân.">Góc (E)</button>
+<button id="bEval" aria-pressed="true" data-tn="Đánh giá" data-tk="T" data-tip="Bật/tắt thanh khả năng thắng bên trái bàn cờ.">Đánh giá (T)</button>
+<button id="bSet" data-tn="Cài đặt" data-tk="O" data-tip="Chỉnh âm lượng và âm thanh.">Cài đặt (O)</button>
+<span class="rmgrp"><button id="bReset" data-tn="Ván mới" data-tk="P" data-tip="Bắt đầu một ván mới.">Mới (P)</button><span id="rmOpp" class="rmopp" role="status" aria-live="polite" hidden><i></i>Đối thủ sẵn sàng</span></span>
+<button id="bMenu" data-tn="Về menu" data-tk="Esc" data-tip="Rời ván đang chơi và quay lại menu chính.">Menu (Esc)</button>
 </footer>
 
 <!-- Cửa sổ xác nhận (đầu hàng / thoát game): mở bằng UI.ask(). Màu theo biome đang chơi, mặc định xanh lá. -->
 <div id="cf" hidden>
  <div class="win pop" role="alertdialog" aria-modal="true" aria-labelledby="cfT" aria-describedby="cfM">
-  <div class="tb"><span id="cfT">Xác nhận</span><button id="cfX" class="wx" aria-label="Đóng" title="Đóng (Esc)">X</button></div>
+  <div class="tb"><span id="cfT">Xác nhận</span><button id="cfX" class="wx" aria-label="Đóng" data-tip="Đóng" data-tk="Esc">X</button></div>
   <div class="wb"><div id="cfM"></div>
    <div class="cfb"><button id="cfNo">Hủy</button><button id="cfYes" class="p">Đồng ý</button></div></div>
  </div>
@@ -42,15 +42,15 @@
 
 <div id="menu">
  <div class="win">
-  <div class="tb"><span id="winTitle">Bloc - menu</span><button id="winX" class="wx" aria-label="Đóng cửa sổ" title="Đóng (Esc)" hidden>X</button></div>
+  <div class="tb"><span id="winTitle">Bloc - menu</span><button id="winX" class="wx" aria-label="Đóng cửa sổ" data-tip="Đóng" data-tk="Esc" hidden>X</button></div>
   <div class="wb">
 
   <!-- Màn hình chính: 3 chế độ. Các màn hình con không có nút "Về": đóng cửa sổ bằng nút X trên thanh tiêu đề (hoặc Esc) -->
   <section class="scr" id="scHome">
-    <button class="big" id="mOnline">Chơi online</button>
-    <button class="big p" id="mPve">Chơi với máy</button>
-    <button class="big" id="mEve">Cá cược</button>
-    <button class="big" id="mSet">Cài đặt</button>
+    <button class="big" id="mOnline" data-tn="Chơi online" data-tip="Đấu với mấy khứa trên mạng.">Chơi online</button>
+    <button class="big p" id="mPve" data-tn="Chơi với máy" data-tip="Đấu với máy.">Chơi với máy</button>
+    <button class="big" id="mEve" data-tn="Cá độ" data-tip="AI vs AI: chọn mô hình cho Trắng & Đen rồi ngồi coi.">Cá cược</button>
+    <button class="big" id="mSet" data-tn="Cài đặt" data-tip="Chỉnh âm lượng và âm thanh.">Cài đặt</button>
   </section>
 
   <!-- Đấu với máy: chọn đối thủ -->
@@ -77,7 +77,8 @@
   <!-- Đấu online: tạo phòng hoặc nhập mã -->
   <section class="scr" id="scOnline" hidden>
     <div class="sub" id="onSub">Online · Classic</div>
-    <label class="row">Chế độ
+    <label class="row" data-tn="Chế độ chơi" data-tip="Classic: luật Quoridor gốc.
+Hỗn Loạn: có địa hình, rương và vật phẩm (bựa lắm chơi đi).">Chế độ
       <select id="onMode">
         <option value="classic">Classic</option>
         <option value="chaos">Hỗn Loạn</option>
@@ -92,12 +93,12 @@
         <option value="public">Công khai</option>
       </select>
     </label>
-    <button class="big" id="onResume" hidden>Vào lại</button>
-    <button class="big p" id="onCreate">Tạo phòng</button>
-    <button class="big" id="onQuick">Ghép nhanh</button>
+    <button class="big" id="onResume" hidden data-tn="Vô lại" data-tip="Quay lại ván đang dang dở của bạn.">Vào lại</button>
+    <button class="big p" id="onCreate" data-tn="Tạo phòng" data-tip="Tạo phòng mới và nhận mã để gửi cho bạn bè.">Tạo phòng</button>
+    <button class="big" id="onQuick" data-tn="Ghép nhanh" data-tip="Tự ghép với mấy khứa khác đang tìm trận.">Ghép nhanh</button>
     <div class="sub">hoặc nhập mã</div>
     <input id="onCode" maxlength="12" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Mã phòng" aria-label="Mã phòng">
-    <button class="big" id="onJoin">Vào</button>
+    <button class="big" id="onJoin" data-tn="Vào phòng" data-tip="Vô phòng bằng mã.">Vào</button>
     <div id="onErr" class="err" role="alert" hidden></div>
   </section>
 
@@ -106,7 +107,7 @@
     <div class="sub">Mã phòng</div>
     <div id="waitCode" class="code"></div>
     <div id="waitMode" class="sub"></div>
-    <button id="waitCopy">Chép mã</button>
+    <button id="waitCopy" data-tip="Chép mã phòng cho bạn bè.">Chép mã</button>
     <div id="waitMsg" class="sub"></div>
   </section>
 
@@ -165,6 +166,7 @@
 <script src="js/view/marks.js"></script>
 <script src="js/view/fireworks.js"></script>
 <script src="js/view/camera.js"></script>
+<script src="js/tooltip.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/menu.js"></script>

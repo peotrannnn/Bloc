@@ -1,3 +1,4 @@
+import __Core from '../js/core.js';const HELLO_V=__Core.PROTO;   /* số phiên bản giao thức, như client thật gửi */
 /* Kiểm tra phía CLIENT của Hỗn Loạn online, không cần trình duyệt/three.js/mạng:   node tools/chaos-client-test.mjs
    Nạp config/util/state/core/rules/app.js thật vào một vm với các lớp 3D giả, cho RoomLogic thật (server) chơi với client:
    một bên là client (dùng đúng moves/canWall/App.netIn của trò chơi), bên kia là "bot" lấy nước đi hợp lệ từ trạng thái thật của server.
@@ -23,7 +24,7 @@ function makeClient(){
   const el=new Proxy({},{get:()=>({style:{},textContent:'',hidden:false,setAttribute(){},firstElementChild:{style:{}}})});
   const ctx={console,Math,Date,Uint8Array,Int16Array,Int32Array,Array,Object,JSON,Number,String,Boolean,Promise,Error,performance:{now:()=>0},
     setTimeout:()=>0,clearTimeout(){},setInterval:()=>0,clearInterval(){},requestAnimationFrame(){},addEventListener(){},ResizeObserver:class{observe(){}},
-    document:{getElementById:()=>({})},localStorage:{getItem:()=>null,setItem(){}},
+    document:{getElementById:()=>({})},Sfx:new Proxy({},{get:()=>()=>{}}),localStorage:{getItem:()=>null,setItem(){}},
     confirm:()=>true,
     UI:{el,render(){},renderBar(){},init(){},lockMenu(){},progress(){},theme(){},renderStatus(){}},
     Menu:{init(){},leaveRoom(){},show(){}},
@@ -64,16 +65,18 @@ async function playGame(biome,seed,maxPlies,opts){
   const rnd=lcg(seed),rm=makeRoom(rnd);
   await rm.logic.init({mode:'chaos',visibility:'private',code:'ABCDEF',biome});
   const A=rm.connect(),B=rm.connect(),cl=makeClient(),{S,App}=cl;
-  await rm.say(A,{t:'hello',token:tok('A')});await rm.say(B,{t:'hello',token:tok('B')});
+  await rm.say(A,{t:'hello',v:HELLO_V,token:tok('A')});await rm.say(B,{t:'hello',v:HELLO_V,token:tok('B')});
   const st0=A.inbox.find(m=>m.t==='started');
-  const stats={plies:0,hidden:0,stuckMe:0,rejects:0,badRejects:0,sync:0,over:false,items:{boots:0,glove:0,hammer:0,pick:0},chests:0,extra:0};
+  const stats={plies:0,hidden:0,stuckMe:0,rejects:0,badRejects:0,sync:0,over:false,items:{boots:0,glove:0,hammer:0,pick:0},chests:0,extra:0,lowMap:false,onLow:0,onHigh:0};
   const conn={action(){},sync(){stats.sync++;},rematch(){},resign(){}};
   App.cfg={ai:[null,null],net:{conn,you:st0.you,snap:st0.snapshot,turnLeft:st0.turnLeft,state:null,mode:'chaos',map:st0.map}};
   App.newGameState();App.newGameBuild();App.newGameFinish();App.netReady=true;App.ready=true;App.busy=false;   /* newGame() giờ là async (màn hình tải): gọi thẳng ba bước dựng ván */
   A.inbox=A.inbox.filter(m=>m.t!=='started');
   const truth=()=>rm.logic.st,me=st0.you;
+  stats.lowMap=Array.from(truth().terr).includes(9);
   const check=where=>{
     const st=truth();
+    for(const q of st.pl){const h=RC.lvl(st,q.r,q.c);if(h===1)stats.onLow++;else if(h===2)stats.onHigh++;}   /* quân thật sự đứng trên đá thấp/cao (server) */
     ck(S.ply===st.ply&&S.turn===st.turn,`${biome}/${seed} ${where}: ply/turn ${S.ply}/${S.turn} ≠ ${st.ply}/${st.turn}`);
     ck(S.left[0]===st.left[0]&&S.left[1]===st.left[1],`${biome}/${seed} ${where}: số tường còn lại lệch`);
     ck(S.blocker===st.blocker,`${biome}/${seed} ${where}: người chặn đường lệch (client ${S.blocker}, server ${st.blocker})`);
@@ -158,11 +161,11 @@ async function playGame(biome,seed,maxPlies,opts){
 }
 
 console.log('1. Ván hoàn chỉnh với từng biome (client ↔ server thật)');
-const tot={games:0,plies:0,hidden:0,stuckMe:0,rejects:0,badRejects:0,over:0,chests:0,removed:0,extra:0,items:{boots:0,glove:0,hammer:0,pick:0}};
+const tot={lowGames:0,onLow:0,onHigh:0,games:0,plies:0,hidden:0,stuckMe:0,rejects:0,badRejects:0,over:0,chests:0,removed:0,extra:0,items:{boots:0,glove:0,hammer:0,pick:0}};
 for(const biome of['balanced','forest','mountain','snow','river','desert','random']){
   for(let seed=1;seed<=10;seed++){
     const s=await playGame(biome,seed*7919+biome.length,260,{resyncEvery:seed%2?0:9});
-    tot.games++;tot.plies+=s.plies;tot.hidden+=s.hidden;tot.stuckMe+=s.stuckMe;tot.rejects+=s.rejects;tot.badRejects+=s.badRejects;tot.over+=s.over?1:0;tot.chests+=s.chests;tot.removed+=s.removed;tot.extra+=s.extra;for(const k in s.items)tot.items[k]+=s.items[k];
+    tot.games++;tot.lowGames+=s.lowMap?1:0;tot.onLow+=s.onLow;tot.onHigh+=s.onHigh;tot.plies+=s.plies;tot.hidden+=s.hidden;tot.stuckMe+=s.stuckMe;tot.rejects+=s.rejects;tot.badRejects+=s.badRejects;tot.over+=s.over?1:0;tot.chests+=s.chests;tot.removed+=s.removed;tot.extra+=s.extra;for(const k in s.items)tot.items[k]+=s.items[k];
   }
 }
 console.log(`   ${tot.games} ván · ${tot.plies} nước · ${tot.over} ván kết thúc · lượt đối thủ bị che ${tot.hidden} · lượt mình đứng yên ${tot.stuckMe} · bị từ chối ${tot.rejects}`);
@@ -170,6 +173,8 @@ console.log(`   rương mở ${tot.chests} · tường bị gỡ/phá ${tot.remo
 ok1(tot.chests>0,'có rương được mở (server gửi fx chest, client cập nhật địa hình + túi đồ khớp)');
 ok1(tot.removed>0&&tot.extra>0,'có tường bị búa/cuốc chim gỡ và có lượt thêm của giày');
 ok1(tot.items.boots>0&&tot.items.hammer>0&&tot.items.pick>0,'client đã dùng giày, búa và cuốc chim (găng chỉ 15% quà nên không bắt buộc; đã phủ ở items-test/items-room)');
+console.log(`   ván có đá thấp ${tot.lowGames} · lượt quân đứng trên đá thấp ${tot.onLow}, trên đá cao ${tot.onHigh}`);
+ok1(tot.lowGames>0&&tot.onLow>0&&tot.onHigh>0,'có ván núi có đá thấp mà quân thật sự leo lên đá thấp và đá cao (client ↔ server khớp từng tin, kể cả nối lại)');
 ok1(tot.hidden>0,'có tình huống đối thủ bị cỏ che');
 ok1(tot.stuckMe>0,'có tình huống mình đứng yên trong nước');
 ok1(tot.badRejects===0,'client không bao giờ gửi nước/tường bị từ chối khi nhìn thấy đủ (chỉ được sai khi đối thủ bị che)');
