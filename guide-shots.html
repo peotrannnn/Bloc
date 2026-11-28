@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8">
+<title>Bloc - dựng ảnh hướng dẫn</title>
+<style>html,body{margin:0;background:transparent}#host canvas{display:block}</style>
+</head><body>
+<!-- Trang phụ KHÔNG hiển thị cho người chơi: cửa sổ Hướng dẫn (js/guide.js) nhúng nó trong iframe ẩn rồi nhờ nó dựng ảnh từng loại ô
+     bằng chính js/view/terrain.js + stage.js của game (cùng đồ họa, cùng bảng màu theo biome). Chạy riêng một Stage nên không đụng ván đang chơi.
+     Giao tiếp bằng postMessage (chạy được cả khi mở index.html trực tiếp từ ổ đĩa). Chi tiết ở js/guide-shots.js. -->
+<div id="host"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" onerror="parent.postMessage({t:'fail',why:'three'},'*')"></script>
+<script src="js/config.js"></script>
+<script src="js/util.js"></script>
+<script src="js/mapgen.js"></script>
+<script src="js/view/pawns.js"></script>
+<script src="js/view/stage.js"></script>
+<script src="js/view/terrain.js"></script>
+<script src="js/guide-shots.js"></script>
+</body></html>

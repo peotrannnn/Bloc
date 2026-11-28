@@ -1,0 +1,59 @@
+/* ===== Cửa sổ Hướng dẫn (js/guide.js) =====
+   Màu nền + chữ dùng đúng biến màu của biome đang chơi (--bg, --pn, --g, --g2, --gd, --mut, --gr, --on): style.css đã thêm #gd vào các bộ biến body[data-biome].
+   Thanh nút dưới (footer, z-index 9) nằm TRÊN cửa sổ này (z-index 8) để bấm lại nút Hướng dẫn mà đóng; các nút khác bị khóa trong lúc đang mở. */
+#gd{position:fixed;inset:0;z-index:8;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;
+  background:rgba(0,0,0,.5);color:var(--g);font-family:var(--font);font-size:13px}
+#gd .win{width:min(980px,100%);height:min(660px,100%);display:flex;flex-direction:column;background:var(--bg);overflow:hidden}
+#gd .tb{flex:none;background:var(--pn)}
+.gdw{flex:1;min-height:0;display:grid;grid-template-columns:200px 1fr}
+
+/* Cột danh mục */
+#gdNav{overflow-y:auto;background:var(--pn);border-right:1px solid var(--gd);padding:6px;display:flex;flex-direction:column;gap:2px;scrollbar-width:thin;scrollbar-color:var(--gd) transparent}
+.gdg{color:var(--mut);font-size:11px;margin:8px 0 2px;padding-left:2px}
+.gdg::before{content:"// "}
+.gdg:first-child{margin-top:2px}
+#gdNav .gdi{width:100%;text-align:left;border:1px solid transparent;padding:4px 8px;min-height:0;display:flex;align-items:center;gap:6px}
+#gdNav .gdi::before{content:"·";opacity:.6}
+#gdNav .gdi[aria-pressed="true"]::before{content:">"}
+#gdNav .gdi:hover:not(:disabled)::before{opacity:1}
+.gde{font-size:14px;line-height:1;width:18px;text-align:center}
+
+/* Phần nội dung */
+#gdMain{overflow-y:auto;padding:14px 18px 20px;box-sizing:border-box;outline:none;scrollbar-width:thin;scrollbar-color:var(--gd) transparent}
+.gdpic{position:relative;width:100%;max-width:560px;aspect-ratio:16/10;margin:0 0 10px;border:1px solid var(--gd);background:var(--pn);
+  display:flex;align-items:center;justify-content:center;overflow:hidden}
+.gdpic img{width:100%;height:100%;object-fit:contain;display:block;user-select:none}
+.gdpic.em{aspect-ratio:auto;height:150px;max-width:260px}
+.gdemoji{font-size:84px;line-height:1}
+.gdph{padding:16px;text-align:center;color:var(--mut);line-height:1.5}
+.gdwait::before{content:"";display:block;width:14px;height:14px;margin:0 auto 10px;background:var(--g);animation:ldblink 1.2s ease-in-out infinite}
+.gdvar{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px;max-width:560px}
+.gdvar button{padding:2px 10px;min-height:24px}
+.gdcap{color:var(--mut);font-size:12px;line-height:1.5;margin:0 0 10px;max-width:560px}
+#gdMain h2{margin:6px 0 4px;font-size:18px;color:var(--g2);text-shadow:var(--glow)}
+#gdMain h2::before{content:"> ";color:var(--gd);text-shadow:none}
+.gdsum{margin:0 0 12px;font-weight:700;color:var(--g);line-height:1.5}
+#gdMain ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:7px;max-width:640px}
+#gdMain li{position:relative;padding-left:18px;line-height:1.6}
+#gdMain li::before{content:"›";position:absolute;left:3px;color:var(--gd);font-weight:700}
+.gdnote{margin:14px 0 0;padding:8px 12px;border:1px dashed var(--gd);color:var(--mut);line-height:1.55;max-width:640px;background:rgba(var(--gr),.05)}
+.gdnote p{margin:0}
+.gdnote p+p{margin-top:4px}
+.gdnote::before{content:"// lưu ý";display:block;font-size:11px;margin-bottom:3px;opacity:.85}
+
+/* Đang mở Hướng dẫn: chỉ nút Hướng dẫn còn bấm được ở thanh dưới */
+body.gdopen footer button:not(#bGuide){pointer-events:none;opacity:.45}
+body.gdopen footer .rmopp{opacity:.45}
+
+/* Màn hình hẹp: danh mục thành một hàng nút cuộn ngang ở trên */
+@media (max-width:720px){
+  #gd{padding:8px}
+  .gdw{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+  #gdNav{flex-direction:row;align-items:center;overflow-x:auto;overflow-y:hidden;border-right:0;border-bottom:1px solid var(--gd);padding:6px;gap:4px;scrollbar-width:none}
+  #gdNav::-webkit-scrollbar{display:none}
+  .gdg{display:none}
+  #gdNav .gdi{width:auto;flex:none;white-space:nowrap;border-color:var(--gd)}
+  #gdMain{padding:12px 12px 18px}
+  .gdpic{max-width:none}
+}
+@media (prefers-reduced-motion:reduce){.gdwait::before{animation:none}}

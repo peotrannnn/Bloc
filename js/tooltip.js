@@ -52,7 +52,9 @@ const Tip=(function(){
     const w=el.offsetWidth,h=el.offsetHeight;
     let x=Math.max(EDGE,Math.min(r.left+r.width/2-w/2,vw-w-EDGE));
     let y=r.bottom+GAP,side='b';   /* ưu tiên phía dưới; hết chỗ thì lên trên (thanh nút ở đáy màn hình) */
-    if(y+h>vh-EDGE&&r.top-GAP-h>=EDGE){y=r.top-GAP-h;side='t';}
+    const ft=a.closest('footer');   /* nút của thanh dưới: luôn hiện phía TRÊN CẢ THANH (không phải trên nút), để khung không đè lên nút nào khác */
+    if(ft){const fr=ft.getBoundingClientRect();y=Math.max(EDGE,fr.top-GAP-h);side='t';}
+    else if(y+h>vh-EDGE&&r.top-GAP-h>=EDGE){y=r.top-GAP-h;side='t';}
     else if(y+h>vh-EDGE)y=Math.max(EDGE,vh-h-EDGE);
     el.style.left=Math.round(x)+'px';el.style.top=Math.round(y)+'px';
     el.style.setProperty('--ax',Math.round(Math.max(12,Math.min(r.left+r.width/2-x,w-12)))+'px');

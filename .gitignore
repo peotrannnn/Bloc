@@ -13,3 +13,6 @@ node_modules/
 .env
 .env.*
 .wrangler/
+
+# Ghi chú riêng cho Claude Code, không đưa lên repo công khai
+CLAUDE.md

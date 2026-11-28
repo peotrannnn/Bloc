@@ -64,12 +64,22 @@ header{padding:5px 12px 6px;display:flex;flex-direction:column;gap:1px;backgroun
 #evBt,#evWt{position:absolute;left:0;right:0;text-align:center;font-size:.68rem;font-weight:700;color:#fff;mix-blend-mode:difference}
 #evBt{top:4px}#evWt{bottom:4px}
 
-/* Thanh nút dưới */
-footer{display:flex;flex-wrap:wrap;gap:6px;padding:6px 10px calc(6px + env(safe-area-inset-bottom,0px));justify-content:center;
+/* Thanh nút dưới: LUÔN một hàng ngang. Trước đây nút tự xuống dòng, nên khung mô tả (tooltip) của nút hàng dưới đè lên nút hàng trên.
+   Màn hình hẹp thì thanh cuộn ngang (không hiện thanh cuộn). `safe center`: vừa chỗ thì căn giữa, thiếu chỗ thì dồn về trái để cuộn tới được nút đầu tiên (center thường sẽ cắt mất bên trái). */
+footer{display:flex;flex-wrap:nowrap;align-items:center;justify-content:center;justify-content:safe center;gap:6px;padding:6px 10px calc(6px + env(safe-area-inset-bottom,0px));
+  overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scrollbar-width:none;position:relative;z-index:9;
   background:var(--pn);border-top:1px solid var(--g);box-shadow:0 -1px 12px rgba(var(--gr),.18)}
+footer::-webkit-scrollbar{display:none}
+footer>*{flex:none;white-space:nowrap}
 footer button{border-color:transparent;padding:3px 4px}
 footer button::before{content:"[ ";opacity:.6}
 footer button::after{content:" ]";opacity:.6}
+/* Màn hình hẹp: bỏ ngoặc [ ] và thu gọn để thấy được nhiều nút hơn trên một hàng (phần còn lại cuộn ngang). Đặt SAU các luật ngoặc ở trên để thắng thứ tự. */
+@media (max-width:640px){
+  footer{gap:2px;padding-left:6px;padding-right:6px}
+  footer button{font-size:12px;padding:3px 5px}
+  footer button::before,footer button::after{content:none}
+}
 
 /* ===== Nút ===== */
 button,select{font:inherit;color:var(--g)}
@@ -92,16 +102,16 @@ select:hover,select:focus{border-color:var(--g);box-shadow:var(--halo);outline:n
 option{background:#000;color:var(--g)}
 
 /* ===== Giao diện theo BIOME ===== */
-body[data-biome] :is(header,#board,footer,#cf){--glow:0 0 0 transparent;--halo:0 0 8px rgba(var(--gr),.22)}
+body[data-biome] :is(header,#board,footer,#cf,#gd){--glow:0 0 0 transparent;--halo:0 0 8px rgba(var(--gr),.22)}
 body[data-biome] #board{background:radial-gradient(55% 60% at 50% 52%,rgba(var(--gr),.10),transparent 72%),
   linear-gradient(rgba(var(--gr),.06) 1px,transparent 1px) 0 0/36px 36px,linear-gradient(90deg,rgba(var(--gr),.06) 1px,transparent 1px) 0 0/36px 36px,var(--bg)}
-body[data-biome="meadow"] :is(header,#board,footer,#cf){--bg:#4f8f2a;--pn:#376b1b;--g:#fff;--g2:#f2ffd0;--gd:#a9d982;--mut:#e0f3c8;--dis:#8fb870;--gr:255,255,255;--on:#1f4210;--red:#ff9a92}
-body[data-biome="forest"] :is(header,#board,footer,#cf){--bg:#2f6a22;--pn:#204d17;--g:#fff;--g2:#e6ffc4;--gd:#93cc74;--mut:#d3edbd;--dis:#7fa968;--gr:255,255,255;--on:#173a0d;--red:#ff9a92}
-body[data-biome="river"] :is(header,#board,footer,#cf){--bg:#2c7a99;--pn:#1d5a75;--g:#fff;--g2:#d6f4ff;--gd:#8fcde4;--mut:#d8eef7;--dis:#7fb0c4;--gr:255,255,255;--on:#0f3a4f;--red:#ff9a92}
-body[data-biome="autumn"] :is(header,#board,footer,#cf){--bg:#a0561f;--pn:#7a3f14;--g:#fff;--g2:#ffe3b8;--gd:#e8ac72;--mut:#f6dcc0;--dis:#c79a74;--gr:255,255,255;--on:#4a2208;--red:#ffb199}
-body[data-biome="desert"] :is(header,#board,footer,#cf){--bg:#ecd093;--pn:#dcb970;--g:#2b1d0b;--g2:#000;--gd:#8d6c35;--mut:#4d3817;--dis:#9a8458;--gr:43,29,11;--on:#f6e6c4;--red:#a3211b}
-body[data-biome="snow"] :is(header,#board,footer,#cf){--bg:#e6f2f9;--pn:#d2e5f0;--g:#0a0e13;--g2:#000;--gd:#5f7a8c;--mut:#34495a;--dis:#8da1af;--gr:10,14,19;--on:#e6f2f9;--red:#b3202a}
-body[data-biome="mountain"] :is(header,#board,footer,#cf){--bg:#5d6778;--pn:#464e5c;--g:#fff;--g2:#eaf1ff;--gd:#aab6c8;--mut:#dde4ef;--dis:#97a2b4;--gr:255,255,255;--on:#242a35;--red:#ff9a92}
+body[data-biome="meadow"] :is(header,#board,footer,#cf,#gd){--bg:#4f8f2a;--pn:#376b1b;--g:#fff;--g2:#f2ffd0;--gd:#a9d982;--mut:#e0f3c8;--dis:#8fb870;--gr:255,255,255;--on:#1f4210;--red:#ff9a92}
+body[data-biome="forest"] :is(header,#board,footer,#cf,#gd){--bg:#2f6a22;--pn:#204d17;--g:#fff;--g2:#e6ffc4;--gd:#93cc74;--mut:#d3edbd;--dis:#7fa968;--gr:255,255,255;--on:#173a0d;--red:#ff9a92}
+body[data-biome="river"] :is(header,#board,footer,#cf,#gd){--bg:#2c7a99;--pn:#1d5a75;--g:#fff;--g2:#d6f4ff;--gd:#8fcde4;--mut:#d8eef7;--dis:#7fb0c4;--gr:255,255,255;--on:#0f3a4f;--red:#ff9a92}
+body[data-biome="autumn"] :is(header,#board,footer,#cf,#gd){--bg:#a0561f;--pn:#7a3f14;--g:#fff;--g2:#ffe3b8;--gd:#e8ac72;--mut:#f6dcc0;--dis:#c79a74;--gr:255,255,255;--on:#4a2208;--red:#ffb199}
+body[data-biome="desert"] :is(header,#board,footer,#cf,#gd){--bg:#ecd093;--pn:#dcb970;--g:#2b1d0b;--g2:#000;--gd:#8d6c35;--mut:#4d3817;--dis:#9a8458;--gr:43,29,11;--on:#f6e6c4;--red:#a3211b}
+body[data-biome="snow"] :is(header,#board,footer,#cf,#gd){--bg:#e6f2f9;--pn:#d2e5f0;--g:#0a0e13;--g2:#000;--gd:#5f7a8c;--mut:#34495a;--dis:#8da1af;--gr:10,14,19;--on:#e6f2f9;--red:#b3202a}
+body[data-biome="mountain"] :is(header,#board,footer,#cf,#gd){--bg:#5d6778;--pn:#464e5c;--g:#fff;--g2:#eaf1ff;--gd:#aab6c8;--mut:#dde4ef;--dis:#97a2b4;--gr:255,255,255;--on:#242a35;--red:#ff9a92}
 
 /* ===== Phong cách hình ảnh theo BIOME ===== */
 body[data-biome] #host canvas{filter:var(--fx,none)}
@@ -135,7 +145,7 @@ footer button.rm2:not(:disabled){animation-duration:1s}
 @keyframes rmIn{from{opacity:0;transform:translateX(-8px) scale(.9)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){footer button.rm:not(:disabled),.rmopp,.rmopp i{animation:none}}
 
-#cf{position:fixed;inset:0;z-index:7;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;background:rgba(0,0,0,.5);color:var(--g);font-family:var(--font);font-size:13px}
+#cf{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;background:rgba(0,0,0,.5);color:var(--g);font-family:var(--font);font-size:13px}
 #cf .win{background:var(--pn);width:min(360px,92vw)}
 #cf .wb{display:flex;flex-direction:column;gap:14px}
 #cfM{line-height:1.5}

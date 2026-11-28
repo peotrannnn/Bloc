@@ -4,7 +4,7 @@ const UI={
   el:{},
 
   init(){
-    for(const id of['evalbar','evW','evBt','evWt','status','info','host','menu','ld','bar','msg','bMove','bWall','bRot','bPause','bView','bEval','bReset','rmOpp','bMenu'])this.el[id]=$(id);
+    for(const id of['evalbar','evW','evBt','evWt','status','info','host','menu','ld','bar','msg','bMove','bWall','bRot','bPause','bView','bEval','bReset','rmOpp','bMenu','bGuide'])this.el[id]=$(id);
     $('cfNo').onclick=$('cfX').onclick=()=>this.closeAsk();
     $('cf').addEventListener('mousedown',ev=>{if(ev.target===$('cf'))this.closeAsk();});   /* bấm ra ngoài = hủy */
     $('cfYes').onclick=()=>{const f=this.cfYes;this.closeAsk();if(f)f();};
@@ -133,6 +133,7 @@ const UI={
     e.info.innerHTML=P.map((p,i)=>'<b>'+p.sym+' '+this.label(i)+'</b>: '+
       (S.net?(i===S.me?'Bạn':'Đối thủ'):isAI(i)?AIs.get(S.ai[i]).name:'Bạn')+' · '+S.left[i]+' tường'+this.bagHtml(i)).join('  |  ');
     e.bMove.hidden=e.bWall.hidden=e.bRot.hidden=auto;
+    e.bGuide.hidden=!S.chaos;if(!S.chaos&&Guide.isOpen)Guide.close(true);   /* Hướng dẫn chỉ có ở Hỗn Loạn */
     e.bPause.hidden=!auto;e.bPause.textContent=(S.paused?'Tiếp':'Dừng')+' (Space)';e.bPause.disabled=S.over;e.bPause.dataset.tn=S.paused?'Tiếp tục':'Tạm dừng';
     e.bMove.setAttribute('aria-pressed',S.mode==='move');
     e.bWall.setAttribute('aria-pressed',S.mode==='wall');
