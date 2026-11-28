@@ -8,7 +8,6 @@
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/online.css">
 <link rel="stylesheet" href="css/settings.css">
-<link rel="stylesheet" href="css/guide.css">
 </head>
 <body>
 <header><div id="status"></div><div id="info"></div></header>
@@ -27,7 +26,6 @@
 <button id="bPause" hidden data-tn="Tạm dừng" data-tk="Space" data-tip="Dừng hoặc tiếp tục ván máy đấu máy.">Dừng</button>
 <button id="bView" data-tn="Góc nhìn" data-tk="E" data-tip="Đổi góc camera: tự do hoặc bám theo từng quân.">Góc (E)</button>
 <button id="bEval" aria-pressed="true" data-tn="Đánh giá" data-tk="T" data-tip="Bật/tắt thanh khả năng thắng bên trái bàn cờ.">Đánh giá (T)</button>
-<button id="bGuide" hidden aria-pressed="false" data-tn="Hướng dẫn" data-tk="I" data-tip="Giải thích các loại ô và vật phẩm của chế độ Hỗn Loạn, kèm hình. Bấm lại để đóng.">Hướng dẫn (I)</button>
 <button id="bSet" data-tn="Cài đặt" data-tk="O" data-tip="Chỉnh âm lượng và âm thanh.">Cài đặt (O)</button>
 <span class="rmgrp"><button id="bReset" data-tn="Ván mới" data-tk="P" data-tip="Bắt đầu một ván mới.">Mới (P)</button><span id="rmOpp" class="rmopp" role="status" aria-live="polite" hidden><i></i>Đối thủ sẵn sàng</span></span>
 <button id="bMenu" data-tn="Về menu" data-tk="Esc" data-tip="Rời ván đang chơi và quay lại menu chính.">Menu (Esc)</button>
@@ -39,17 +37,6 @@
   <div class="tb"><span id="cfT">Xác nhận</span><button id="cfX" class="wx" aria-label="Đóng" data-tip="Đóng" data-tk="Esc">X</button></div>
   <div class="wb"><div id="cfM"></div>
    <div class="cfb"><button id="cfNo">Hủy</button><button id="cfYes" class="p">Đồng ý</button></div></div>
- </div>
-</div>
-
-<!-- Cửa sổ Hướng dẫn (chỉ Hỗn Loạn): js/guide.js. Màu theo biome như #cf; thanh nút dưới nằm trên nó để bấm lại nút Hướng dẫn mà đóng. -->
-<div id="gd" hidden>
- <div class="win pop" role="dialog" aria-modal="true" aria-labelledby="gdT">
-  <div class="tb"><span id="gdT">Hướng dẫn - Hỗn Loạn</span><button id="gdX" class="wx" aria-label="Đóng" data-tip="Đóng" data-tk="I">X</button></div>
-  <div class="gdw">
-   <nav id="gdNav" aria-label="Danh mục"></nav>
-   <article id="gdMain" tabindex="-1"></article>
-  </div>
  </div>
 </div>
 
@@ -180,12 +167,10 @@ Hỗn Loạn: có địa hình, rương và vật phẩm (bựa lắm chơi đi)
 <script src="js/view/fireworks.js"></script>
 <script src="js/view/camera.js"></script>
 <script src="js/tooltip.js"></script>
-<script src="js/guide-data.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/menu.js"></script>
 <script src="js/input.js"></script>
-<script src="js/guide.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

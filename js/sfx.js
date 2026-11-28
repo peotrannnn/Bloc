@@ -333,7 +333,7 @@ const Sfx=(function(){
       if(!b||b.disabled)return;
       if(b.id==='bEval'||b.id==='bPause'){
         setTimeout(()=>play('ui:'+(b.getAttribute('aria-pressed')==='false'?'off':'on')),0);   /* đọc trạng thái SAU khi nút xử lý xong */
-      }else if(b.id==='cfX'||b.id==='winX'||b.id==='cfNo'||b.id==='gdX')play('ui:close');
+      }else if(b.id==='cfX'||b.id==='winX'||b.id==='cfNo')play('ui:close');
       else play('ui:click');
     },true);
     document.addEventListener('change',e=>{if(e.target&&e.target.tagName==='SELECT')play('ui:tick');});

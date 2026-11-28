@@ -19,7 +19,6 @@ Game cờ 3D chạy trên trình duyệt (biến thể Quoridor), giao diện ti
 | `js/tooltip.js` | Khung mô tả khi rê chuột (thay `title` mặc định): đặt `data-tip` / `data-tn` / `data-tk` lên phần tử |
 | `js/sfx.js` | **Âm thanh** (WebAudio, tổng hợp, không cần file): hover/click, bước chân theo mặt đất, trượt băng, bẫy lò xo, cổng, rương, tường, người chặn đường, pháo bông, môi trường theo biome |
 | `js/app.js`, `ui.js`, `menu.js`, `input.js` | Điều phối ván, giao diện, menu, chuột/phím |
-| `js/guide.js`, `js/guide-data.js`, `css/guide.css`, `guide-shots.html` + `js/guide-shots.js` | **Hướng dẫn** (chỉ Hỗn Loạn, phím `I`): giải thích từng loại ô và vật phẩm. Ảnh dựng bằng đồ họa thật của game trong iframe ẩn; màu theo biome đang chơi |
 | `server/` | Server online (Cloudflare Worker + Durable Object), xem `server/README.md` |
 | `tools/` | Công cụ chạy bằng Node (xem dưới) |
 
@@ -33,7 +32,6 @@ node tools/blocker-test.js                    # kiểm thử sự kiện ngườ
 node tools/chaos-client-test.mjs              # client thật ↔ server thật: so sánh trạng thái sau MỖI tin (kể cả túi đồ, chủ tường, rương, quân leo đá)
 node tools/stone-surface-test.js              # mặt đá thật (độ cao quân/ô gợi ý đứng trên đá) khớp hình học khối đá
 node tools/lowstone-test.js                   # đá thấp/đá cao: tham chiếu độc lập (BFS riêng), bảng tường, nhảy qua đối thủ, chống kẹt, property test (~3,2 triệu kiểm tra, gồm luật cổng)
-node tools/guide-test.js                      # dữ liệu Hướng dẫn: đủ mọi ô/vật phẩm, ảnh hợp lệ, chữ khớp số liệu lõi (lún cát, quà rương, chu kỳ bẫy...)
 node tools/golden-test.js                     # Classic và Hỗn Loạn không đá thấp phải trùng bản cũ (--write CHỈ khi chủ dự án đồng ý đổi luật)
 node tools/mapgen-test.js                     # kiểm thử sinh map (kể cả đá thấp) và đối chiếu BFS mapgen ↔ Core
 node server/test/items-room.mjs               # kiểm thử vật phẩm ở phía server (không cần Cloudflare)

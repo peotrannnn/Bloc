@@ -569,17 +569,16 @@ const App={
       Menu.leaveRoom();Online.setLastRoom(null);S.net=null;
     }
     if(typeof BgAudio!=='undefined')BgAudio.stop();
-    Guide.close(true);Sfx.stopAll();Sfx.setBiome(null);UI.closeAsk();clearTimeout(this.timer);clearInterval(this.tick);this.aiTok++;S.event=null;UI.theme(null);if(typeof Weather!=='undefined')Weather.set(null);Menu.show('scHome');
+    Sfx.stopAll();Sfx.setBiome(null);UI.closeAsk();clearTimeout(this.timer);clearInterval(this.tick);this.aiTok++;S.event=null;UI.theme(null);if(typeof Weather!=='undefined')Weather.set(null);Menu.show('scHome');
   },
 
   /* ----- Phím tắt (dùng ev.code nên đúng cả khi bật bộ gõ tiếng Việt) -----
-     Q đi quân · W đặt tường · R xoay tường · E đổi góc nhìn · T bật/tắt đánh giá · I hướng dẫn (Hỗn Loạn) · O cài đặt · P ván mới · Space tạm dừng (máy đấu máy) · Esc về menu */
+     Q đi quân · W đặt tường · R xoay tường · E đổi góc nhìn · T bật/tắt đánh giá · O cài đặt · P ván mới · Space tạm dừng (máy đấu máy) · Esc về menu */
   onKey(ev){
     if(ev.repeat||ev.ctrlKey||ev.metaKey||ev.altKey||this.busy)return;
     const k=ev.code;
     if(UI.cfOpen){if(k==='Escape'){UI.closeAsk();ev.preventDefault();}return;}   /* đang hỏi xác nhận: chỉ Esc (hủy); Enter/Space bấm nút đang focus như thường */
     if(!UI.el.menu.hidden){if(k==='Escape')Menu.back();return;}   /* đang ở menu: chỉ Esc có tác dụng */
-    if(Guide.isOpen){if(k!=='Tab')Guide.onKey(ev);return;}   /* cửa sổ Hướng dẫn mở: nó nhận hết phím, game không nhận (Tab vẫn đi qua các nút) */
     if(k==='KeyQ')this.setMode('move');
     else if(k==='KeyW')this.setMode('wall');
     else if(k==='KeyR')this.rotateWall();
@@ -587,7 +586,6 @@ const App={
     else if(k==='KeyT')this.toggleAnalysis();
     else if(k==='KeyP')this.resetOrRematch();
     else if(k==='KeyF')Perf.toggle();
-    else if(k==='KeyI'){if(!S.chaos)return;Guide.open();}   /* Hướng dẫn (chỉ Hỗn Loạn); đóng bằng I nằm trong Guide.onKey */
     else if(k==='KeyB'){if(!CFG.BLOCKER.key||S.net||!S.chaos)return;   /* online: server mới là trọng tài, client không tự gọi (sẽ lệch luật) */
      if(S.blocker>=0)this.blockerLeave();else this.blockerEvent();}   /* thử: gọi / đuổi người chặn đường */
     else if(k==='Space'){if(!allAI()||S.over)return;S.paused=!S.paused;this.refresh();this.schedule();}   /* máy đấu máy: tạm dừng / tiếp tục */
